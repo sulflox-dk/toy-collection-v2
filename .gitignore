@@ -25,3 +25,6 @@ Thumbs.db
 # 5. Uploads (Vi vil ikke have dine private billeder på GitHub)
 /public/assets/uploads/*
 !/public/assets/uploads/.gitkeep
+
+# Other stuff
+documentation.php
