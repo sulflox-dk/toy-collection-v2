@@ -1,20 +1,20 @@
-# 1. Sikkerhed & Environment
+# 1. Security & Environment
 .env
 .env.local
 .env.*.local
 
-# 2. Afhængigheder (hvis vi bruger Composer senere)
+# 2. Dependencies (Composer / npm)
 /vendor/
 /node_modules/
 
-# 3. Systemfiler & IDE
+# 3. System files & IDE
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
 *.log
 
-# 4. Storage & Cache (Vi vil beholde mapperne, men ikke indholdet)
+# 4. Storage & Cache (keep directories, not contents)
 /storage/logs/*
 !/storage/logs/.gitkeep
 /storage/cache/*
@@ -22,9 +22,9 @@ Thumbs.db
 /storage/sessions/*
 !/storage/sessions/.gitkeep
 
-# 5. Uploads (Vi vil ikke have dine private billeder på GitHub)
+# 5. Uploads (private collection images should not be in git)
 /public/assets/uploads/*
 !/public/assets/uploads/.gitkeep
 
-# Other stuff
+# Other
 documentation.php
