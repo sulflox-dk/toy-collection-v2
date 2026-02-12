@@ -1,53 +1,50 @@
 /**
- * EntityManager - Handles CRUD operations for V2 Architecture
- * Works with the RESTful Router and Config system
+ * EntityManager - Hybrid (JSON + HTML)
+ * * Modes:
+ * 1. 'json' (Default): Fetches JSON data, loops through it, and renders cards/rows using JS.
+ * 2. 'html': Fetches a pre-rendered HTML partial (table/grid) from the server and injects it.
  */
 class EntityManager {
 	/**
-	 * @param {string} entityName - e.g., 'manufacturer'
-	 * @param {Object} config - Configuration object
-	 * @param {string} [config.endpoint] - API Endpoint (default: /entityName)
-	 * @param {Object} [config.ui] - UI Selectors override
-	 * @param {Function} [config.onRenderRow] - Function to render a single row/card
+	 * @param {string} entityName - e.g. 'manufacturer'
+	 * @param {Object} config
+	 * @param {string} [config.mode='json'] - 'json' or 'html'
+	 * @param {string} [config.endpoint] - Base API URL (e.g. '/manufacturer')
+	 * @param {string} [config.listUrl] - URL to fetch the list (defaults to endpoint)
+	 * @param {Object} [config.ui] - UI Selectors
+	 * @param {Function} [config.onRenderRow] - Callback for JSON rendering
 	 */
 	constructor(entityName, config = {}) {
 		this.entityName = entityName;
+		this.mode = config.mode || 'json'; // 'json' OR 'html'
 
-		// V2 Routing: Default to "/manufacturer" if not specified
+		// API Endpoints
 		this.endpoint = config.endpoint || `/${entityName}`;
+		// If we are in HTML mode, we often hit a specific 'list' endpoint (e.g. /manufacturer/list)
+		this.listUrl = config.listUrl || this.endpoint;
 
-		// UI Selectors with defaults
 		this.ui = {
-			grid: `#${entityName}-grid`, // Container for the list
-			modal: `#${entityName}-modal`, // The Add/Edit Modal
-			form: `#${entityName}-form`, // The Form inside the modal
-			addBtn: `#btn-add-${entityName}`, // Button to open modal
-			saveBtn: `#btn-save-${entityName}`, // Save button in modal
-			searchInput: '#search-input', // Optional search box
+			grid: `#${entityName}-grid`,
+			modal: `#${entityName}-modal`,
+			form: `#${entityName}-form`,
+			addBtn: `#btn-add-${entityName}`,
+			searchInput: '#search-input',
 			...config.ui,
 		};
 
-		// Callbacks
 		this.onRenderRow = config.onRenderRow || this.defaultRenderRow;
-
-		// Internal state
-		this.data = [];
 		this.modalInstance = null;
+		this.data = [];
 
 		this.init();
 	}
 
-	/**
-	 * Initialize Event Listeners
-	 */
 	init() {
-		// 1. Setup Add Button
+		// Setup Add Button
 		const addBtn = document.querySelector(this.ui.addBtn);
-		if (addBtn) {
-			addBtn.addEventListener('click', () => this.openModal());
-		}
+		if (addBtn) addBtn.addEventListener('click', () => this.openModal());
 
-		// 2. Setup Form Submission
+		// Setup Form
 		const form = document.querySelector(this.ui.form);
 		if (form) {
 			form.addEventListener('submit', (e) => {
@@ -56,130 +53,136 @@ class EntityManager {
 			});
 		}
 
-		// 3. Setup Bootstrap Modal
+		// Setup Bootstrap Modal
 		const modalEl = document.querySelector(this.ui.modal);
 		if (modalEl && window.bootstrap) {
 			this.modalInstance = new bootstrap.Modal(modalEl);
 		}
 
-		// 4. Initial Load
-		this.loadData();
+		// Initial Load
+		this.loadList();
 	}
 
 	/**
-	 * Load data from the API
-	 * GET /manufacturer
+	 * Master Load Method
+	 * Dispatches to the correct loader based on mode
 	 */
-	async loadData(params = {}) {
+	loadList(params = {}) {
+		if (this.mode === 'html') {
+			this.loadHtml(params);
+		} else {
+			this.loadJson(params);
+		}
+	}
+
+	/**
+	 * STRATEGY 1: HTML Loader (Server-Side View)
+	 * Fetches a partial HTML string and injects it.
+	 */
+	async loadHtml(params) {
+		const container = document.querySelector(this.ui.grid);
+		if (!container) return;
+
+		// Loading State
+		container.innerHTML = `<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>`;
+
 		try {
-			// Use your ApiClient to fetch
-			const response = await ApiClient.request(this.endpoint, {
+			// We expect the server to return pure HTML here
+			const html = await ApiClient.request(this.listUrl, {
+				method: 'GET',
+				data: params,
+				headers: { Accept: 'text/html' }, // Good practice to tell server what we want
+			});
+
+			// Inject
+			container.innerHTML = html;
+
+			// Re-attach listeners because the DOM buttons are new
+			this.attachRowListeners(container);
+		} catch (error) {
+			console.error('HTML Load Error:', error);
+			container.innerHTML = `<div class="alert alert-danger">Failed to load data.</div>`;
+		}
+	}
+
+	/**
+	 * STRATEGY 2: JSON Loader (Client-Side View)
+	 * Fetches JSON array and builds DOM using onRenderRow
+	 */
+	async loadJson(params) {
+		const container = document.querySelector(this.ui.grid);
+		if (!container) return;
+
+		// Loading State
+		container.innerHTML = `<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>`;
+
+		try {
+			const response = await ApiClient.request(this.listUrl, {
 				method: 'GET',
 				data: params,
 			});
 
-			// Handle wrapped response (e.g. { data: [...] } vs [...])
+			// Normalize response
 			this.data = Array.isArray(response) ? response : response.data || [];
 
-			this.render();
+			if (this.data.length === 0) {
+				container.innerHTML = `<div class="col-12 text-center py-5 text-muted">No records found.</div>`;
+				return;
+			}
+
+			// Render Client-Side
+			container.innerHTML = this.data
+				.map((item) => this.onRenderRow(item))
+				.join('');
+
+			this.attachRowListeners(container);
 		} catch (error) {
-			console.error('Load Error:', error);
-			UiHelper.showToast('Failed to load data.', 'error');
+			console.error('JSON Load Error:', error);
+			UiHelper.showToast('Failed to load data', 'error');
 		}
 	}
 
 	/**
-	 * Render the list (Grid or Table)
-	 */
-	render() {
-		const container = document.querySelector(this.ui.grid);
-		if (!container) return;
-
-		if (this.data.length === 0) {
-			container.innerHTML = `
-                <div class="col-12 text-center py-5 text-muted">
-                    <i class="fa-solid fa-box-open fa-3x mb-3"></i>
-                    <p>No ${this.entityName}s found.</p>
-                </div>`;
-			return;
-		}
-
-		// Map data to HTML using the callback
-		container.innerHTML = this.data
-			.map((item) => this.onRenderRow(item))
-			.join('');
-
-		// Re-attach delete/edit listeners to the new dynamic HTML
-		this.attachRowListeners(container);
-	}
-
-	/**
-	 * Create or Update an entity
+	 * Saves data (POST/PUT) -> Always JSON
 	 */
 	async save() {
 		const form = document.querySelector(this.ui.form);
-		if (!form) return;
-
-		// 1. Validate
-		if (!form.checkValidity()) {
+		if (!form || !form.checkValidity()) {
 			form.reportValidity();
 			return;
 		}
 
-		// 2. Prepare Data
 		const formData = new FormData(form);
-		const id = formData.get('id'); // Hidden input for ID
+		const id = formData.get('id');
 
-		// 3. Determine URL and Method
 		let url = this.endpoint;
-		let method = 'POST';
-
 		if (id) {
-			// Update: PUT /manufacturer/123
-			url = `${this.endpoint}/${id}`;
-			// Standard trick: PHP often handles PUT better if sent as POST with _method override
-			// especially if files are involved.
+			url += `/${id}`;
 			formData.append('_method', 'PUT');
 		}
 
-		// 4. Send Request
 		try {
 			await ApiClient.request(url, {
-				method: method,
+				method: 'POST',
 				body: formData,
 			});
 
 			this.closeModal();
-			UiHelper.showToast(
-				`${this.entityName} saved successfully!`,
-				'success',
-			);
-			this.loadData(); // Refresh grid
+			UiHelper.showToast('Saved successfully!', 'success');
+
+			// Reload the list (using whatever mode is active)
+			this.loadList();
 		} catch (error) {
 			console.error('Save Error:', error);
-
-			if (error.status === 422) {
-				// Validation Error from API
-				UiHelper.showToast('Please check the form for errors.', 'warning');
-				// You could add logic here to highlight specific fields based on error.data
-			} else {
-				UiHelper.showToast('Failed to save. Please try again.', 'error');
-			}
+			UiHelper.showToast('Failed to save.', 'error');
 		}
 	}
 
 	/**
-	 * Delete an entity
-	 * DELETE /manufacturer/123
+	 * Deletes item -> Always JSON API
 	 */
 	async delete(id) {
-		if (
-			!confirm(
-				'Are you sure you want to delete this item? This cannot be undone.',
-			)
-		) {
-			return;
-		}
+		if (!confirm('Are you sure?')) return;
 
 		try {
 			await ApiClient.request(`${this.endpoint}/${id}`, {
@@ -187,97 +190,75 @@ class EntityManager {
 			});
 
 			UiHelper.showToast('Item deleted.', 'success');
-			this.loadData();
+			this.loadList();
 		} catch (error) {
-			console.error('Delete Error:', error);
-			UiHelper.showToast('Failed to delete item.', 'error');
+			UiHelper.showToast('Failed to delete.', 'error');
 		}
 	}
 
 	/**
-	 * Open the modal for Creating (empty) or Editing (populated)
-	 */
-	openModal(data = null) {
-		const form = document.querySelector(this.ui.form);
-		if (!form) return;
-
-		form.reset();
-
-		// Remove old hidden ID if it exists
-		const idInput = form.querySelector('input[name="id"]');
-		if (idInput) idInput.value = '';
-
-		if (data) {
-			// Editing: Populate form fields
-			this.populateForm(form, data);
-
-			// Update Modal Title if exists
-			const title = document.querySelector(`${this.ui.modal} .modal-title`);
-			if (title) title.textContent = `Edit ${this.entityName}`;
-		} else {
-			// Creating
-			const title = document.querySelector(`${this.ui.modal} .modal-title`);
-			if (title) title.textContent = `Add New ${this.entityName}`;
-		}
-
-		if (this.modalInstance) {
-			this.modalInstance.show();
-		}
-	}
-
-	closeModal() {
-		if (this.modalInstance) {
-			this.modalInstance.hide();
-		}
-	}
-
-	/**
-	 * Helper to fill form inputs with JSON data
-	 */
-	populateForm(form, data) {
-		Object.keys(data).forEach((key) => {
-			const input = form.querySelector(`[name="${key}"]`);
-			if (input) {
-				if (input.type === 'checkbox') {
-					input.checked = !!data[key];
-				} else {
-					input.value = data[key];
-				}
-			}
-		});
-	}
-
-	/**
-	 * Listen for clicks on the generated grid (Edit/Delete buttons)
+	 * Attach Event Listeners to the dynamic Grid/Table
+	 * Works for both JSON and HTML modes!
 	 */
 	attachRowListeners(container) {
 		// Edit Buttons
 		container.querySelectorAll('.btn-edit').forEach((btn) => {
 			btn.addEventListener('click', (e) => {
 				const id = e.currentTarget.dataset.id;
-				const item = this.data.find((d) => d.id == id);
-				if (item) this.openModal(item);
+
+				// If HTML mode: We look for data-json attribute on the button
+				// If JSON mode: We look in this.data array
+				let itemData = null;
+
+				if (this.mode === 'html' && e.currentTarget.dataset.json) {
+					try {
+						itemData = JSON.parse(e.currentTarget.dataset.json);
+					} catch (e) {
+						console.error('Bad JSON in data-attribute');
+					}
+				} else {
+					itemData = this.data.find((d) => d.id == id);
+				}
+
+				if (itemData) this.openModal(itemData);
 			});
 		});
 
 		// Delete Buttons
 		container.querySelectorAll('.btn-delete').forEach((btn) => {
 			btn.addEventListener('click', (e) => {
-				const id = e.currentTarget.dataset.id;
-				this.delete(id);
+				this.delete(e.currentTarget.dataset.id);
 			});
 		});
 	}
 
-	/**
-	 * Default fallback renderer if none provided
-	 */
+	openModal(data = null) {
+		const form = document.querySelector(this.ui.form);
+		if (!form) return;
+
+		form.reset();
+		form.querySelector('[name="id"]').value = '';
+
+		if (data) this.populateForm(form, data);
+
+		if (this.modalInstance) this.modalInstance.show();
+	}
+
+	closeModal() {
+		if (this.modalInstance) this.modalInstance.hide();
+	}
+
+	populateForm(form, data) {
+		Object.keys(data).forEach((key) => {
+			const input = form.querySelector(`[name="${key}"]`);
+			if (input) {
+				if (input.type === 'checkbox') input.checked = !!data[key];
+				else input.value = data[key];
+			}
+		});
+	}
+
 	defaultRenderRow(item) {
-		return `
-            <div class="col-12 mb-2">
-                <div class="card p-3">
-                    <strong>${item.name || 'Item ' + item.id}</strong>
-                </div>
-            </div>`;
+		return `<div class="col">Card for ${item.id}</div>`;
 	}
 }

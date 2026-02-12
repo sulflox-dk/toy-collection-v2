@@ -3,6 +3,7 @@ namespace App\Modules\Meta\Controllers;
 
 use App\Kernel\Http\Controller;
 use App\Kernel\Http\Request;
+use App\Kernel\Database\Database;
 use App\Modules\Meta\Models\Manufacturer;
 
 class ManufacturerController extends Controller
@@ -36,6 +37,27 @@ class ManufacturerController extends Controller
         $this->render('manufacturer_show', [
             'title'        => $manufacturer['name'],
             'manufacturer' => $manufacturer,
+        ]);
+    }
+
+    /**
+     * Returns the HTML Table of manufacturers (for AJAX)
+     * GET /manufacturer/list
+     */
+    public function list()
+    {
+        $db = Database::getInstance();
+        
+        // Simple query (we can add pagination/search later)
+        $manufacturers = $db->query("
+            SELECT * FROM manufacturers 
+            ORDER BY name ASC
+        ")->fetchAll();
+
+        // Render ONLY the partial view
+        // Note: We don't use the main layout here, just the fragment
+        echo $this->render('Meta/Views/partials/manufacturer_list', [
+            'manufacturers' => $manufacturers
         ]);
     }
 }

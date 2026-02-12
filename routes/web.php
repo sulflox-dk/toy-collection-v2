@@ -6,5 +6,6 @@ use App\Modules\Meta\Controllers\ManufacturerController;
 /** @var Router $router */
 
 // ── Meta: Manufacturers ──────────────────────────────────────
-$router->get('/',                  [ManufacturerController::class, 'index']);
+$router->get('/', [ManufacturerController::class, 'index']);
+$router->get('/manufacturer/list', [ManufacturerController::class, 'list']);
 $router->get('/manufacturer/{id}', [ManufacturerController::class, 'show']);
