@@ -8,7 +8,7 @@
 /node_modules/
 
 # 3. System files & IDE
-.vscode/
+#.vscode/
 .idea/
 .DS_Store
 Thumbs.db
@@ -28,3 +28,4 @@ Thumbs.db
 
 # Other
 documentation.php
+.sass-cache/
