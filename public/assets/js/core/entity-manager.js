@@ -19,9 +19,13 @@ class EntityManager {
 		this.mode = config.mode || 'json'; // 'json' OR 'html'
 
 		// API Endpoints — prepend SITE_URL so paths work in subdirectories
-		const base = (typeof SITE_URL !== 'undefined' ? SITE_URL : '').replace(/\/+$/, '');
+		const base = (typeof SITE_URL !== 'undefined' ? SITE_URL : '').replace(
+			/\/+$/,
+			'',
+		);
 		this.endpoint = base + (config.endpoint || `/${entityName}`);
-		this.listUrl = base + (config.listUrl || config.endpoint || `/${entityName}`);
+		this.listUrl =
+			base + (config.listUrl || config.endpoint || `/${entityName}`);
 
 		this.ui = {
 			grid: `#${entityName}-grid`,
@@ -79,25 +83,23 @@ class EntityManager {
 	 * STRATEGY 1: HTML Loader (Server-Side View)
 	 * Fetches a partial HTML string and injects it.
 	 */
-	async loadHtml(params) {
+	async loadHtml(params = {}) {
 		const container = document.querySelector(this.ui.grid);
 		if (!container) return;
 
-		// Loading State
 		container.innerHTML = `<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>`;
 
 		try {
-			// We expect the server to return pure HTML here
-			const html = await ApiClient.request(this.listUrl, {
+			// FIX: Build the URL with query params manually first
+			const fullUrl = ApiClient.buildUrl(this.listUrl, params);
+
+			const html = await ApiClient.request(fullUrl, {
 				method: 'GET',
-				data: params,
-				headers: { Accept: 'text/html' }, // Good practice to tell server what we want
+				// We don't pass 'data' here anymore, because it's in the URL now
+				headers: { Accept: 'text/html' },
 			});
 
-			// Inject
 			container.innerHTML = html;
-
-			// Re-attach listeners because the DOM buttons are new
 			this.attachRowListeners(container);
 		} catch (error) {
 			console.error('HTML Load Error:', error);
@@ -109,18 +111,16 @@ class EntityManager {
 	 * STRATEGY 2: JSON Loader (Client-Side View)
 	 * Fetches JSON array and builds DOM using onRenderRow
 	 */
-	async loadJson(params) {
+	async loadJson(params = {}) {
 		const container = document.querySelector(this.ui.grid);
 		if (!container) return;
 
-		// Loading State
 		container.innerHTML = `<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>`;
 
 		try {
-			const response = await ApiClient.request(this.listUrl, {
-				method: 'GET',
-				data: params,
-			});
+			// FIX: Use ApiClient.get() which DOES handle params automatically
+			// Alternatively: ApiClient.request(ApiClient.buildUrl(this.listUrl, params), ...)
+			const response = await ApiClient.get(this.listUrl, params);
 
 			// Normalize response
 			this.data = Array.isArray(response) ? response : response.data || [];
@@ -130,11 +130,9 @@ class EntityManager {
 				return;
 			}
 
-			// Render Client-Side
 			container.innerHTML = this.data
 				.map((item) => this.onRenderRow(item))
 				.join('');
-
 			this.attachRowListeners(container);
 		} catch (error) {
 			console.error('JSON Load Error:', error);
@@ -143,11 +141,19 @@ class EntityManager {
 	}
 
 	/**
-	 * Saves data (POST/PUT) -> Always JSON
+	 * Smart Save Method
+	 * Handles Create (Reload List) and Update (Swap Row)
 	 */
 	async save() {
 		const form = document.querySelector(this.ui.form);
-		if (!form || !form.checkValidity()) {
+		if (!form) return;
+
+		// 1. Clear previous validation errors (remove red borders)
+		form.querySelectorAll('.is-invalid').forEach((el) => {
+			el.classList.remove('is-invalid');
+		});
+
+		if (!form.checkValidity()) {
 			form.reportValidity();
 			return;
 		}
@@ -162,7 +168,9 @@ class EntityManager {
 		}
 
 		try {
-			await ApiClient.request(url, {
+			// We expect the server to return JSON.
+			// If it's an update, we want the new HTML row in the response!
+			const response = await ApiClient.request(url, {
 				method: 'POST',
 				body: formData,
 			});
@@ -170,11 +178,53 @@ class EntityManager {
 			this.closeModal();
 			UiHelper.showToast('Saved successfully!', 'success');
 
-			// Reload the list (using whatever mode is active)
+			// SMART UPDATE LOGIC 🧠
+			if (id && response.row_html && this.mode === 'html') {
+				// If we got HTML back, find the row and swap it
+				const existingRow = document.querySelector(
+					`${this.ui.grid} tr[data-id="${id}"]`,
+				);
+				if (existingRow) {
+					existingRow.outerHTML = response.row_html;
+					// Re-attach listeners to the new row
+					this.attachRowListeners(document.querySelector(this.ui.grid));
+					// Highlight the row briefly so user sees the change
+					const newRow = document.querySelector(
+						`${this.ui.grid} tr[data-id="${id}"]`,
+					);
+					if (newRow) newRow.classList.add('table-success'); // Bootstrap color
+					setTimeout(
+						() => newRow?.classList.remove('table-success'),
+						1500,
+					);
+					return; // Done! No reload needed.
+				}
+			}
+
+			// Fallback: If it's a new item OR we didn't get HTML back, reload the list
 			this.loadList();
 		} catch (error) {
 			console.error('Save Error:', error);
-			UiHelper.showToast('Failed to save.', 'error');
+
+			// 🆕 FIELD-LEVEL ERROR HIGHLIGHTING
+			if (error.field) {
+				const input = form.querySelector(`[name="${error.field}"]`);
+				if (input) {
+					input.classList.add('is-invalid'); // Paint it red
+
+					// Look for the feedback div to show the exact message
+					const feedback =
+						input.parentElement.querySelector('.invalid-feedback');
+					if (feedback) {
+						feedback.textContent = error.message;
+					}
+
+					// Focus the field so the user can fix it immediately
+					input.focus();
+				}
+			}
+
+			UiHelper.showToast(error.message || 'Failed to save.', 'error');
 		}
 	}
 
@@ -228,6 +278,19 @@ class EntityManager {
 		container.querySelectorAll('.btn-delete').forEach((btn) => {
 			btn.addEventListener('click', (e) => {
 				this.delete(e.currentTarget.dataset.id);
+			});
+		});
+
+		// PAGINATION LISTENERS 📄
+		container.querySelectorAll('.page-link').forEach((link) => {
+			link.addEventListener('click', (e) => {
+				e.preventDefault(); // Stop page jump
+
+				const page = e.currentTarget.dataset.page;
+				// Only load if page is valid (not disabled)
+				if (page && page > 0) {
+					this.loadList({ page: page });
+				}
 			});
 		});
 	}
