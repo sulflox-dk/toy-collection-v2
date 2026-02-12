@@ -70,12 +70,33 @@ class ApiClient {
 
 			// Handle HTTP errors
 			if (!response.ok) {
-				const errorData = await this.parseResponse(response);
-				throw new ApiError(
-					errorData.message || `HTTP Error: ${response.status}`,
+				// Try to parse the response to get our custom JSON error message and field
+				let errorData = {};
+				try {
+					errorData = await this.parseResponse(response);
+				} catch (e) {
+					// Fallback if the response isn't JSON
+				}
+
+				// 1. Look for 'error' (which our PHP sends), then fallback to 'message'
+				const errorMessage =
+					errorData.error ||
+					errorData.message ||
+					`HTTP Error: ${response.status}`;
+
+				// 2. Create your custom ApiError
+				const apiError = new ApiError(
+					errorMessage,
 					response.status,
 					errorData,
 				);
+
+				// 3. Attach the field property so EntityManager can highlight the input!
+				if (errorData.field) {
+					apiError.field = errorData.field;
+				}
+
+				throw apiError;
 			}
 
 			// Parse and return response
@@ -88,7 +109,7 @@ class ApiClient {
 			}
 
 			if (error instanceof ApiError) {
-				throw error;
+				throw error; // Preserves the field property we added above!
 			}
 
 			console.error('API Request Failed:', error);
