@@ -1,25 +1,31 @@
+<?php
+use App\Kernel\Core\Config;
+
+$appName = $e(Config::get('app.name', 'Toy Collection'));
+$baseUrl = rtrim(Config::get('app.url', ''), '/');
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Toy Collection V2</title>
-    
-    <link rel="stylesheet" href="/toy-collection-v2/assets/css/app.css">
+    <title><?= $e($title) ?> — <?= $appName ?></title>
+
+    <link rel="stylesheet" href="<?= $baseUrl ?>/assets/css/app.css">
 </head>
 <body class="d-flex flex-column min-vh-100 bg-light">
 
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
         <div class="container">
-            <a class="navbar-brand fw-bold" href="/">🧸 ToyCollection</a>
+            <a class="navbar-brand fw-bold" href="<?= $baseUrl ?>/">🧸 <?= $appName ?></a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
-            
+
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="/">Manufacturers</a>
+                        <a class="nav-link" href="<?= $baseUrl ?>/">Manufacturers</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="#">My Collection</a>
@@ -36,7 +42,7 @@
         <div class="container">
             <div class="card shadow-sm border-0">
                 <div class="card-body p-4">
-                    <?php echo $content; ?>
+                    <?= $content ?>
                 </div>
             </div>
         </div>
@@ -44,7 +50,7 @@
 
     <footer class="bg-white border-top py-3 mt-auto text-center text-muted">
         <div class="container">
-            <small>&copy; <?php echo date('Y'); ?> Toy Collection V2.</small>
+            <small>&copy; <?= date('Y') ?> <?= $appName ?>.</small>
         </div>
     </footer>
 

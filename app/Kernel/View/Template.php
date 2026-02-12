@@ -1,6 +1,7 @@
 <?php
 namespace App\Kernel\View;
 
+use App\Kernel\Core\Config;
 use RuntimeException;
 
 class Template
@@ -50,7 +51,7 @@ class Template
             $content = $this->capture($layoutPath, [
                 'content' => $content,
                 'e'       => $e,
-                'title'   => $data['title'] ?? 'Toy Collection',
+                'title'   => $data['title'] ?? Config::get('app.name', 'Toy Collection'),
             ]);
         }
 
