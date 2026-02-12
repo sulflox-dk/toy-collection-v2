@@ -1,33 +1,36 @@
 <?php
 
 use App\Kernel\Http\Router;
-use App\Kernel\Database\Database;
+use App\Kernel\Http\Request;
+use App\Modules\Meta\Models\Manufacturer;
 
 /** @var Router $router */
 
-// 1. Home Page
-$router->get('/', function() {
-    echo "<h1>🚀 Welcome to Toy Tracker V2!</h1>";
-    echo "<p>The router is working perfectly.</p>";
-    echo "<ul>
-            <li><a href='db-test'>Test Database Connection</a></li>
-            <li><a href='non-existent'>Test 404 Page</a></li>
-          </ul>";
+$router->get('/', function(Request $request) {
+    echo "<h1>🏭 Manufacturers</h1>";
+    
+    if (empty(Manufacturer::all())) {
+        Manufacturer::create(['name' => 'Kenner', 'slug' => 'kenner']);
+        Manufacturer::create(['name' => 'Hasbro', 'slug' => 'hasbro']);
+        echo "<p><em>Added default data... refresh!</em></p>";
+    }
+
+    echo "<ul>";
+    foreach (Manufacturer::all() as $m) {
+        echo "<li><a href='manufacturer/{$m['id']}'>{$m['name']}</a></li>";
+    }
+    echo "</ul>";
 });
 
-// 2. Database Test Route
-$router->get('/db-test', function() {
-    try {
-        $db = Database::getInstance();
-        $pdo = $db->getConnection();
-        echo "<h1>✅ Database Connected!</h1>";
-        
-        // Fetch stats
-        $tables = $pdo->query("SHOW TABLES")->fetchAll();
-        echo "<p>Found " . count($tables) . " tables in the database.</p>";
-        
-    } catch (Exception $e) {
-        echo "<h1>❌ Database Error</h1>";
-        echo $e->getMessage();
+$router->get('/manufacturer/{id}', function(Request $request, $id) {
+    $m = Manufacturer::find((int)$id);
+    
+    if (!$m) {
+        echo "<h1>Not found</h1>";
+        return;
     }
+    
+    echo "<h1>{$m['name']}</h1>";
+    echo "<p>Slug: {$m['slug']}</p>";
+    echo "<p><a href='../'>&larr; Back</a></p>";
 });
