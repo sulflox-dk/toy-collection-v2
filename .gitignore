@@ -1,0 +1,27 @@
+# 1. Sikkerhed & Environment
+.env
+.env.local
+.env.*.local
+
+# 2. Afhængigheder (hvis vi bruger Composer senere)
+/vendor/
+/node_modules/
+
+# 3. Systemfiler & IDE
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
+
+# 4. Storage & Cache (Vi vil beholde mapperne, men ikke indholdet)
+/storage/logs/*
+!/storage/logs/.gitkeep
+/storage/cache/*
+!/storage/cache/.gitkeep
+/storage/sessions/*
+!/storage/sessions/.gitkeep
+
+# 5. Uploads (Vi vil ikke have dine private billeder på GitHub)
+/public/assets/uploads/*
+!/public/assets/uploads/.gitkeep
