@@ -14,6 +14,7 @@ class Database
      */
     private static $instance = null;
     private PDO $pdo;
+    private bool $debug;
 
     private function __construct()
     {
@@ -52,6 +53,8 @@ class Database
         } catch (PDOException $e) {
             throw new RuntimeException('Database connection failed: ' . $e->getMessage(), 0, $e);
         }
+
+        $this->debug = ($env['APP_DEBUG'] ?? 'false') === 'true';
     }
 
     /**
@@ -176,9 +179,6 @@ class Database
      */
     private function debugSql(string $sql): string
     {
-        $env = parse_ini_file(ROOT_PATH . '/.env');
-        $debug = ($env['APP_DEBUG'] ?? 'false') === 'true';
-
-        return $debug ? " [SQL: {$sql}]" : '';
+        return $this->debug ? " [SQL: {$sql}]" : '';
     }
 }

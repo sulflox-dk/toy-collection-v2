@@ -58,7 +58,14 @@ class Validation {
 			message: (param) => `Value must be at most ${param}`,
 		},
 		pattern: {
-			validate: (value, param) => !value || new RegExp(param).test(value),
+			validate: (value, param) => {
+				if (!value) return true;
+				try {
+					return new RegExp(param).test(value);
+				} catch {
+					return false;
+				}
+			},
 			message: 'Please match the requested format',
 		},
 		matches: {
@@ -281,7 +288,9 @@ class Validation {
 
 		if (field.hasAttribute('pattern')) {
 			const pattern = field.getAttribute('pattern');
-			if (value && !new RegExp(pattern).test(value)) {
+			let patternValid = true;
+			try { patternValid = new RegExp(pattern).test(value); } catch { patternValid = false; }
+			if (value && !patternValid) {
 				const patternMessage =
 					field.getAttribute('data-pattern-message') ||
 					'Please match the requested format';

@@ -11,13 +11,6 @@ class ManufacturerController extends Controller
     {
         $manufacturers = Manufacturer::all();
 
-        // Seed defaults when the table is empty
-        if (empty($manufacturers)) {
-            Manufacturer::create(['name' => 'Kenner', 'slug' => 'kenner']);
-            Manufacturer::create(['name' => 'Hasbro', 'slug' => 'hasbro']);
-            $manufacturers = Manufacturer::all();
-        }
-
         $this->render('manufacturer_index', [
             'title'         => 'Manufacturers',
             'manufacturers' => $manufacturers,
@@ -65,7 +58,24 @@ class ManufacturerController extends Controller
             return;
         }
 
-        $slug = strtolower(preg_replace('/[^a-z0-9]+/i', '-', $name));
+        if (mb_strlen($name) > 255) {
+            $this->json(['error' => 'Name must be 255 characters or fewer'], 422);
+            return;
+        }
+
+        $slug = trim(strtolower(preg_replace('/[^a-z0-9]+/i', '-', $name)), '-');
+        if ($slug === '') {
+            $this->json(['error' => 'Name must contain at least one alphanumeric character'], 422);
+            return;
+        }
+
+        // Check for duplicate slug (excluding current record on update)
+        $existing = Manufacturer::firstWhere('slug', $slug);
+        if ($existing && (string) $existing['id'] !== (string) $id) {
+            $this->json(['error' => 'A manufacturer with this name already exists'], 422);
+            return;
+        }
+
         $showOnDashboard = $request->input('show_on_dashboard') ? 1 : 0;
 
         $data = [

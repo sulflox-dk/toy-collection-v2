@@ -9,10 +9,11 @@ $baseUrl = rtrim(Config::get('app.url', ''), '/') . '/';
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="<?= $e($csrfToken) ?>">
     <title><?= $title ? $e($title) . ' | ' : '' ?><?= $appName ?></title>
 
     <link href="<?= $baseUrl ?>assets/css/app.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer">
   </head>
   <body class="bg-light">
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
@@ -113,17 +114,17 @@ $baseUrl = rtrim(Config::get('app.url', ''), '/') . '/';
     </div>
 
     <script>const SITE_URL = "<?= $e($baseUrl) ?>";</script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
 
-    <script src="<?= $e($baseUrl) ?>assets/js/core/api-client.js?v=<?= time() ?>"></script>
-    <script src="<?= $e($baseUrl) ?>assets/js/core/ui-helper.js?v=<?= time() ?>"></script>
-    <script src="<?= $e($baseUrl) ?>assets/js/core/validation.js?v=<?= time() ?>"></script>
+    <script src="<?= $e($baseUrl) ?>assets/js/core/api-client.js?v=<?= \App\Kernel\Core\Config::get('app.version', '1.0.0') ?>"></script>
+    <script src="<?= $e($baseUrl) ?>assets/js/core/ui-helper.js?v=<?= \App\Kernel\Core\Config::get('app.version', '1.0.0') ?>"></script>
+    <script src="<?= $e($baseUrl) ?>assets/js/core/validation.js?v=<?= \App\Kernel\Core\Config::get('app.version', '1.0.0') ?>"></script>
     
-    <script src="<?= $e($baseUrl) ?>assets/js/core/entity-manager.js?v=<?= time() ?>"></script>
+    <script src="<?= $e($baseUrl) ?>assets/js/core/entity-manager.js?v=<?= \App\Kernel\Core\Config::get('app.version', '1.0.0') ?>"></script>
 
     <?php if (!empty($scripts) && is_array($scripts)): ?>
         <?php foreach ($scripts as $script): ?>
-            <script src="<?= $e($baseUrl . $script) ?>?v=<?= time() ?>"></script>
+            <script src="<?= $e($baseUrl . $script) ?>?v=<?= \App\Kernel\Core\Config::get('app.version', '1.0.0') ?>"></script>
         <?php endforeach; ?>
     <?php endif; ?>
   </body>

@@ -50,6 +50,16 @@ class Router
 
         foreach ($this->routes[$method] ?? [] as $route) {
             if (preg_match($route['pattern'], $uri, $matches)) {
+                // CSRF check on state-changing requests
+                if (in_array($method, ['POST', 'PUT', 'DELETE'], true)
+                    && !Csrf::validate($request)
+                ) {
+                    http_response_code(403);
+                    header('Content-Type: application/json');
+                    echo json_encode(['error' => 'CSRF token mismatch']);
+                    return null;
+                }
+
                 $params = array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
                 return $this->call($route['action'], $request, array_values($params));
             }

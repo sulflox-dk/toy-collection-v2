@@ -2,6 +2,7 @@
 namespace App\Kernel\View;
 
 use App\Kernel\Core\Config;
+use App\Kernel\Http\Csrf;
 use RuntimeException;
 
 class Template
@@ -39,7 +40,15 @@ class Template
         $e = static fn(string $text): string =>
             htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
 
-        $content = $this->capture($path, array_merge($data, ['e' => $e]));
+        // CSRF helpers — available as $csrfToken and $csrfField() in every template
+        $csrfToken = Csrf::token();
+        $csrfField = static fn(): string => Csrf::field();
+
+        $content = $this->capture($path, array_merge($data, [
+            'e'         => $e,
+            'csrfToken' => $csrfToken,
+            'csrfField' => $csrfField,
+        ]));
 
         if ($this->layout !== null) {
             $layoutPath = $this->viewsPath . '/' . $this->layout;
@@ -49,10 +58,12 @@ class Template
             }
 
             $content = $this->capture($layoutPath, [
-                'content' => $content,
-                'e'       => $e,
-                'title'   => $data['title'] ?? '',
-                'scripts' => $data['scripts'] ?? [],
+                'content'   => $content,
+                'e'         => $e,
+                'csrfToken' => $csrfToken,
+                'csrfField' => $csrfField,
+                'title'     => $data['title'] ?? '',
+                'scripts'   => $data['scripts'] ?? [],
             ]);
         }
 
