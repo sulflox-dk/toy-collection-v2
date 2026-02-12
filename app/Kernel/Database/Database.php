@@ -9,7 +9,10 @@ use RuntimeException;
 
 class Database
 {
-    private static ?Database $instance = null;
+    /**
+     * @var Database|null
+     */
+    private static $instance = null;
     private PDO $pdo;
 
     private function __construct()
@@ -51,6 +54,11 @@ class Database
         }
     }
 
+    /**
+     * Returns a cached instance of a Database object
+     *
+     * @return Database
+     */
     public static function getInstance(): self
     {
         if (self::$instance === null) {
