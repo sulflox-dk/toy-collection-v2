@@ -1,8 +1,9 @@
 <?php
+
 namespace App\Kernel\Database;
 
-use Exception;
 use PDO;
+use RuntimeException;
 
 class Migrator
 {
@@ -15,7 +16,7 @@ class Migrator
         $this->db = $db;
         $this->pdo = $db->getConnection();
         $this->migrationsPath = $migrationsPath;
-        
+
         $this->ensureMigrationsTableExists();
     }
 
@@ -26,8 +27,8 @@ class Migrator
     {
         $this->pdo->exec("CREATE TABLE IF NOT EXISTS `migrations` (
             `id` int AUTO_INCREMENT PRIMARY KEY,
-            `migration` varchar(255),
-            `batch` int,
+            `migration` varchar(255) NOT NULL,
+            `batch` int NOT NULL DEFAULT 1,
             `created_at` timestamp DEFAULT CURRENT_TIMESTAMP
         )");
     }
@@ -42,85 +43,120 @@ class Migrator
         $pending = array_diff($files, $appliedMigrations);
 
         if (empty($pending)) {
-            echo "✨ Nothing to migrate.\n";
+            echo "  Nothing to migrate. Database is up to date.\n";
             return;
         }
 
-        // Calculate next batch number
-        $stmt = $this->pdo->query("SELECT MAX(batch) FROM migrations");
-        $batch = ($stmt->fetchColumn() ?? 0) + 1;
+        $batch = $this->getNextBatchNumber();
 
         foreach ($pending as $file) {
-            echo "Running: $file... ";
-            
-            try {
-                $migration = require $this->migrationsPath . '/' . $file;
-                
-                // Handle different migration formats (array or raw SQL)
-                if (is_array($migration) && isset($migration['up'])) {
-                    $this->pdo->exec($migration['up']);
-                } elseif (is_string($migration)) {
-                    $this->pdo->exec($migration);
-                }
+            echo "  Running: {$file}... ";
 
-                // Log to DB
-                $stmt = $this->pdo->prepare("INSERT INTO migrations (migration, batch) VALUES (?, ?)");
-                $stmt->execute([$file, $batch]);
+            $migration = require $this->migrationsPath . '/' . $file;
 
-                echo "✅ Done\n";
-            } catch (Exception $e) {
-                echo "❌ Failed! " . $e->getMessage() . "\n";
-                exit(1);
+            if (is_array($migration) && isset($migration['up'])) {
+                $sql = $migration['up'];
+            } elseif (is_string($migration)) {
+                $sql = $migration;
+            } else {
+                echo "SKIPPED (invalid format)\n";
+                continue;
             }
+
+            $statements = $this->splitStatements($sql);
+
+            foreach ($statements as $stmt) {
+                $this->pdo->exec($stmt);
+            }
+
+            $this->recordMigration($file, $batch);
+            echo "OK\n";
         }
-        
-        echo "\n🎉 Migration completed successfully!\n";
+
+        echo "\n  Migrated " . count($pending) . " file(s) in batch {$batch}.\n";
     }
 
     /**
-     * Rollback the last batch of migrations
+     * Roll back the last batch of migrations
      */
     public function rollback(): void
     {
-        // Get last batch number
-        $stmt = $this->pdo->query("SELECT MAX(batch) FROM migrations");
-        $lastBatch = $stmt->fetchColumn();
+        $lastBatch = $this->getLastBatchNumber();
 
         if (!$lastBatch) {
-            echo "✨ Nothing to rollback.\n";
+            echo "  Nothing to roll back.\n";
             return;
         }
 
-        // Get migrations in that batch (in reverse order)
-        $stmt = $this->pdo->prepare("SELECT migration FROM migrations WHERE batch = ? ORDER BY id DESC");
+        $stmt = $this->pdo->prepare(
+            "SELECT migration FROM migrations WHERE batch = ? ORDER BY id DESC"
+        );
         $stmt->execute([$lastBatch]);
         $migrations = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
+        echo "  Rolling back batch {$lastBatch} (" . count($migrations) . " migration(s))...\n\n";
+
         foreach ($migrations as $file) {
-            echo "Rolling back: $file... ";
+            $filePath = $this->migrationsPath . '/' . $file;
 
-            try {
-                $migration = require $this->migrationsPath . '/' . $file;
+            if (!file_exists($filePath)) {
+                throw new RuntimeException("Migration file not found: {$file}");
+            }
 
-                if (is_array($migration) && isset($migration['down'])) {
-                    $this->pdo->exec($migration['down']);
-                } else {
-                    // If it was just a string or missing 'down', we can't rollback safely
-                    echo "⚠️ Skipped (No 'down' definition)\n";
-                    // We still delete the record though, assuming manual fix
-                }
+            $migration = require $filePath;
 
-                // Remove from DB
-                $del = $this->pdo->prepare("DELETE FROM migrations WHERE migration = ?");
-                $del->execute([$file]);
+            if (!is_array($migration) || empty($migration['down'])) {
+                throw new RuntimeException(
+                    "Cannot roll back '{$file}': no 'down' definition. "
+                    . "Add a 'down' key to the migration or resolve manually."
+                );
+            }
 
-                echo "✅ Done\n";
-            } catch (Exception $e) {
-                echo "❌ Failed! " . $e->getMessage() . "\n";
-                exit(1);
+            echo "  Rolling back: {$file}... ";
+
+            $statements = $this->splitStatements($migration['down']);
+
+            foreach ($statements as $stmt) {
+                $this->pdo->exec($stmt);
+            }
+
+            $this->removeMigrationRecord($file, $lastBatch);
+            echo "OK\n";
+        }
+
+        echo "\n  Rollback complete.\n";
+    }
+
+    /**
+     * Show the status of all migrations
+     */
+    public function status(): void
+    {
+        $executed = $this->pdo->query(
+            "SELECT migration, batch, created_at FROM migrations ORDER BY id"
+        )->fetchAll(PDO::FETCH_ASSOC);
+
+        $executedNames = array_column($executed, 'migration');
+        $files = $this->getMigrationFiles();
+
+        echo "  Migration                                  Batch   Ran at\n";
+        echo "  " . str_repeat('-', 68) . "\n";
+
+        foreach ($files as $name) {
+            $key = array_search($name, $executedNames);
+
+            if ($key !== false) {
+                $row = $executed[$key];
+                printf("  %-42s %3d     %s\n", $name, $row['batch'], $row['created_at']);
+            } else {
+                printf("  %-42s  --     (pending)\n", $name);
             }
         }
+
+        echo "\n";
     }
+
+    // ── Private helpers ───────────────────────────────────────────
 
     private function getAppliedMigrations(): array
     {
@@ -131,6 +167,47 @@ class Migrator
     private function getMigrationFiles(): array
     {
         $files = glob($this->migrationsPath . '/*.php');
-        return array_map('basename', $files);
+        $files = array_map('basename', $files);
+        sort($files);
+        return $files;
+    }
+
+    private function getNextBatchNumber(): int
+    {
+        return $this->getLastBatchNumber() + 1;
+    }
+
+    private function getLastBatchNumber(): int
+    {
+        return (int) ($this->pdo->query("SELECT MAX(batch) FROM migrations")->fetchColumn() ?? 0);
+    }
+
+    private function recordMigration(string $file, int $batch): void
+    {
+        $stmt = $this->pdo->prepare("INSERT INTO migrations (migration, batch) VALUES (?, ?)");
+        $stmt->execute([$file, $batch]);
+    }
+
+    private function removeMigrationRecord(string $file, int $batch): void
+    {
+        $stmt = $this->pdo->prepare("DELETE FROM migrations WHERE migration = ? AND batch = ?");
+        $stmt->execute([$file, $batch]);
+    }
+
+    /**
+     * Split a multi-statement SQL string into individual statements.
+     * Prevents half-migrated state — if statement N fails, we know
+     * exactly which statements already committed (DDL auto-commits in MySQL).
+     */
+    private function splitStatements(string $sql): array
+    {
+        $statements = [];
+        foreach (explode(';', $sql) as $part) {
+            $trimmed = trim($part);
+            if ($trimmed !== '' && !str_starts_with($trimmed, '--')) {
+                $statements[] = $trimmed;
+            }
+        }
+        return $statements;
     }
 }
