@@ -1,9 +1,10 @@
 <?php
 
 return [
-    'name' => $_ENV['APP_NAME'] ?? 'Toy Collection',
-    'env'  => $_ENV['APP_ENV'] ?? 'development',
-    'url'  => $_ENV['APP_URL'] ?? 'http://localhost/toy-collection-v2',
+    'name'    => $_ENV['APP_NAME'] ?? 'Toy Collection',
+    'version' => $_ENV['APP_VERSION'] ?? '1.0.0',
+    'env'     => $_ENV['APP_ENV'] ?? 'development',
+    'url'     => $_ENV['APP_URL'] ?? 'http://localhost/toy-collection-v2',
 
     'paths' => [
         'base' => ROOT_PATH,

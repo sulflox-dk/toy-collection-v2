@@ -27,9 +27,14 @@ class ApiClient {
 	 * @throws {ApiError} If request fails
 	 */
 	static async request(url, options = {}) {
+		const csrfMeta = document.querySelector('meta[name="csrf-token"]');
 		const defaultHeaders = {
 			'X-Requested-With': 'XMLHttpRequest',
 		};
+
+		if (csrfMeta) {
+			defaultHeaders['X-CSRF-Token'] = csrfMeta.content;
+		}
 
 		// Don't set Content-Type for FormData - browser will set it with boundary
 		if (!(options.body instanceof FormData)) {

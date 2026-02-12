@@ -284,8 +284,9 @@ class UiHelper {
 	 * @returns {Promise<boolean>} True if confirmed
 	 */
 	static async confirmDelete(itemName) {
+		const safe = this.escapeHtml(itemName);
 		return this.confirm(
-			`Are you sure you want to delete "${itemName}"? This action cannot be undone.`,
+			`Are you sure you want to delete "${safe}"? This action cannot be undone.`,
 			'Confirm Delete',
 			{
 				confirmText: 'Delete',

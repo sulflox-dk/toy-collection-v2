@@ -23,6 +23,7 @@
             </div>
             <div class="modal-body">
                 <form id="manufacturer-form">
+                    <?= $csrfField() ?>
                     <input type="hidden" name="id">
                     
                     <div class="mb-3">

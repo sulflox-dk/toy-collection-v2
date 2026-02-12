@@ -29,12 +29,36 @@ $envPath = ROOT_PATH . '/.env';
 if (file_exists($envPath)) {
     $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
-        if (str_starts_with(trim($line), '#')) continue; // Skip comments
+        $line = trim($line);
+        if ($line === '' || str_starts_with($line, '#')) {
+            continue;
+        }
 
-        list($name, $value) = explode('=', $line, 2);
-        $name = trim($name);
+        // Must contain an = to be a valid key=value pair
+        if (!str_contains($line, '=')) {
+            continue;
+        }
+
+        [$name, $value] = explode('=', $line, 2);
+        $name  = trim($name);
         $value = trim($value);
-        $value = trim($value, '"\'');
+
+        // Strip surrounding quotes (single or double), preserving inner content
+        if (
+            (str_starts_with($value, '"') && str_ends_with($value, '"'))
+            || (str_starts_with($value, "'") && str_ends_with($value, "'"))
+        ) {
+            $value = substr($value, 1, -1);
+        }
+
+        // Strip inline comments (only outside of quotes — already stripped above)
+        if (($pos = strpos($value, ' #')) !== false) {
+            $value = rtrim(substr($value, 0, $pos));
+        }
+
+        if ($name === '') {
+            continue;
+        }
 
         if (!array_key_exists($name, $_SERVER) && !array_key_exists($name, $_ENV)) {
             putenv(sprintf('%s=%s', $name, $value));

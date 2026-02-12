@@ -1,6 +1,10 @@
 <?php
 namespace App\Kernel\View;
 
+
+use App\Kernel\Core\Config;
+use App\Kernel\Http\Csrf;
+
 use RuntimeException;
 
 class Template
@@ -30,8 +34,21 @@ class Template
             throw new RuntimeException("View not found: {$path}");
         }
 
-        // 1. Render the main content
-        $content = $this->capture($path, $data);
+
+        // Escape helper — available as $e() in every template
+        $e = static fn(string $text): string =>
+            htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
+
+        // CSRF helpers — available as $csrfToken and $csrfField() in every template
+        $csrfToken = Csrf::token();
+        $csrfField = static fn(): string => Csrf::field();
+
+        $content = $this->capture($path, array_merge($data, [
+            'e'         => $e,
+            'csrfToken' => $csrfToken,
+            'csrfField' => $csrfField,
+        ]));
+
 
         // 2. Wrap in layout if exists
         if ($this->layout !== null) {
@@ -41,12 +58,16 @@ class Template
                 throw new RuntimeException("Layout not found: {$layoutPath}");
             }
 
-            // Merge content and data for the layout
-            $content = $this->capture($layoutPath, array_merge($data, [
-                'content' => $content,
-                'title'   => $data['title'] ?? '',
-                'scripts' => $data['scripts'] ?? [],
-            ]));
+
+            $content = $this->capture($layoutPath, [
+                'content'   => $content,
+                'e'         => $e,
+                'csrfToken' => $csrfToken,
+                'csrfField' => $csrfField,
+                'title'     => $data['title'] ?? '',
+                'scripts'   => $data['scripts'] ?? [],
+            ]);
+
         }
 
         return $content;
