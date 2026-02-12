@@ -43,15 +43,10 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // We initiate the manager pointing to the "List" endpoint
-    // NOT the "Index" endpoint (which is the JSON API)
     new EntityManager('manufacturer', {
-        endpoint: '/manufacturer/list', // This returns HTML now!
-        
-        // We still need the base API endpoint for Saving/Deleting
-        // We can handle that by overriding save/delete behavior or 
-        // ensuring the Router handles POST/DELETE on /manufacturer correctly.
-        apiEndpoint: '/manufacturer' 
+        mode: 'html',
+        endpoint: '/manufacturer',
+        listUrl: '/manufacturer/list',
     });
 });
 </script>
