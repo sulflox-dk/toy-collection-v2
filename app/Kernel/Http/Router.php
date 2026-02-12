@@ -15,6 +15,16 @@ class Router
         $this->register('POST', $uri, $action);
     }
 
+    public function put(string $uri, callable|array $action): void
+    {
+        $this->register('PUT', $uri, $action);
+    }
+
+    public function delete(string $uri, callable|array $action): void
+    {
+        $this->register('DELETE', $uri, $action);
+    }
+
     private function register(string $method, string $uri, callable|array $action): void
     {
         $uri = '/' . ltrim($uri, '/');
@@ -27,6 +37,15 @@ class Router
     public function dispatch(Request $request): mixed
     {
         $method = $request->getMethod();
+
+        // Support _method override (POST with _method=PUT/DELETE)
+        if ($method === 'POST' && !empty($_POST['_method'])) {
+            $override = strtoupper($_POST['_method']);
+            if (in_array($override, ['PUT', 'DELETE'], true)) {
+                $method = $override;
+            }
+        }
+
         $uri = $request->getUri();
 
         foreach ($this->routes[$method] ?? [] as $route) {

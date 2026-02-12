@@ -3,7 +3,6 @@ namespace App\Modules\Meta\Controllers;
 
 use App\Kernel\Http\Controller;
 use App\Kernel\Http\Request;
-use App\Kernel\Database\Database;
 use App\Modules\Meta\Models\Manufacturer;
 
 class ManufacturerController extends Controller
@@ -44,20 +43,53 @@ class ManufacturerController extends Controller
      * Returns the HTML Table of manufacturers (for AJAX)
      * GET /manufacturer/list
      */
-    public function list()
+    public function list(): void
     {
-        $db = Database::getInstance();
-        
-        // Simple query (we can add pagination/search later)
-        $manufacturers = $db->query("
-            SELECT * FROM manufacturers 
-            ORDER BY name ASC
-        ")->fetchAll();
+        $manufacturers = Manufacturer::all();
 
-        // Render ONLY the partial view
-        // Note: We don't use the main layout here, just the fragment
-        echo $this->render('Meta/Views/partials/manufacturer_list', [
-            'manufacturers' => $manufacturers
+        $this->renderPartial('partials/manufacturer_list', [
+            'manufacturers' => $manufacturers,
         ]);
+    }
+
+    /**
+     * Store a new manufacturer or update an existing one.
+     * POST /manufacturer      (create)
+     * POST /manufacturer/{id} (update via _method=PUT)
+     */
+    public function store(Request $request, ?string $id = null): void
+    {
+        $name = trim($request->input('name', ''));
+        if ($name === '') {
+            $this->json(['error' => 'Name is required'], 422);
+            return;
+        }
+
+        $slug = strtolower(preg_replace('/[^a-z0-9]+/i', '-', $name));
+        $showOnDashboard = $request->input('show_on_dashboard') ? 1 : 0;
+
+        $data = [
+            'name' => $name,
+            'slug' => $slug,
+            'show_on_dashboard' => $showOnDashboard,
+        ];
+
+        if ($id) {
+            Manufacturer::update((int) $id, $data);
+        } else {
+            Manufacturer::create($data);
+        }
+
+        $this->json(['success' => true]);
+    }
+
+    /**
+     * Delete a manufacturer.
+     * DELETE /manufacturer/{id}
+     */
+    public function destroy(Request $request, string $id): void
+    {
+        Manufacturer::delete((int) $id);
+        $this->json(['success' => true]);
     }
 }

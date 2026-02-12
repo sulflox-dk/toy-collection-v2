@@ -18,10 +18,10 @@ class EntityManager {
 		this.entityName = entityName;
 		this.mode = config.mode || 'json'; // 'json' OR 'html'
 
-		// API Endpoints
-		this.endpoint = config.endpoint || `/${entityName}`;
-		// If we are in HTML mode, we often hit a specific 'list' endpoint (e.g. /manufacturer/list)
-		this.listUrl = config.listUrl || this.endpoint;
+		// API Endpoints — prepend SITE_URL so paths work in subdirectories
+		const base = (typeof SITE_URL !== 'undefined' ? SITE_URL : '').replace(/\/+$/, '');
+		this.endpoint = base + (config.endpoint || `/${entityName}`);
+		this.listUrl = base + (config.listUrl || config.endpoint || `/${entityName}`);
 
 		this.ui = {
 			grid: `#${entityName}-grid`,
