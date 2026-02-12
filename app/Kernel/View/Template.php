@@ -51,7 +51,8 @@ class Template
             $content = $this->capture($layoutPath, [
                 'content' => $content,
                 'e'       => $e,
-                'title'   => $data['title'] ?? Config::get('app.name', 'Toy Collection'),
+                'title'   => $data['title'] ?? '',
+                'scripts' => $data['scripts'] ?? [],
             ]);
         }
 
