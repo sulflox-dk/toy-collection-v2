@@ -10,4 +10,5 @@ $router->get('/',                   [ManufacturerController::class, 'index']);
 $router->get('/manufacturer/list',  [ManufacturerController::class, 'list']);
 $router->post('/manufacturer',      [ManufacturerController::class, 'store']);
 $router->put('/manufacturer/{id}',  [ManufacturerController::class, 'update']);
+$router->get('/manufacturer/migrate-on-delete-options', [ManufacturerController::class, 'migrateOnDeleteOptions']);
 $router->delete('/manufacturer/{id}', [ManufacturerController::class, 'destroy']);

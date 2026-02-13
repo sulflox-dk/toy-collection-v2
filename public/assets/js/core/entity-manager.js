@@ -33,12 +33,15 @@ class EntityManager {
 			form: `#${entityName}-form`,
 			addBtn: `#btn-add-${entityName}`,
 			searchInput: '#search-input',
+			filterInputs: '.data-filter',
+			resetBtn: '#btn-reset-filters',
 			...config.ui,
 		};
 
 		this.onRenderRow = config.onRenderRow || this.defaultRenderRow;
 		this.modalInstance = null;
 		this.data = [];
+		this.currentParams = { page: 1 };
 
 		this.init();
 	}
@@ -53,7 +56,11 @@ class EntityManager {
 		if (form) {
 			form.addEventListener('submit', (e) => {
 				e.preventDefault();
-				this.save();
+				// Check which button was clicked using e.submitter
+				const action = e.submitter?.dataset?.action || 'save-close';
+				const keepOpen = action === 'add-another';
+
+				this.save(keepOpen); // Pass the flag to the save method
 			});
 		}
 
@@ -61,6 +68,41 @@ class EntityManager {
 		const modalEl = document.querySelector(this.ui.modal);
 		if (modalEl && window.bootstrap) {
 			this.modalInstance = new bootstrap.Modal(modalEl);
+		}
+
+		// Setup Search with Debounce ---
+		const searchInput = document.querySelector(this.ui.searchInput);
+		if (searchInput) {
+			searchInput.addEventListener(
+				'input',
+				UiHelper.debounce((e) => {
+					this.currentParams.q = e.target.value;
+					this.currentParams.page = 1; // Always reset to page 1 on new search
+					this.loadList(this.currentParams);
+				}, 300),
+			); // Waits 300ms after you stop typing to search
+		}
+
+		// Setup Dropdown Filters ---
+		document.querySelectorAll(this.ui.filterInputs).forEach((filter) => {
+			filter.addEventListener('change', (e) => {
+				this.currentParams[e.target.name] = e.target.value;
+				this.currentParams.page = 1; // Always reset to page 1 on new filter
+				this.loadList(this.currentParams);
+			});
+		});
+
+		// Setup Reset Button ---
+		const resetBtn = document.querySelector(this.ui.resetBtn);
+		if (resetBtn) {
+			resetBtn.addEventListener('click', () => {
+				if (searchInput) searchInput.value = '';
+				document
+					.querySelectorAll(this.ui.filterInputs)
+					.forEach((f) => (f.value = ''));
+				this.currentParams = { page: 1 }; // Wipe state back to default
+				this.loadList(this.currentParams);
+			});
 		}
 
 		// Initial Load
@@ -143,8 +185,9 @@ class EntityManager {
 	/**
 	 * Smart Save Method
 	 * Handles Create (Reload List) and Update (Swap Row)
+	 * @param {boolean} keepOpen - If true, clears the form and leaves the modal open after save
 	 */
-	async save() {
+	async save(keepOpen = false) {
 		const form = document.querySelector(this.ui.form);
 		if (!form) return;
 
@@ -175,8 +218,25 @@ class EntityManager {
 				body: formData,
 			});
 
-			this.closeModal();
 			UiHelper.showToast('Saved successfully!', 'success');
+
+			// --- NEW: Keep Open Logic ---
+			if (keepOpen) {
+				// User clicked "Save & Add Another"
+				form.reset(); // Clear form fields
+
+				// Explicitly clear the hidden ID, just to be safe
+				const idInput = form.querySelector('[name="id"]');
+				if (idInput) idInput.value = '';
+
+				// Focus the first text input so they can keep typing immediately
+				const firstInput = form.querySelector('input[type="text"]');
+				if (firstInput) firstInput.focus();
+			} else {
+				// User clicked standard "Save" or "Create"
+				this.closeModal();
+			}
+			// ----------------------------
 
 			// SMART UPDATE LOGIC 🧠
 			if (id && response.row_html && this.mode === 'html') {
@@ -229,20 +289,119 @@ class EntityManager {
 	}
 
 	/**
-	 * Deletes item -> Always JSON API
+	 * Deletes item -> First triggers standard confirmation
 	 */
 	async delete(id) {
-		if (!confirm('Are you sure?')) return;
+		const confirmed = await UiHelper.confirmDelete('this item');
+		if (!confirmed) return;
+		await this.executeDelete(id);
+	}
+
+	/**
+	 * Executes the API call and handles Migration Requirements
+	 */
+	async executeDelete(id, migrateToId = null) {
+		let url = `${this.endpoint}/${id}`;
+		if (migrateToId) {
+			url = ApiClient.buildUrl(url, { migrate_to: migrateToId });
+		}
 
 		try {
-			await ApiClient.request(`${this.endpoint}/${id}`, {
-				method: 'DELETE',
-			});
+			await ApiClient.request(url, { method: 'DELETE' });
 
-			UiHelper.showToast('Item deleted.', 'success');
+			UiHelper.showToast('Deleted successfully!', 'success');
+
+			// Close migration modal if open
+			const migrationModalEl = document.getElementById(
+				'core-migration-modal',
+			);
+			if (migrationModalEl) {
+				const bsModal = bootstrap.Modal.getInstance(migrationModalEl);
+				if (bsModal) bsModal.hide();
+			}
+
 			this.loadList();
 		} catch (error) {
-			UiHelper.showToast('Failed to delete.', 'error');
+			// 🚨 INTERCEPT 409 MIGRATION REQUESTS 🚨
+			if (
+				error.status === 409 &&
+				error.data &&
+				error.data.requires_migration
+			) {
+				this.showMigrationModal(id, error.data);
+			} else {
+				UiHelper.showToast(error.message || 'Failed to delete.', 'error');
+			}
+		}
+	}
+
+	/**
+	 * Populates and shows the pre-existing Migration Modal
+	 */
+	async showMigrationModal(id, data) {
+		try {
+			const baseUrl = (
+				typeof SITE_URL !== 'undefined' ? SITE_URL : ''
+			).replace(/\/+$/, '');
+			const optionsUrl = baseUrl + '/' + data.options_url;
+
+			// Fetch dropdown options
+			const options = await ApiClient.get(optionsUrl);
+
+			const modalEl = document.getElementById('core-migration-modal');
+			if (!modalEl) {
+				console.error('Migration modal HTML not found in the DOM.');
+				return;
+			}
+
+			// Elements
+			const select = document.getElementById('core-migration-select');
+			const messageEl = document.getElementById('core-migration-message');
+			let btn = document.getElementById('core-migration-btn');
+
+			// Reset UI state
+			select.classList.remove('is-invalid');
+			messageEl.textContent = data.message;
+
+			// Build Options
+			let optionsHtml = '<option value="">-- Select a new owner --</option>';
+			options.forEach((opt) => {
+				// Prevent XSS inside the dropdown
+				const safeName = (opt.name || '')
+					.replace(/</g, '&lt;')
+					.replace(/>/g, '&gt;');
+				optionsHtml += `<option value="${opt.id}">${safeName}</option>`;
+			});
+			select.innerHTML = optionsHtml;
+
+			// Replace button with a clone to wipe any old event listeners
+			const newBtn = btn.cloneNode(true);
+			btn.parentNode.replaceChild(newBtn, btn);
+
+			newBtn.innerHTML = 'Migrate and Delete';
+			newBtn.disabled = false;
+
+			newBtn.addEventListener('click', () => {
+				const targetId = select.value;
+				if (!targetId) {
+					select.classList.add('is-invalid');
+					return;
+				}
+
+				select.classList.remove('is-invalid');
+				newBtn.disabled = true;
+				newBtn.innerHTML =
+					'<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+
+				this.executeDelete(id, targetId);
+			});
+
+			// Show Modal
+			const bsModal = new bootstrap.Modal(modalEl);
+			bsModal.show();
+		} catch (error) {
+			console.error('Migration Setup Error:', error);
+			UiHelper.showToast('Failed to load migration options.', 'error');
 		}
 	}
 
@@ -281,15 +440,15 @@ class EntityManager {
 			});
 		});
 
-		// PAGINATION LISTENERS 📄
+		// PAGINATION LISTENERS
 		container.querySelectorAll('.page-link').forEach((link) => {
 			link.addEventListener('click', (e) => {
 				e.preventDefault(); // Stop page jump
 
 				const page = e.currentTarget.dataset.page;
-				// Only load if page is valid (not disabled)
 				if (page && page > 0) {
-					this.loadList({ page: page });
+					this.currentParams.page = page; // Update current state
+					this.loadList(this.currentParams); // Load with full state
 				}
 			});
 		});
@@ -300,7 +459,40 @@ class EntityManager {
 		if (!form) return;
 
 		form.reset();
-		form.querySelector('[name="id"]').value = '';
+
+		const idInput = form.querySelector('[name="id"]');
+		if (idInput) idInput.value = '';
+
+		// --- Dynamic Title & Button Logic ---
+		const titleEl = document.querySelector(`${this.ui.modal} .modal-title`);
+		const submitBtn = form.querySelector('button[data-action="save-close"]'); // Find the submit button
+		const addAnotherBtn = form.querySelector(
+			'button[data-action="add-another"]',
+		);
+
+		if (titleEl) {
+			// Read the current text, strip out "Edit " or "Add ", and keep the base word
+			const baseName = titleEl.textContent
+				.replace(/(Edit|Add)\s+/i, '')
+				.trim();
+
+			if (data) {
+				// EDIT MODE
+				titleEl.innerHTML = `<i class="fa-solid fa-pencil me-2 text-primary"></i> Edit ${baseName}`;
+				if (submitBtn) {
+					submitBtn.innerHTML = `Save`;
+				}
+				if (addAnotherBtn) addAnotherBtn.classList.add('d-none');
+			} else {
+				// CREATE MODE
+				titleEl.innerHTML = `<i class="fa-solid fa-plus me-2 text-primary"></i> Add ${baseName}`;
+				if (submitBtn) {
+					submitBtn.innerHTML = `Save`;
+				}
+				if (addAnotherBtn) addAnotherBtn.classList.remove('d-none');
+			}
+		}
+		// ------------------------------------
 
 		if (data) this.populateForm(form, data);
 

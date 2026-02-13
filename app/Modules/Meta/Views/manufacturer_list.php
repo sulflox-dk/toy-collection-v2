@@ -2,10 +2,10 @@
     <table class="table table-hover align-middle mb-0 border">
         <thead class="bg-light">
             <tr>
-                <th class="ps-3">Name</th>
-                <th>Slug</th>
-                <th class="text-center">Dashboard</th>
-                <th class="text-center">Toy Lines</th>
+                <th class="ps-3" style="width:30%;">Name</th>
+                <th style="width:20%;">Slug</th>
+                <th class="text-center" style="width:20%;">Dashboard</th>
+                <th class="text-center" style="width:20%;">Toy Lines</th>
                 <th class="text-end pe-3"></th>
             </tr>
         </thead>

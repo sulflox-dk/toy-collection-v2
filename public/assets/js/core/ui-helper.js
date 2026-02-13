@@ -25,7 +25,7 @@ class UiHelper {
 			toastContainer = document.createElement('div');
 			toastContainer.id = 'toast-container';
 			toastContainer.className =
-				'toast-container position-fixed bottom-0 end-0 p-3';
+				'toast-container position-fixed top-0 end-0 p-3 mt-5'; // <-- FIXED
 			toastContainer.style.zIndex = '9999';
 			document.body.appendChild(toastContainer);
 		}
@@ -186,7 +186,7 @@ class UiHelper {
 	}
 
 	/**
-	 * Show confirmation dialog
+	 * Show confirmation dialog (using DOM template from layout.php)
 	 * @param {string} message - Confirmation message
 	 * @param {string} title - Dialog title
 	 * @param {Object} options - Additional options
@@ -194,61 +194,50 @@ class UiHelper {
 	 */
 	static async confirm(message, title = 'Confirm Action', options = {}) {
 		return new Promise((resolve) => {
-			// Create modal if it doesn't exist
-			let modalElement = document.getElementById('confirmModal');
-
+			const modalElement = document.getElementById('core-confirm-modal');
 			if (!modalElement) {
-				const modalHtml = `
-                    <div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
-                        <div class="modal-dialog">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title" id="confirmModalTitle"></h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                </div>
-                                <div class="modal-body" id="confirmModalBody"></div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="confirmCancelBtn">
-                                        ${options.cancelText || 'Cancel'}
-                                    </button>
-                                    <button type="button" class="btn btn-primary" id="confirmOkBtn">
-                                        ${options.confirmText || 'Confirm'}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-				document.body.insertAdjacentHTML('beforeend', modalHtml);
-				modalElement = document.getElementById('confirmModal');
+				console.error(
+					"Critical Error: 'core-confirm-modal' not found in DOM.",
+				);
+				resolve(false);
+				return;
 			}
 
-			// Update content
-			document.getElementById('confirmModalTitle').textContent = title;
-			document.getElementById('confirmModalBody').innerHTML =
-				this.escapeHtml(message);
+			// 1. Get Elements
+			const titleEl = document.getElementById('core-confirm-title');
+			const messageEl = document.getElementById('core-confirm-message');
+			const warningEl = document.getElementById('core-confirm-warning');
+			const cancelBtn = document.getElementById('core-confirm-cancel-btn');
+			let okBtn = document.getElementById('core-confirm-ok-btn');
 
-			// Update button text if provided
-			if (options.cancelText) {
-				document.getElementById('confirmCancelBtn').textContent =
-					options.cancelText;
-			}
-			if (options.confirmText) {
-				document.getElementById('confirmOkBtn').textContent =
-					options.confirmText;
+			// 2. Set Content
+			titleEl.innerHTML = title;
+			messageEl.innerHTML = this.escapeHtml(message);
+
+			// Show/hide the sub-warning based on options
+			if (options.isDelete) {
+				warningEl.classList.remove('d-none');
+			} else {
+				warningEl.classList.add('d-none');
 			}
 
-			// Handle button classes for danger actions
-			const okBtn = document.getElementById('confirmOkBtn');
+			// 3. Set Button Text & Styles
+			cancelBtn.textContent = options.cancelText || 'Cancel';
+			okBtn.textContent = options.confirmText || 'Confirm';
 			okBtn.className = options.danger
-				? 'btn btn-danger'
+				? 'btn btn-primary'
 				: 'btn btn-primary';
 
-			// Show modal
+			// 4. Wipe old event listeners from the OK button by cloning it
+			const newOkBtn = okBtn.cloneNode(true);
+			okBtn.parentNode.replaceChild(newOkBtn, okBtn);
+			okBtn = newOkBtn; // reassign reference
+
+			// 5. Initialize Modal
 			const modal = new bootstrap.Modal(modalElement);
 			modal.show();
 
-			// Handle confirmation
+			// 6. Handle Events
 			const handleConfirm = () => {
 				cleanup();
 				modal.hide();
@@ -257,23 +246,22 @@ class UiHelper {
 
 			const handleCancel = () => {
 				cleanup();
-				modal.hide();
 				resolve(false);
 			};
 
 			const cleanup = () => {
 				okBtn.removeEventListener('click', handleConfirm);
-				document
-					.getElementById('confirmCancelBtn')
-					.removeEventListener('click', handleCancel);
+				cancelBtn.removeEventListener('click', handleCancel);
 				modalElement.removeEventListener('hidden.bs.modal', handleCancel);
 			};
 
-			// Attach event listeners
 			okBtn.addEventListener('click', handleConfirm);
-			document
-				.getElementById('confirmCancelBtn')
-				.addEventListener('click', handleCancel);
+			cancelBtn.addEventListener('click', () => {
+				modal.hide();
+				handleCancel();
+			});
+
+			// If user clicks the 'X' or clicks outside the modal
 			modalElement.addEventListener('hidden.bs.modal', handleCancel);
 		});
 	}
@@ -287,11 +275,12 @@ class UiHelper {
 		const safe = this.escapeHtml(itemName);
 		return this.confirm(
 			`Are you sure you want to delete "${safe}"? This action cannot be undone.`,
-			'Confirm Delete',
+			'<i class="fa-solid fa-trash-can me-2"></i> Confirm Delete',
 			{
 				confirmText: 'Delete',
 				cancelText: 'Cancel',
 				danger: true,
+				isDelete: true,
 			},
 		);
 	}

@@ -197,14 +197,17 @@ class Migrator
     /**
      * Split a multi-statement SQL string into individual statements.
      * Prevents half-migrated state — if statement N fails, we know
-     * exactly which statements already committed (DDL auto-commits in MySQL).
+     * exactly which statements already committed.
      */
     private function splitStatements(string $sql): array
     {
+        // 1. Remove all lines that start with -- (SQL comments)
+        $sql = preg_replace('/^\s*--.*$/m', '', $sql);
+
         $statements = [];
         foreach (explode(';', $sql) as $part) {
             $trimmed = trim($part);
-            if ($trimmed !== '' && !str_starts_with($trimmed, '--')) {
+            if ($trimmed !== '') {
                 $statements[] = $trimmed;
             }
         }

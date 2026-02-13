@@ -3,8 +3,10 @@ namespace App\Modules\Meta\Controllers;
 
 use App\Kernel\Http\Controller;
 use App\Kernel\Http\Request;
+use App\Kernel\Database\Database;
 use App\Modules\Meta\Models\Manufacturer;
-use App\Kernel\Database\Database; // Needed for the uniqueness check
+use App\Modules\Meta\Models\ToyLine;
+use App\Modules\Catalog\Models\CatalogToy;
 
 class ManufacturerController extends Controller
 {
@@ -17,44 +19,27 @@ class ManufacturerController extends Controller
             'manufacturers' => $manufacturers,
         ]);
     }
-/**
+    
+    /**
      * Returns the HTML Table of manufacturers (for AJAX)
      * GET /manufacturer/list?page=1&q=searchterm
      */
     public function list(Request $request): void
     {
         $page = (int) $request->input('page', 1);
-        $perPage = 2;
-        $offset = ($page - 1) * $perPage;
+        $perPage = 20; // Keep at 2 for testing pagination!
         $search = trim($request->input('q', ''));
+        $visibility = trim($request->input('visibility', '')); // <-- NEW
 
-        $db = Database::getInstance();
+        // Pass the new parameter to the model
+        $data = Manufacturer::getPaginatedWithLineCount($page, $perPage, $search, $visibility);
 
-        // 1. Build Query
-        $sql = "SELECT * FROM meta_manufacturers";
-        $params = [];
-
-        if ($search) {
-            $sql .= " WHERE name LIKE ?";
-            $params[] = "%$search%";
-        }
-
-        // 2. Count Total
-        $countSql = str_replace('SELECT *', 'SELECT COUNT(*)', $sql);
-        $total = $db->query($countSql, $params)->fetchColumn();
-        $totalPages = ceil($total / $perPage);
-
-        // 3. Fetch Data
-        $sql .= " ORDER BY name ASC LIMIT $perPage OFFSET $offset";
-        $manufacturers = $db->query($sql, $params)->fetchAll();
-
-        // 4. Render Partial with Pagination Data
         $this->renderPartial('manufacturer_list', [
-            'manufacturers' => $manufacturers,
+            'manufacturers' => $data['items'],
             'pagination' => [
                 'current' => $page,
-                'total'   => $totalPages,
-                'count'   => $total
+                'total'   => $data['totalPages'],
+                'count'   => $data['total']
             ]
         ]);
     }
@@ -182,12 +167,61 @@ class ManufacturerController extends Controller
     }
 
     /**
-     * Delete a manufacturer.
-     * DELETE /manufacturer/{id}
+     * Delete a manufacturer or request a migration if it has dependents.
+     * DELETE /manufacturer/{id}?migrate_to={new_id}
      */
     public function destroy(Request $request, string $id): void
     {
-        Manufacturer::delete((int) $id);
+        $mId = (int) $id;
+
+        // 1. Check BOTH dependent tables using our new Models!
+        $toyLineCount = ToyLine::countByManufacturer($mId);
+        $catalogToyCount = CatalogToy::countByManufacturer($mId);
+        $totalCount = $toyLineCount + $catalogToyCount;
+
+        $migrateTo = (int) $request->input('migrate_to', 0);
+
+        // 2. Has dependents, but no migration target provided?
+        if ($totalCount > 0 && $migrateTo === 0) {
+            $this->json([
+                'requires_migration' => true,
+                'message' => "This manufacturer is linked to {$toyLineCount} toy line(s) and {$catalogToyCount} catalog toy(s). Please reassign them to another manufacturer before deleting.",
+                'options_url' => "manufacturer/migrate-on-delete-options?exclude={$mId}" 
+            ], 409);
+            return;
+        }
+
+        // 3. User provided a migration target? Reassign items!
+        if ($totalCount > 0 && $migrateTo > 0) {
+            ToyLine::migrateManufacturer($mId, $migrateTo);
+            CatalogToy::migrateManufacturer($mId, $migrateTo);
+        }
+
+        // 4. Safe to delete now
+        Manufacturer::delete($mId);
         $this->json(['success' => true]);
+    }
+
+    /**
+     * Returns a JSON list of manufacturers for the Migration Dropdown
+     * GET /manufacturer/migrate-on-delete-options?exclude={id}
+     */
+    public function migrateOnDeleteOptions(Request $request): void
+    {
+        $exclude = (int) $request->input('exclude', 0);
+        $db = Database::getInstance();
+        
+        $sql = "SELECT id, name FROM meta_manufacturers";
+        $params = [];
+        
+        if ($exclude > 0) {
+            $sql .= " WHERE id != ?";
+            $params[] = $exclude;
+        }
+        
+        $sql .= " ORDER BY name ASC";
+        
+        $options = $db->query($sql, $params)->fetchAll(\PDO::FETCH_ASSOC);
+        $this->json($options);
     }
 }
