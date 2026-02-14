@@ -38,4 +38,21 @@ class Request
     {
         return $_POST[$key] ?? $_GET[$key] ?? $default;
     }
+
+    /**
+     * Retrieve input from $_POST only.
+     * Essential for sensitive data like passwords and CSRF tokens.
+     */
+    public function post(string $key, mixed $default = null): mixed
+    {
+        return $_POST[$key] ?? $default;
+    }
+
+    /**
+     * Retrieve input from $_GET only.
+     */
+    public function query(string $key, mixed $default = null): mixed
+    {
+        return $_GET[$key] ?? $default;
+    }
 }

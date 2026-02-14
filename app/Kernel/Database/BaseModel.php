@@ -16,6 +16,15 @@ abstract class BaseModel
         return Database::getInstance();
     }
 
+    /**
+     * Get the table name.
+     * Useful for Traits to access the protected static $table property.
+     */
+    public static function getTableName(): string
+    {
+        return static::$table;
+    }
+
     // ── Reads ─────────────────────────────────────────────────────
 
     /**
@@ -96,6 +105,7 @@ abstract class BaseModel
 
     /**
      * Count records (optionally filtered by a column value).
+     * Handles NULL values correctly (IS NULL vs = ?).
      */
     public static function count(?string $column = null, mixed $value = null): int
     {
@@ -103,15 +113,25 @@ abstract class BaseModel
 
         if ($column !== null) {
             static::validateIdentifier($column);
-            $row = static::db()->fetch(
-                "SELECT COUNT(*) AS cnt FROM `{$table}` WHERE `{$column}` = ?",
-                [$value]
-            );
+            
+            if ($value === null) {
+                // FIXED: Use IS NULL logic when value is null
+                $row = static::db()->fetch(
+                    "SELECT COUNT(*) AS cnt FROM `{$table}` WHERE `{$column}` IS NULL"
+                );
+            } else {
+                // Standard equality check
+                $row = static::db()->fetch(
+                    "SELECT COUNT(*) AS cnt FROM `{$table}` WHERE `{$column}` = ?",
+                    [$value]
+                );
+            }
         } else {
+            // Count all rows
             $row = static::db()->fetch("SELECT COUNT(*) AS cnt FROM `{$table}`");
         }
 
-        return (int) $row['cnt'];
+        return (int) ($row['cnt'] ?? 0);
     }
 
     /**
@@ -178,18 +198,16 @@ abstract class BaseModel
             implode(', ', $setClauses)
         );
 
-        static::db()->execute($sql, $params);
-        return true;
+        return static::db()->execute($sql, $params) > 0;
     }
 
     /**
-     * Delete a record by ID. Returns true on success.
+     * Delete a record by ID. Returns true if the record was deleted.
      */
     public static function delete(int $id): bool
     {
         $table = static::$table;
-        static::db()->execute("DELETE FROM `{$table}` WHERE `id` = ?", [$id]);
-        return true;
+        return static::db()->execute("DELETE FROM `{$table}` WHERE `id` = ?", [$id]) > 0;
     }
 
     // ── Internal ──────────────────────────────────────────────────

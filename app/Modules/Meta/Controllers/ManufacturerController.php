@@ -27,7 +27,7 @@ class ManufacturerController extends Controller
     public function list(Request $request): void
     {
         $page = (int) $request->input('page', 1);
-        $perPage = 20; // Keep at 2 for testing pagination!
+        $perPage = 20;
         $search = trim($request->input('q', ''));
         $visibility = trim($request->input('visibility', '')); // <-- NEW
 
@@ -51,25 +51,27 @@ class ManufacturerController extends Controller
     public function store(Request $request): void
     {
         $name = trim($request->input('name', ''));
+        
         if ($name === '') {
-            $this->json(['error' => 'Name is required'], 422);
+            $this->json(['field' => 'name', 'message' => 'Name is required'], 422);
             return;
         }
 
-        // 1. Validate Slug (New Item)
-        $slug = $this->validateSlug($request->input('slug'), $name);
-        
-        // FIX: strict array check
-        if (is_array($slug)) {
-            $this->json($slug, 422);
+        // FIXED: Added length validation
+        if (mb_strlen($name) > 255) {
+            $this->json(['field' => 'name', 'message' => 'Name cannot exceed 255 characters'], 422);
             return;
         }
+
+        // 1. Generate safe, unique slug
+        $slug = $this->validateSlug($request->input('slug'), $name, 0);
+        $showOnDashboard = $request->input('show_on_dashboard') !== null ? 1 : 0;
 
         // 2. Create
         Manufacturer::create([
             'name' => $name,
             'slug' => $slug,
-            'show_on_dashboard' => $request->input('show_on_dashboard') ? 1 : 0,
+            'show_on_dashboard' => $showOnDashboard,
         ]);
 
         $this->json(['success' => true]);
@@ -77,129 +79,148 @@ class ManufacturerController extends Controller
 
     /**
      * Update an existing manufacturer
-     * PUT /manufacturer/{id}
+     * POST /manufacturer/{id} (via _method=PUT)
      */
-    public function update(Request $request, string $id): void
+    public function update(Request $request, int $id): void
     {
+        $existing = Manufacturer::find($id);
+        if (!$existing) {
+            $this->json(['error' => 'Manufacturer not found'], 404);
+            return;
+        }
+
         $name = trim($request->input('name', ''));
+        
         if ($name === '') {
-            $this->json(['error' => 'Name is required'], 422);
+            $this->json(['field' => 'name', 'message' => 'Name is required'], 422);
             return;
         }
 
-
+        // FIXED: Ensure length validation is also present/consistent here
         if (mb_strlen($name) > 255) {
-            $this->json(['error' => 'Name must be 255 characters or fewer'], 422);
+            $this->json(['field' => 'name', 'message' => 'Name cannot exceed 255 characters'], 422);
             return;
         }
 
-        $slug = trim(strtolower(preg_replace('/[^a-z0-9]+/i', '-', $name)), '-');
-        if ($slug === '') {
-            $this->json(['error' => 'Name must contain at least one alphanumeric character'], 422);
-            return;
-        }
+        $slug = $this->validateSlug($request->input('slug'), $name, $id);
 
-        // Check for duplicate slug (excluding current record on update)
-        $existing = Manufacturer::firstWhere('slug', $slug);
-        if ($existing && (string) $existing['id'] !== (string) $id) {
-            $this->json(['error' => 'A manufacturer with this name already exists'], 422);
-            return;
-        }
-
-        $showOnDashboard = $request->input('show_on_dashboard') ? 1 : 0;
-
-
-        // 2. Update
-        Manufacturer::update((int) $id, [
+        Manufacturer::update($id, [
             'name' => $name,
             'slug' => $slug,
             'show_on_dashboard' => $request->input('show_on_dashboard') ? 1 : 0,
         ]);
 
-        // 3. Return Updated Row HTML
-        $updatedItem = Manufacturer::find((int) $id);
+        // 4. Prepare HTML for the row update
+        // We reuse the $existing ID we verified earlier
+        $updatedItem = Manufacturer::find($id);
         
+        $db = Database::getInstance();
+        $updatedItem['lines_count'] = $db->query(
+            "SELECT COUNT(*) FROM meta_toy_lines WHERE manufacturer_id = ?", 
+            [$id]
+        )->fetchColumn();
+
         ob_start();
         $this->renderPartial('manufacturer_row', ['m' => $updatedItem]);
-        $rowHtml = ob_get_clean();
+        $html = ob_get_clean();
 
         $this->json([
-            'success' => true,
-            'row_html' => $rowHtml
+            'success'  => true, 
+            'row_html' => $html
         ]);
     }
 
-    // ... destroy() method remains unchanged ...
-
     /**
-     * Helper to validate and generate unique slugs
-     * Returns STRING (valid slug) or ARRAY (error)
+     * Helper to ensure slugs are valid and unique.
+     * If a collision exists, it appends a timestamp to make it unique.
      */
-    private function validateSlug(?string $inputSlug, string $name, ?int $excludeId = null): string|array
+    private function validateSlug(?string $slug, string $name, int $excludeId = 0): string
     {
-        // 1. Generate Slug
-        $rawSlug = trim($inputSlug ?? '');
-        $source = ($rawSlug === '') ? $name : $rawSlug;
-        $slug = strtolower(preg_replace('/[^a-z0-9]+/i', '-', $source));
-        $slug = trim($slug, '-');
-
-        // 2. Check Uniqueness (Using COUNT is safer/simpler here)
-        $db = Database::getInstance();
+        $slug = trim($slug ?? '');
         
-        $sql = "SELECT COUNT(*) FROM meta_manufacturers WHERE slug = ?";
-        $params = [$slug];
-
-        if ($excludeId) {
-            $sql .= " AND id != ?";
-            $params[] = $excludeId;
+        // 1. Generate slug from name if empty
+        if ($slug === '') {
+            // Simple slugify: lowercase, replace non-alphanumeric with dashes
+            $slug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $name), '-'));
         }
 
-        $count = (int) $db->query($sql, $params)->fetchColumn();
+        // 2. Check for uniqueness
+        $db = Database::getInstance();
+        $sql = "SELECT COUNT(*) FROM meta_manufacturers WHERE slug = ? AND id != ?";
+        $count = $db->query($sql, [$slug, $excludeId])->fetchColumn();
 
         if ($count > 0) {
-            return [
-                'error' => "The slug '$slug' is already taken.",
-                'field' => 'slug' 
-            ];
+            // Append timestamp to ensure uniqueness (simple collision resolution)
+            $slug .= '-' . time();
         }
 
         return $slug;
     }
 
     /**
-     * Delete a manufacturer or request a migration if it has dependents.
-     * DELETE /manufacturer/{id}?migrate_to={new_id}
+     * Delete a manufacturer
+     * DELETE /manufacturer/{id}
      */
-    public function destroy(Request $request, string $id): void
+    public function destroy(Request $request, int $id): void
     {
-        $mId = (int) $id;
-
-        // 1. Check BOTH dependent tables using our new Models!
-        $toyLineCount = ToyLine::countByManufacturer($mId);
-        $catalogToyCount = CatalogToy::countByManufacturer($mId);
+        // 1. Check for dependencies
+        $toyLineCount = ToyLine::countByManufacturer($id);
+        $catalogToyCount = CatalogToy::countByManufacturer($id);
         $totalCount = $toyLineCount + $catalogToyCount;
 
+        // 2. Validate Migration Request
         $migrateTo = (int) $request->input('migrate_to', 0);
 
-        // 2. Has dependents, but no migration target provided?
+        // SECURITY FIX: If migration is requested, validate the target!
+        if ($migrateTo > 0) {
+            // A. Prevent migrating to self
+            if ($migrateTo === $id) {
+                $this->json(['error' => 'Cannot migrate items to the manufacturer being deleted.'], 400);
+                return;
+            }
+            // B. Verify target exists
+            $target = Manufacturer::find($migrateTo);
+            if (!$target) {
+                $this->json(['error' => 'The selected manufacturer for reassignment does not exist.'], 400);
+                return;
+            }
+        }
+
+        // 3. Handle Migration Requirement (409 Conflict)
         if ($totalCount > 0 && $migrateTo === 0) {
             $this->json([
                 'requires_migration' => true,
                 'message' => "This manufacturer is linked to {$toyLineCount} toy line(s) and {$catalogToyCount} catalog toy(s). Please reassign them to another manufacturer before deleting.",
-                'options_url' => "manufacturer/migrate-on-delete-options?exclude={$mId}" 
+                'options_url' => "manufacturer/migrate-on-delete-options?exclude={$id}"
             ], 409);
             return;
         }
 
-        // 3. User provided a migration target? Reassign items!
-        if ($totalCount > 0 && $migrateTo > 0) {
-            ToyLine::migrateManufacturer($mId, $migrateTo);
-            CatalogToy::migrateManufacturer($mId, $migrateTo);
-        }
+        $db = Database::getInstance();
 
-        // 4. Safe to delete now
-        Manufacturer::delete($mId);
-        $this->json(['success' => true]);
+        try {
+            // START TRANSACTION 🛡️
+            $db->beginTransaction();
+
+            // 4. Migrate items if requested (and validated)
+            if ($totalCount > 0 && $migrateTo > 0) {
+                ToyLine::migrateManufacturer($id, $migrateTo);
+                CatalogToy::migrateManufacturer($id, $migrateTo);
+            }
+
+            // 5. Delete the record
+            Manufacturer::delete($id);
+
+            // COMMIT TRANSACTION ✅
+            $db->commit();
+            
+            $this->json(['success' => true]);
+
+        } catch (\Exception $e) {
+            // ROLLBACK ON FAILURE ❌
+            $db->rollBack();
+            $this->json(['error' => 'Delete failed: ' . $e->getMessage()], 500);
+        }
     }
 
     /**

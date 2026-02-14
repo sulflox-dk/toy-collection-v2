@@ -7,11 +7,11 @@ class Manufacturer extends BaseModel
 {
     protected static string $table = 'meta_manufacturers';
 
-    public static function getPaginatedWithLineCount(int $page = 1, int $perPage = 10, string $search = '', string $visibility = ''): array
+    public static function getPaginatedWithLineCount(int $page = 1, int $perPage = 20, string $search = '', string $visibility = ''): array
     {
         $offset = ($page - 1) * $perPage;
         $params = [];
-        $whereConditions = []; // Array to hold dynamic WHERE clauses
+        $whereConditions = [];
 
         $sql = "
             SELECT 
@@ -21,32 +21,37 @@ class Manufacturer extends BaseModel
             LEFT JOIN meta_toy_lines l ON m.id = l.manufacturer_id
         ";
 
-        // 1. Apply Search Filter
         if ($search !== '') {
             $whereConditions[] = "m.name LIKE ?";
             $params[] = "%$search%";
         }
 
-        // 2. Apply Visibility Filter
         if ($visibility !== '') {
             $whereConditions[] = "m.show_on_dashboard = ?";
             $params[] = (int) $visibility;
         }
 
-        // 3. Append WHERE clauses if they exist
         if (!empty($whereConditions)) {
             $sql .= " WHERE " . implode(" AND ", $whereConditions);
         }
 
         $sql .= " GROUP BY m.id ORDER BY m.name ASC";
 
-        // Count Total Rows (using a subquery because of the GROUP BY)
+        // 1. Total Count (Keep using parameters here)
         $countSql = "SELECT COUNT(*) FROM ($sql) as sub";
         $total = (int) static::db()->query($countSql, $params)->fetchColumn();
         $totalPages = ceil($total / $perPage);
 
-        // Fetch the actual data
-        $sql .= " LIMIT $perPage OFFSET $offset";
+        // 2. FIXED: Parameterize LIMIT and OFFSET 🛡️
+        $sql .= " LIMIT ? OFFSET ?";
+        
+        // Add them to the params array
+        $params[] = $perPage;
+        $params[] = $offset;
+
+        // NOTE: If your Database::query method uses standard execute(), 
+        // you might need to enable PDO::ATTR_EMULATE_PREPARES => false 
+        // in your Database connection to allow ints in LIMIT.
         $items = static::db()->query($sql, $params)->fetchAll(\PDO::FETCH_ASSOC);
 
         return [

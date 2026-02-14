@@ -43,17 +43,23 @@ if (file_exists($envPath)) {
         $name  = trim($name);
         $value = trim($value);
 
+        $isQuoted = false; // Track if we handled quotes
+
         // Strip surrounding quotes (single or double), preserving inner content
-        if (
-            (str_starts_with($value, '"') && str_ends_with($value, '"'))
-            || (str_starts_with($value, "'") && str_ends_with($value, "'"))
-        ) {
+        if (str_starts_with($value, '"') && str_ends_with($value, '"')) {
             $value = substr($value, 1, -1);
+            $isQuoted = true;
+        } elseif (str_starts_with($value, "'") && str_ends_with($value, "'")) {
+            $value = substr($value, 1, -1);
+            $isQuoted = true;
         }
 
-        // Strip inline comments (only outside of quotes — already stripped above)
-        if (($pos = strpos($value, ' #')) !== false) {
-            $value = rtrim(substr($value, 0, $pos));
+        // Strip inline comments ONLY if the value was NOT quoted.
+        // If it was quoted, we assume the # inside is part of the secret.
+        if (!$isQuoted) {
+            if (($pos = strpos($value, ' #')) !== false) {
+                $value = rtrim(substr($value, 0, $pos));
+            }
         }
 
         if ($name === '') {

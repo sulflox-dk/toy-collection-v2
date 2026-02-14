@@ -16,7 +16,10 @@ class EntityManager {
 	 */
 	constructor(entityName, config = {}) {
 		this.entityName = entityName;
-		this.mode = config.mode || 'json'; // 'json' OR 'html'
+		this.mode = config.mode || 'json';
+
+		// Track active requests to prevent race conditions 🏁
+		this.activeAbortController = null;
 
 		// API Endpoints — prepend SITE_URL so paths work in subdirectories
 		const base = (typeof SITE_URL !== 'undefined' ? SITE_URL : '').replace(
@@ -56,11 +59,9 @@ class EntityManager {
 		if (form) {
 			form.addEventListener('submit', (e) => {
 				e.preventDefault();
-				// Check which button was clicked using e.submitter
 				const action = e.submitter?.dataset?.action || 'save-close';
 				const keepOpen = action === 'add-another';
-
-				this.save(keepOpen); // Pass the flag to the save method
+				this.save(keepOpen);
 			});
 		}
 
@@ -77,17 +78,17 @@ class EntityManager {
 				'input',
 				UiHelper.debounce((e) => {
 					this.currentParams.q = e.target.value;
-					this.currentParams.page = 1; // Always reset to page 1 on new search
+					this.currentParams.page = 1;
 					this.loadList(this.currentParams);
 				}, 300),
-			); // Waits 300ms after you stop typing to search
+			);
 		}
 
 		// Setup Dropdown Filters ---
 		document.querySelectorAll(this.ui.filterInputs).forEach((filter) => {
 			filter.addEventListener('change', (e) => {
 				this.currentParams[e.target.name] = e.target.value;
-				this.currentParams.page = 1; // Always reset to page 1 on new filter
+				this.currentParams.page = 1;
 				this.loadList(this.currentParams);
 			});
 		});
@@ -100,7 +101,7 @@ class EntityManager {
 				document
 					.querySelectorAll(this.ui.filterInputs)
 					.forEach((f) => (f.value = ''));
-				this.currentParams = { page: 1 }; // Wipe state back to default
+				this.currentParams = { page: 1 };
 				this.loadList(this.currentParams);
 			});
 		}
@@ -111,87 +112,98 @@ class EntityManager {
 
 	/**
 	 * Master Load Method
-	 * Dispatches to the correct loader based on mode
+	 * Dispatches to the correct loader based on mode with race condition protection.
 	 */
-	loadList(params = {}) {
-		if (this.mode === 'html') {
-			this.loadHtml(params);
-		} else {
-			this.loadJson(params);
+	async loadList(params = {}) {
+		// Cancel any existing request that is still in flight 🛑
+		if (this.activeAbortController) {
+			this.activeAbortController.abort();
+		}
+
+		// Create a new controller for this specific request
+		this.activeAbortController = new AbortController();
+		const signal = this.activeAbortController.signal;
+
+		const container = document.querySelector(this.ui.grid);
+		if (container) container.style.opacity = '0.5';
+
+		try {
+			if (this.mode === 'html') {
+				await this.loadHtml(params, signal);
+			} else {
+				await this.loadJson(params, signal);
+			}
+		} catch (error) {
+			if (error.name === 'AbortError') {
+				return; // Silently ignore cancelled requests
+			}
+			console.error('Load Error:', error);
+			UiHelper.showToast('Failed to load data', 'error');
+		} finally {
+			// Restore opacity only if this is still the most recent request
+			if (this.activeAbortController?.signal === signal) {
+				if (container) container.style.opacity = '1';
+				this.activeAbortController = null;
+			}
 		}
 	}
 
 	/**
 	 * STRATEGY 1: HTML Loader (Server-Side View)
-	 * Fetches a partial HTML string and injects it.
 	 */
-	async loadHtml(params = {}) {
+	async loadHtml(params = {}, signal) {
 		const container = document.querySelector(this.ui.grid);
 		if (!container) return;
 
-		container.innerHTML = `<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>`;
+		const fullUrl = ApiClient.buildUrl(this.listUrl, params);
 
-		try {
-			// FIX: Build the URL with query params manually first
-			const fullUrl = ApiClient.buildUrl(this.listUrl, params);
+		const html = await ApiClient.request(fullUrl, {
+			method: 'GET',
+			headers: { Accept: 'text/html' },
+			signal: signal,
+		});
 
-			const html = await ApiClient.request(fullUrl, {
-				method: 'GET',
-				// We don't pass 'data' here anymore, because it's in the URL now
-				headers: { Accept: 'text/html' },
-			});
-
-			container.innerHTML = html;
-			this.attachRowListeners(container);
-		} catch (error) {
-			console.error('HTML Load Error:', error);
-			container.innerHTML = `<div class="alert alert-danger">Failed to load data.</div>`;
-		}
+		container.innerHTML = html;
+		this.attachRowListeners(container);
 	}
 
 	/**
 	 * STRATEGY 2: JSON Loader (Client-Side View)
-	 * Fetches JSON array and builds DOM using onRenderRow
 	 */
-	async loadJson(params = {}) {
+	async loadJson(params = {}, signal) {
 		const container = document.querySelector(this.ui.grid);
 		if (!container) return;
 
-		container.innerHTML = `<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>`;
+		const response = await ApiClient.request(
+			ApiClient.buildUrl(this.listUrl, params),
+			{
+				method: 'GET',
+				signal: signal,
+			},
+		);
 
-		try {
-			// FIX: Use ApiClient.get() which DOES handle params automatically
-			// Alternatively: ApiClient.request(ApiClient.buildUrl(this.listUrl, params), ...)
-			const response = await ApiClient.get(this.listUrl, params);
+		this.data = Array.isArray(response) ? response : response.data || [];
 
-			// Normalize response
-			this.data = Array.isArray(response) ? response : response.data || [];
-
-			if (this.data.length === 0) {
-				container.innerHTML = `<div class="col-12 text-center py-5 text-muted">No records found.</div>`;
-				return;
-			}
-
-			container.innerHTML = this.data
-				.map((item) => this.onRenderRow(item))
-				.join('');
-			this.attachRowListeners(container);
-		} catch (error) {
-			console.error('JSON Load Error:', error);
-			UiHelper.showToast('Failed to load data', 'error');
+		if (this.data.length === 0) {
+			container.innerHTML = `<div class="col-12 text-center py-5 text-muted">No records found.</div>`;
+			return;
 		}
+
+		container.innerHTML = this.data
+			.map((item) => this.onRenderRow(item))
+			.join('');
+		this.attachRowListeners(container);
 	}
 
 	/**
 	 * Smart Save Method
-	 * Handles Create (Reload List) and Update (Swap Row)
-	 * @param {boolean} keepOpen - If true, clears the form and leaves the modal open after save
+	 * Handles Create (Reload List) and Update (Safe Swap)
+	 * @param {boolean} keepOpen - If true, clears the form and leaves the modal open
 	 */
 	async save(keepOpen = false) {
 		const form = document.querySelector(this.ui.form);
 		if (!form) return;
 
-		// 1. Clear previous validation errors (remove red borders)
 		form.querySelectorAll('.is-invalid').forEach((el) => {
 			el.classList.remove('is-invalid');
 		});
@@ -211,8 +223,6 @@ class EntityManager {
 		}
 
 		try {
-			// We expect the server to return JSON.
-			// If it's an update, we want the new HTML row in the response!
 			const response = await ApiClient.request(url, {
 				method: 'POST',
 				body: formData,
@@ -220,66 +230,50 @@ class EntityManager {
 
 			UiHelper.showToast('Saved successfully!', 'success');
 
-			// --- NEW: Keep Open Logic ---
 			if (keepOpen) {
-				// User clicked "Save & Add Another"
-				form.reset(); // Clear form fields
-
-				// Explicitly clear the hidden ID, just to be safe
+				form.reset();
 				const idInput = form.querySelector('[name="id"]');
 				if (idInput) idInput.value = '';
 
-				// Focus the first text input so they can keep typing immediately
 				const firstInput = form.querySelector('input[type="text"]');
 				if (firstInput) firstInput.focus();
 			} else {
-				// User clicked standard "Save" or "Create"
 				this.closeModal();
 			}
-			// ----------------------------
 
-			// SMART UPDATE LOGIC 🧠
+			// SMART UPDATE LOGIC 🧠 (Secure Swap)
 			if (id && response.row_html && this.mode === 'html') {
-				// If we got HTML back, find the row and swap it
 				const existingRow = document.querySelector(
-					`${this.ui.grid} tr[data-id="${id}"]`,
+					`${this.ui.grid} [data-id="${id}"]`,
 				);
+
 				if (existingRow) {
-					existingRow.outerHTML = response.row_html;
-					// Re-attach listeners to the new row
-					this.attachRowListeners(document.querySelector(this.ui.grid));
-					// Highlight the row briefly so user sees the change
-					const newRow = document.querySelector(
-						`${this.ui.grid} tr[data-id="${id}"]`,
-					);
-					if (newRow) newRow.classList.add('table-success'); // Bootstrap color
-					setTimeout(
-						() => newRow?.classList.remove('table-success'),
-						1500,
-					);
-					return; // Done! No reload needed.
+					const newRow = UiHelper.safeSwap(existingRow, response.row_html);
+
+					if (newRow) {
+						this.attachRowListeners(document.querySelector(this.ui.grid));
+						newRow.classList.add('table-success');
+						setTimeout(() => {
+							if (newRow.isConnected)
+								newRow.classList.remove('table-success');
+						}, 1500);
+
+						return;
+					}
 				}
 			}
 
-			// Fallback: If it's a new item OR we didn't get HTML back, reload the list
 			this.loadList();
 		} catch (error) {
 			console.error('Save Error:', error);
 
-			// 🆕 FIELD-LEVEL ERROR HIGHLIGHTING
 			if (error.field) {
 				const input = form.querySelector(`[name="${error.field}"]`);
 				if (input) {
-					input.classList.add('is-invalid'); // Paint it red
-
-					// Look for the feedback div to show the exact message
+					input.classList.add('is-invalid');
 					const feedback =
 						input.parentElement.querySelector('.invalid-feedback');
-					if (feedback) {
-						feedback.textContent = error.message;
-					}
-
-					// Focus the field so the user can fix it immediately
+					if (feedback) feedback.textContent = error.message;
 					input.focus();
 				}
 			}
@@ -288,18 +282,12 @@ class EntityManager {
 		}
 	}
 
-	/**
-	 * Deletes item -> First triggers standard confirmation
-	 */
 	async delete(id) {
 		const confirmed = await UiHelper.confirmDelete('this item');
 		if (!confirmed) return;
 		await this.executeDelete(id);
 	}
 
-	/**
-	 * Executes the API call and handles Migration Requirements
-	 */
 	async executeDelete(id, migrateToId = null) {
 		let url = `${this.endpoint}/${id}`;
 		if (migrateToId) {
@@ -308,10 +296,8 @@ class EntityManager {
 
 		try {
 			await ApiClient.request(url, { method: 'DELETE' });
-
 			UiHelper.showToast('Deleted successfully!', 'success');
 
-			// Close migration modal if open
 			const migrationModalEl = document.getElementById(
 				'core-migration-modal',
 			);
@@ -322,12 +308,7 @@ class EntityManager {
 
 			this.loadList();
 		} catch (error) {
-			// 🚨 INTERCEPT 409 MIGRATION REQUESTS 🚨
-			if (
-				error.status === 409 &&
-				error.data &&
-				error.data.requires_migration
-			) {
+			if (error.status === 409 && error.data?.requires_migration) {
 				this.showMigrationModal(id, error.data);
 			} else {
 				UiHelper.showToast(error.message || 'Failed to delete.', 'error');
@@ -335,9 +316,6 @@ class EntityManager {
 		}
 	}
 
-	/**
-	 * Populates and shows the pre-existing Migration Modal
-	 */
 	async showMigrationModal(id, data) {
 		try {
 			const baseUrl = (
@@ -345,28 +323,19 @@ class EntityManager {
 			).replace(/\/+$/, '');
 			const optionsUrl = baseUrl + '/' + data.options_url;
 
-			// Fetch dropdown options
 			const options = await ApiClient.get(optionsUrl);
-
 			const modalEl = document.getElementById('core-migration-modal');
-			if (!modalEl) {
-				console.error('Migration modal HTML not found in the DOM.');
-				return;
-			}
+			if (!modalEl) return;
 
-			// Elements
 			const select = document.getElementById('core-migration-select');
 			const messageEl = document.getElementById('core-migration-message');
 			let btn = document.getElementById('core-migration-btn');
 
-			// Reset UI state
 			select.classList.remove('is-invalid');
 			messageEl.textContent = data.message;
 
-			// Build Options
 			let optionsHtml = '<option value="">-- Select a new owner --</option>';
 			options.forEach((opt) => {
-				// Prevent XSS inside the dropdown
 				const safeName = (opt.name || '')
 					.replace(/</g, '&lt;')
 					.replace(/>/g, '&gt;');
@@ -374,7 +343,6 @@ class EntityManager {
 			});
 			select.innerHTML = optionsHtml;
 
-			// Replace button with a clone to wipe any old event listeners
 			const newBtn = btn.cloneNode(true);
 			btn.parentNode.replaceChild(newBtn, btn);
 
@@ -392,31 +360,20 @@ class EntityManager {
 				newBtn.disabled = true;
 				newBtn.innerHTML =
 					'<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
-
 				this.executeDelete(id, targetId);
 			});
 
-			// Show Modal
 			const bsModal = new bootstrap.Modal(modalEl);
 			bsModal.show();
 		} catch (error) {
-			console.error('Migration Setup Error:', error);
 			UiHelper.showToast('Failed to load migration options.', 'error');
 		}
 	}
 
-	/**
-	 * Attach Event Listeners to the dynamic Grid/Table
-	 * Works for both JSON and HTML modes!
-	 */
 	attachRowListeners(container) {
-		// Edit Buttons
 		container.querySelectorAll('.btn-edit').forEach((btn) => {
 			btn.addEventListener('click', (e) => {
 				const id = e.currentTarget.dataset.id;
-
-				// If HTML mode: We look for data-json attribute on the button
-				// If JSON mode: We look in this.data array
 				let itemData = null;
 
 				if (this.mode === 'html' && e.currentTarget.dataset.json) {
@@ -433,22 +390,19 @@ class EntityManager {
 			});
 		});
 
-		// Delete Buttons
 		container.querySelectorAll('.btn-delete').forEach((btn) => {
 			btn.addEventListener('click', (e) => {
 				this.delete(e.currentTarget.dataset.id);
 			});
 		});
 
-		// PAGINATION LISTENERS
 		container.querySelectorAll('.page-link').forEach((link) => {
 			link.addEventListener('click', (e) => {
-				e.preventDefault(); // Stop page jump
-
+				e.preventDefault();
 				const page = e.currentTarget.dataset.page;
 				if (page && page > 0) {
-					this.currentParams.page = page; // Update current state
-					this.loadList(this.currentParams); // Load with full state
+					this.currentParams.page = page;
+					this.loadList(this.currentParams);
 				}
 			});
 		});
@@ -460,42 +414,34 @@ class EntityManager {
 
 		form.reset();
 
-		const idInput = form.querySelector('[name="id"]');
+		const idInput = form.querySelector('[name=\"id\"]');
 		if (idInput) idInput.value = '';
 
-		// --- Dynamic Title & Button Logic ---
 		const titleEl = document.querySelector(`${this.ui.modal} .modal-title`);
-		const submitBtn = form.querySelector('button[data-action="save-close"]'); // Find the submit button
+		const submitBtn = form.querySelector(
+			'button[data-action=\"save-close\"]',
+		);
 		const addAnotherBtn = form.querySelector(
-			'button[data-action="add-another"]',
+			'button[data-action=\"add-another\"]',
 		);
 
 		if (titleEl) {
-			// Read the current text, strip out "Edit " or "Add ", and keep the base word
 			const baseName = titleEl.textContent
 				.replace(/(Edit|Add)\s+/i, '')
 				.trim();
 
 			if (data) {
-				// EDIT MODE
-				titleEl.innerHTML = `<i class="fa-solid fa-pencil me-2 text-primary"></i> Edit ${baseName}`;
-				if (submitBtn) {
-					submitBtn.innerHTML = `Save`;
-				}
+				titleEl.innerHTML = `<i class=\"fa-solid fa-pencil me-2 text-primary\"></i> Edit ${baseName}`;
+				if (submitBtn) submitBtn.innerHTML = `Save`;
 				if (addAnotherBtn) addAnotherBtn.classList.add('d-none');
 			} else {
-				// CREATE MODE
-				titleEl.innerHTML = `<i class="fa-solid fa-plus me-2 text-primary"></i> Add ${baseName}`;
-				if (submitBtn) {
-					submitBtn.innerHTML = `Save`;
-				}
+				titleEl.innerHTML = `<i class=\"fa-solid fa-plus me-2 text-primary\"></i> Add ${baseName}`;
+				if (submitBtn) submitBtn.innerHTML = `Save`;
 				if (addAnotherBtn) addAnotherBtn.classList.remove('d-none');
 			}
 		}
-		// ------------------------------------
 
 		if (data) this.populateForm(form, data);
-
 		if (this.modalInstance) this.modalInstance.show();
 	}
 
@@ -505,7 +451,7 @@ class EntityManager {
 
 	populateForm(form, data) {
 		Object.keys(data).forEach((key) => {
-			const input = form.querySelector(`[name="${key}"]`);
+			const input = form.querySelector(`[name=\"${key}\"]`);
 			if (input) {
 				if (input.type === 'checkbox') input.checked = !!data[key];
 				else input.value = data[key];
@@ -514,6 +460,6 @@ class EntityManager {
 	}
 
 	defaultRenderRow(item) {
-		return `<div class="col">Card for ${item.id}</div>`;
+		return `<div class=\"col\">Card for ${item.id}</div>`;
 	}
 }

@@ -36,7 +36,6 @@ class ApiClient {
 			defaultHeaders['X-CSRF-Token'] = csrfMeta.content;
 		}
 
-		// Don't set Content-Type for FormData - browser will set it with boundary
 		if (!(options.body instanceof FormData)) {
 			defaultHeaders['Content-Type'] = 'application/x-www-form-urlencoded';
 		}
@@ -46,52 +45,54 @@ class ApiClient {
 			headers: { ...defaultHeaders, ...options.headers },
 		};
 
-		// Handle request body
 		if (options.body) {
 			if (options.body instanceof FormData) {
 				config.body = options.body;
 			} else if (typeof options.body === 'object') {
-				// Convert object to URL-encoded string for PHP $_POST
 				config.body = new URLSearchParams(options.body).toString();
 			} else {
 				config.body = options.body;
 			}
 		}
 
-		// Add timeout support
+		// --- FIXED TIMEOUT & SIGNAL LINKING ---
 		const timeout = options.timeout || this.timeout;
 		const controller = new AbortController();
 		const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+		// LINKING: If an external signal was provided (e.g. from EntityManager),
+		// we listen for it. If it aborts, we abort our local controller too.
+		if (options.signal) {
+			if (options.signal.aborted) {
+				controller.abort();
+			} else {
+				options.signal.addEventListener('abort', () => controller.abort());
+			}
+		}
+
 		config.signal = controller.signal;
+		// --------------------------------------
 
 		try {
 			const response = await fetch(url, config);
 			clearTimeout(timeoutId);
 
-			// Handle HTTP errors
 			if (!response.ok) {
-				// Try to parse the response to get our custom JSON error message and field
 				let errorData = {};
 				try {
 					errorData = await this.parseResponse(response);
-				} catch (e) {
-					// Fallback if the response isn't JSON
-				}
+				} catch (e) {}
 
-				// 1. Look for 'error' (which our PHP sends), then fallback to 'message'
 				const errorMessage =
 					errorData.error ||
 					errorData.message ||
 					`HTTP Error: ${response.status}`;
-
-				// 2. Create your custom ApiError
 				const apiError = new ApiError(
 					errorMessage,
 					response.status,
 					errorData,
 				);
 
-				// 3. Attach the field property so EntityManager can highlight the input!
 				if (errorData.field) {
 					apiError.field = errorData.field;
 				}
@@ -99,17 +100,22 @@ class ApiClient {
 				throw apiError;
 			}
 
-			// Parse and return response
 			return await this.parseResponse(response);
 		} catch (error) {
 			clearTimeout(timeoutId);
 
+			// If the error came from our linked signal, fetch will throw AbortError
 			if (error.name === 'AbortError') {
+				// If the external signal was the cause, re-throw it so EntityManager can catch it
+				if (options.signal?.aborted) {
+					throw error;
+				}
+				// Otherwise, it was our own internal timeout
 				throw new ApiError('Request timeout', 408);
 			}
 
 			if (error instanceof ApiError) {
-				throw error; // Preserves the field property we added above!
+				throw error;
 			}
 
 			console.error('API Request Failed:', error);
@@ -136,23 +142,27 @@ class ApiClient {
 
 	/**
 	 * Fetch rendered HTML from server
-	 * @param {string} url - Base URL (from buildModuleUrl)
+	 * Uses this.request() to ensure CSRF tokens, headers, and timeouts are included.
+	 * * @param {string} url - Base URL
 	 * @param {Object} params - Query parameters
 	 * @returns {Promise<string>} Rendered HTML string
 	 */
 	static async fetchHtml(url, params = {}) {
-		const queryString = new URLSearchParams(params).toString();
-		const fullUrl = queryString ? url + '&' + queryString : url;
+		// 1. Use buildUrl to safely handle '?' vs '&' logic
+		const fullUrl = this.buildUrl(url, params);
 
-		const response = await fetch(fullUrl);
-
-		if (!response.ok) {
-			throw new Error(
-				`Request failed: ${response.status} ${response.statusText}`,
-			);
-		}
-
-		return await response.text();
+		// 2. Use the core request method
+		// This automatically adds:
+		// - X-CSRF-Token
+		// - X-Requested-With
+		// - Timeout signal
+		// - Standard error handling (ApiError)
+		return this.request(fullUrl, {
+			method: 'GET',
+			headers: {
+				Accept: 'text/html', // Explicitly tell server we want HTML
+			},
+		});
 	}
 
 	/**

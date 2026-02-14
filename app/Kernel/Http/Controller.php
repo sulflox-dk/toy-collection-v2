@@ -52,11 +52,44 @@ abstract class Controller
 
     /**
      * Redirect to another URL.
+     * Includes security checks to prevent Open Redirect vulnerabilities.
      */
     protected function redirect(string $url, int $status = 302): void
     {
+        // 1. Prevent Header Injection (CRLF)
+        // Remove any newline characters that could split the header
+        $url = str_replace(["\r", "\n", "%0d", "%0a"], '', $url);
+
+        // 2. Validate Internal Redirect
+        // Parse the URL to check its components
+        $parsed = parse_url($url);
+        
+        // If parsing fails, default to root for safety
+        if ($parsed === false) {
+            $url = '/';
+        } else {
+            // Check if the URL has a host (domain name)
+            $host = $parsed['host'] ?? null;
+            
+            // If there is a host, it MUST match our current server's host
+            // (This prevents http://evil.com)
+            if ($host && $host !== ($_SERVER['HTTP_HOST'] ?? 'localhost')) {
+                // External domain detected! Force redirect to root.
+                $url = '/';
+            }
+            
+            // Check for Protocol-Relative URLs (e.g. //google.com)
+            // These have no scheme but have a host, which creates a vulnerability 
+            // if not caught by the host check above.
+            // Just to be extra safe, we ensure relative paths don't start with //
+            if (!$host && substr($url, 0, 2) === '//') {
+                $url = '/';
+            }
+        }
+
         http_response_code($status);
         header("Location: {$url}");
+        exit; // IMPORTANT: Always exit after a redirect header to stop script execution
     }
 
     /**

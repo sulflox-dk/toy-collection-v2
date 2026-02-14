@@ -85,18 +85,31 @@ class Database
      * Prepare and execute a statement, returning the PDOStatement.
      * Use this when you need cursor-level access (e.g. large result sets).
      */
-    public function query(string $sql, array $params = []): PDOStatement
+   public function query(string $sql, array $params = []): PDOStatement
     {
         try {
             $stmt = $this->pdo->prepare($sql);
-            $stmt->execute($params);
+            foreach ($params as $key => $value) {
+                $paramKey = is_int($key) ? $key + 1 : $key;
+                
+                // --- SMART BINDING 🧠 ---
+                // Detect the type so LIMIT/OFFSET works with parameters
+                $type = PDO::PARAM_STR;
+                if (is_int($value)) {
+                    $type = PDO::PARAM_INT;
+                } elseif (is_bool($value)) {
+                    $type = PDO::PARAM_BOOL;
+                } elseif (is_null($value)) {
+                    $type = PDO::PARAM_NULL;
+                }
+
+                $stmt->bindValue($paramKey, $value, $type);
+                // -------------------------
+            }
+            $stmt->execute();
             return $stmt;
         } catch (PDOException $e) {
-            throw new RuntimeException(
-                'Query failed: ' . $e->getMessage() . $this->debugSql($sql),
-                0,
-                $e
-            );
+            throw new RuntimeException("Database Query Error: " . $e->getMessage());
         }
     }
 

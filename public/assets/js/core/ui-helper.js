@@ -224,9 +224,7 @@ class UiHelper {
 			// 3. Set Button Text & Styles
 			cancelBtn.textContent = options.cancelText || 'Cancel';
 			okBtn.textContent = options.confirmText || 'Confirm';
-			okBtn.className = options.danger
-				? 'btn btn-primary'
-				: 'btn btn-primary';
+			okBtn.className = 'btn btn-primary';
 
 			// 4. Wipe old event listeners from the OK button by cloning it
 			const newOkBtn = okBtn.cloneNode(true);
@@ -272,10 +270,9 @@ class UiHelper {
 	 * @returns {Promise<boolean>} True if confirmed
 	 */
 	static async confirmDelete(itemName) {
-		const safe = this.escapeHtml(itemName);
 		return this.confirm(
-			`Are you sure you want to delete "${safe}"? This action cannot be undone.`,
-			'<i class="fa-solid fa-trash-can me-2"></i> Confirm Delete',
+			`Are you sure you want to delete "${itemName}"? This action cannot be undone.`,
+			'<i class="fa-solid fa-trash-can me-2 text-danger"></i> Confirm Delete',
 			{
 				confirmText: 'Delete',
 				cancelText: 'Cancel',
@@ -533,6 +530,36 @@ class UiHelper {
 			clearTimeout(timeout);
 			timeout = setTimeout(later, wait);
 		};
+	}
+
+	/**
+	 * Safely swaps an element with new HTML content.
+	 * Prevents XSS by ensuring the new tag matches the old tag (e.g. tr -> tr).
+	 * * @param {HTMLElement} existingEl - The element to replace
+	 * @param {string} newHtml - The raw HTML string from the server
+	 * @returns {HTMLElement|null} The new element, or null if swap failed security check
+	 */
+	static safeSwap(existingEl, newHtml) {
+		if (!existingEl || !newHtml) return null;
+
+		// 1. Parse the HTML string securely
+		const template = document.createElement('template');
+		template.innerHTML = newHtml.trim();
+		const newEl = template.content.firstElementChild;
+
+		// 2. Security Check: Tag Mismatch
+		// If we are replacing a <TR>, the server must send a <TR>.
+		// This prevents executing <SCRIPT> tags or completely different structures.
+		if (!newEl || newEl.tagName !== existingEl.tagName) {
+			console.warn(
+				`Security Block: Attempted to replace <${existingEl.tagName}> with <${newEl ? newEl.tagName : 'null'}>`,
+			);
+			return null;
+		}
+
+		// 3. Perform the swap
+		existingEl.replaceWith(newEl);
+		return newEl;
 	}
 }
 

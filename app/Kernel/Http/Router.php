@@ -38,33 +38,41 @@ class Router
     {
         $method = $request->getMethod();
 
-        // Support _method override (POST with _method=PUT/DELETE)
+        // 1. Handle Method Override
+        // We check $_POST directly here to handle the override before anything else.
         if ($method === 'POST' && !empty($_POST['_method'])) {
             $override = strtoupper($_POST['_method']);
-            if (in_array($override, ['PUT', 'DELETE'], true)) {
+            if (in_array($override, ['PUT', 'DELETE', 'PATCH'], true)) {
                 $method = $override;
+            }
+        }
+
+        // 2. Global CSRF Check 🛡️
+        // We perform this check BEFORE routing. If it's a state-changing method,
+        // we mandate a valid token immediately. 
+        if (in_array($method, ['POST', 'PUT', 'DELETE', 'PATCH'], true)) {
+            
+            // Note: This relies on the Csrf::validate() fix we made earlier 
+            // (checking $_POST/Headers only, ignoring the URL query string).
+            if (!Csrf::validate($request)) {
+                http_response_code(403);
+                header('Content-Type: application/json');
+                echo json_encode(['error' => 'CSRF token mismatch. Please refresh the page.']);
+                return null; // Stop execution
             }
         }
 
         $uri = $request->getUri();
 
+        // 3. Find & Execute Route
         foreach ($this->routes[$method] ?? [] as $route) {
             if (preg_match($route['pattern'], $uri, $matches)) {
-                // CSRF check on state-changing requests
-                if (in_array($method, ['POST', 'PUT', 'DELETE'], true)
-                    && !Csrf::validate($request)
-                ) {
-                    http_response_code(403);
-                    header('Content-Type: application/json');
-                    echo json_encode(['error' => 'CSRF token mismatch']);
-                    return null;
-                }
-
                 $params = array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
                 return $this->call($route['action'], $request, array_values($params));
             }
         }
 
+        // 4. 404 Not Found
         http_response_code(404);
         $safeUri = htmlspecialchars($uri, ENT_QUOTES, 'UTF-8');
         echo "<h1>404 - Not Found</h1>";

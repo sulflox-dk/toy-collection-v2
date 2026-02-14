@@ -1,3 +1,15 @@
+# 1. FAIL SAFE: Block access to sensitive directories by default
+
+# This runs even if mod_rewrite is NOT loaded.
+
+<IfModule !mod_rewrite.c>
+Deny from all
+</IfModule>
+
+# 2. Prevent directory listing (prevents browsing folders)
+
+Options -Indexes
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews
@@ -5,6 +17,10 @@
 
     RewriteEngine On
 
-    # Redirect everything to the public folder
+    # 3. Protect Dotfiles (.env, .git, etc.)
+    RewriteRule \.(env|git|json|lock|xml|yml)$ - [F,L]
+
+    # 4. Redirect everything to the public folder
     RewriteRule ^(.*)$ public/$1 [L]
+
 </IfModule>
