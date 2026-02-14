@@ -272,7 +272,7 @@ class UiHelper {
 	static async confirmDelete(itemName) {
 		return this.confirm(
 			`Are you sure you want to delete "${itemName}"? This action cannot be undone.`,
-			'<i class="fa-solid fa-trash-can me-2 text-danger"></i> Confirm Delete',
+			'<i class="fa-solid fa-trash-can me-2"></i> Confirm Delete',
 			{
 				confirmText: 'Delete',
 				cancelText: 'Cancel',

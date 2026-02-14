@@ -43,18 +43,18 @@ $baseUrl = rtrim(Config::get('app.url', ''), '/') . '/';
               <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Catalog</a>
               <ul class="dropdown-menu">
                 <li><a class="dropdown-item" href="#">Master Toys</a></li>
-                <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item" href="#">Product Types</a></li>
-                <li><a class="dropdown-item" href="#">Toy Lines</a></li>
-                <li><a class="dropdown-item" href="<?= $baseUrl ?>/manufacturer">Manufacturers</a></li>
               </ul>
             </li>
             <li class="nav-item dropdown">
               <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                  Data
+                  Meta
               </a>
               <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="#">Universes</a></li>
+                <li><a class="dropdown-item" href="#">Product Types</a></li>
+                <li><a class="dropdown-item" href="#">Toy Lines</a></li>
+                <li><a class="dropdown-item" href="<?= $baseUrl ?>manufacturer">Manufacturers</a></li>  
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="<?= $baseUrl ?>universe">Universes</a></li>
                 <li><a class="dropdown-item" href="#">Subjects</a></li>
                 <li><a class="dropdown-item" href="#">Entertainment Sources</a></li>
               </ul>

@@ -12,11 +12,8 @@ class ManufacturerController extends Controller
 {
     public function index(Request $request): void
     {
-        $manufacturers = Manufacturer::all();
-
-        $this->render('manufacturer_index', [
-            'title'         => 'Manufacturers',
-            'manufacturers' => $manufacturers,
+         $this->render('manufacturer_index', [
+            'title'         => 'Manufacturers'
         ]);
     }
     
@@ -63,8 +60,14 @@ class ManufacturerController extends Controller
             return;
         }
 
-        // 1. Generate safe, unique slug
-        $slug = $this->validateSlug($request->input('slug'), $name, 0);
+         $slug = Manufacturer::validateUniqueSlug($request->input('slug'), $name, 0);
+        
+        // Check if slug validation failed
+        if ($slug === null) {
+            $this->json(['field' => 'slug', 'message' => 'This slug is already in use.'], 422);
+            return;
+        }
+
         $showOnDashboard = $request->input('show_on_dashboard') !== null ? 1 : 0;
 
         // 2. Create
@@ -102,7 +105,12 @@ class ManufacturerController extends Controller
             return;
         }
 
-        $slug = $this->validateSlug($request->input('slug'), $name, $id);
+        $slug = Manufacturer::validateUniqueSlug($request->input('slug'), $name, $id);
+
+        if ($slug === null) {
+            $this->json(['field' => 'slug', 'message' => 'This slug is already in use.'], 422);
+            return;
+        }
 
         Manufacturer::update($id, [
             'name' => $name,
@@ -128,33 +136,6 @@ class ManufacturerController extends Controller
             'success'  => true, 
             'row_html' => $html
         ]);
-    }
-
-    /**
-     * Helper to ensure slugs are valid and unique.
-     * If a collision exists, it appends a timestamp to make it unique.
-     */
-    private function validateSlug(?string $slug, string $name, int $excludeId = 0): string
-    {
-        $slug = trim($slug ?? '');
-        
-        // 1. Generate slug from name if empty
-        if ($slug === '') {
-            // Simple slugify: lowercase, replace non-alphanumeric with dashes
-            $slug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $name), '-'));
-        }
-
-        // 2. Check for uniqueness
-        $db = Database::getInstance();
-        $sql = "SELECT COUNT(*) FROM meta_manufacturers WHERE slug = ? AND id != ?";
-        $count = $db->query($sql, [$slug, $excludeId])->fetchColumn();
-
-        if ($count > 0) {
-            // Append timestamp to ensure uniqueness (simple collision resolution)
-            $slug .= '-' . time();
-        }
-
-        return $slug;
     }
 
     /**

@@ -50,11 +50,16 @@ class EntityManager {
 	}
 
 	init() {
-		// Setup Add Button
+		// 1. Read existing state from URL 🗺️
+		const urlParams = new URLSearchParams(window.location.search);
+		urlParams.forEach((value, key) => {
+			this.currentParams[key] = value;
+		});
+
+		// 2. Setup UI Elements & Sync with URL State
 		const addBtn = document.querySelector(this.ui.addBtn);
 		if (addBtn) addBtn.addEventListener('click', () => this.openModal());
 
-		// Setup Form
 		const form = document.querySelector(this.ui.form);
 		if (form) {
 			form.addEventListener('submit', (e) => {
@@ -65,15 +70,17 @@ class EntityManager {
 			});
 		}
 
-		// Setup Bootstrap Modal
 		const modalEl = document.querySelector(this.ui.modal);
 		if (modalEl && window.bootstrap) {
 			this.modalInstance = new bootstrap.Modal(modalEl);
 		}
 
-		// Setup Search with Debounce ---
+		// Search Input Sync & Listener
 		const searchInput = document.querySelector(this.ui.searchInput);
 		if (searchInput) {
+			// Sync UI to URL param 'q'
+			if (this.currentParams.q) searchInput.value = this.currentParams.q;
+
 			searchInput.addEventListener(
 				'input',
 				UiHelper.debounce((e) => {
@@ -84,8 +91,13 @@ class EntityManager {
 			);
 		}
 
-		// Setup Dropdown Filters ---
+		// Dropdown Filters Sync & Listeners
 		document.querySelectorAll(this.ui.filterInputs).forEach((filter) => {
+			// Sync UI to URL param matching the input name
+			if (this.currentParams[filter.name]) {
+				filter.value = this.currentParams[filter.name];
+			}
+
 			filter.addEventListener('change', (e) => {
 				this.currentParams[e.target.name] = e.target.value;
 				this.currentParams.page = 1;
@@ -93,7 +105,7 @@ class EntityManager {
 			});
 		});
 
-		// Setup Reset Button ---
+		// Reset Button
 		const resetBtn = document.querySelector(this.ui.resetBtn);
 		if (resetBtn) {
 			resetBtn.addEventListener('click', () => {
@@ -106,8 +118,8 @@ class EntityManager {
 			});
 		}
 
-		// Initial Load
-		this.loadList();
+		// 3. Initial Load (Uses currentParams from URL if they exist)
+		this.loadList(this.currentParams);
 	}
 
 	/**
@@ -126,6 +138,8 @@ class EntityManager {
 
 		const container = document.querySelector(this.ui.grid);
 		if (container) container.style.opacity = '0.5';
+
+		this.updateUrl(params);
 
 		try {
 			if (this.mode === 'html') {
@@ -461,5 +475,20 @@ class EntityManager {
 
 	defaultRenderRow(item) {
 		return `<div class=\"col\">Card for ${item.id}</div>`;
+	}
+
+	// Add this method to the EntityManager class
+	updateUrl(params) {
+		const url = new URL(window.location);
+		// Clear existing params to avoid duplicates
+		url.search = '';
+
+		Object.keys(params).forEach((key) => {
+			if (params[key]) {
+				url.searchParams.set(key, params[key]);
+			}
+		});
+
+		window.history.pushState({}, '', url);
 	}
 }

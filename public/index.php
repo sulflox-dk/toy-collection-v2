@@ -56,6 +56,30 @@ set_exception_handler(function (Throwable $e) {
 });
 // ------------------------------------------
 
+// --- SECURITY: HEADERS 🛡️ ---
+$csp = [
+    "default-src 'self'",
+    // script-src: Allow local scripts, inline scripts (needed for your EntityManager init), and the CDN
+    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
+    // style-src: Allow local CSS, inline styles, and our CDNs
+    "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://use.fontawesome.com https://fonts.googleapis.com",
+    // font-src: Specifically for FontAwesome and Google Fonts
+    "font-src 'self' https://use.fontawesome.com https://cdn.jsdelivr.net https://fonts.gstatic.com",
+    // img-src: Allow local images and data URIs (often used for small icons)
+    "img-src 'self' data: https:",
+    // connect-src: This allows the browser to download the .map files and handle AJAX
+    "connect-src 'self' https://cdn.jsdelivr.net",
+    "frame-ancestors 'none'",
+    "object-src 'none'",
+];
+
+header("Content-Security-Policy: " . implode('; ', $csp));
+header("X-Content-Type-Options: nosniff");
+header("X-Frame-Options: DENY");
+header("Referrer-Policy: strict-origin-when-cross-origin");
+header("X-XSS-Protection: 1; mode=block");
+// ----------------------------
+
 // 2. Initialize Core Objects
 $request = new Request();
 $router = new Router();
