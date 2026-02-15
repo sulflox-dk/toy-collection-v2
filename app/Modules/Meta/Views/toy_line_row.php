@@ -1,9 +1,7 @@
 <tr data-id="<?= $e($t['id']) ?>">
-    <td class="ps-3 fw-bold">
-        <?= $e($t['name']) ?>
-    </td>
-    <td>
-        <?= $e($t['slug']) ?>
+    <td class="ps-3">
+        <div class="fw-bold"><?= $e($t['name']) ?></div>
+        <small class="text-muted"><?= $e($t['slug']) ?></small>
     </td>
     <td>
         <?= $e($t['manufacturer_name'] ?? 'Unknown') ?>

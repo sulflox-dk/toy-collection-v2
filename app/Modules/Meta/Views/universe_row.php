@@ -1,9 +1,7 @@
 <tr data-id="<?= $u['id'] ?>">
-    <td class="ps-3 fw-bold">
-        <?= $e($u['name']) ?>
-    </td>
-    <td>
-        <?= $e($u['slug']) ?>
+    <td class="ps-3">
+        <div class="fw-bold"><?= $e($u['name']) ?></div>
+        <small class="text-muted"><?= $e($u['slug']) ?></small>
     </td>
     <td>
         <div class="d-inline-block text-truncate" style="width: 140px;"><?= $e($u['description'] ?? '') ?></div>

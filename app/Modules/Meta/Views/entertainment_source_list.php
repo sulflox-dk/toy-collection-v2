@@ -3,22 +3,23 @@
         <thead class="bg-light">
             <tr>
                 <th class="ps-3" style="width:30%;">Name / Slug</th>
-                <th class="text-center" style="width:20%;">Dashboard</th>
-                <th class="text-center" style="width:20%;">Toy Lines</th>
+                <th style="width:20%;">Type / Year</th>
+                <th style="width:30%;">Universe</th>
+                <th class="text-center" style="width:10%;">Dashboard</th>
                 <th class="text-end pe-3"></th>
             </tr>
         </thead>
         <tbody>
-            <?php if (empty($manufacturers)): ?>
+            <?php if (empty($sources)): ?>
                 <tr>
-                    <td colspan="4" class="text-center py-5 text-muted">
-                        <i class="fa-solid fa-box-open fa-2x mb-2"></i>
-                        <p class="mb-0">No manufacturers found.</p>
+                    <td colspan="5" class="text-center py-5 text-muted">
+                        <i class="fa-solid fa-film fa-2x mb-2"></i>
+                        <p class="mb-0">No sources found.</p>
                     </td>
                 </tr>
             <?php else: ?>
-                <?php foreach($manufacturers as $m): ?>
-                    <?= $this->renderPartial('manufacturer_row', ['m' => $m]); ?>
+                <?php foreach($sources as $s): ?>
+                    <?= $this->renderPartial('entertainment_source_row', ['s' => $s]); ?>
                 <?php endforeach; ?>
             <?php endif; ?>
         </tbody>

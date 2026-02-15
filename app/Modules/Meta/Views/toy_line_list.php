@@ -2,9 +2,8 @@
     <table class="table table-hover align-middle mb-0 border">
         <thead class="bg-light">
             <tr>
-                <th class="ps-3" style="width:23%;">Name</th>
-                <th style="width:23%;">Slug</th>
-                <th style="width:12%;">Manufacturer</th>
+                <th class="ps-3" style="width:30%;">Name / Slug</th>
+                <th style="width:20%;">Manufacturer</th>
                 <th style="width:20%;">Universe</th>
                 <th class="text-center" style="width:10%;">Dashboard</th>
                 <th class="text-end pe-3"></th>

@@ -2,8 +2,7 @@
     <table class="table table-hover align-middle mb-0 border">
         <thead class="bg-light">
             <tr>
-                <th class="ps-3" style="width:20%;">Name</th>
-                <th style="width:15%;">Slug</th>
+                <th class="ps-3" style="width:30%;">Name / Slug</th>
                 <th style="width:25%;">Description</th>
                 <th class="text-center" style="width:15%;">Dashboard</th>
                 <th class="text-center" style="width:15%;">Toy Lines</th>
@@ -13,7 +12,7 @@
         <tbody>
             <?php if (empty($universes)): ?>
                 <tr>
-                    <td colspan="6" class="text-center py-5 text-muted">
+                    <td colspan="5" class="text-center py-5 text-muted">
                         <i class="fa-solid fa-box-open fa-2x mb-2"></i>
                         <p class="mb-0">No universes found.</p>
                     </td>

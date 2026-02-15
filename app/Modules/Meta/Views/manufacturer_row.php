@@ -1,9 +1,7 @@
 <tr data-id="<?= $e($m['id']) ?>">
-    <td class="ps-3 fw-bold">
-        <?= $e($m['name']) ?>
-    </td>
-    <td>
-        <?= $e($m['slug']) ?>
+    <td class="ps-3">
+        <div class="fw-bold"><?= $e($m['name']) ?></div>
+        <small class="text-muted"><?= $e($m['slug']) ?></small>
     </td>
     <td class="text-center">
         <?php if($m['show_on_dashboard']): ?>

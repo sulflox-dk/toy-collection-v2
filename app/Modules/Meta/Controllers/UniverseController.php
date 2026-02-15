@@ -104,65 +104,95 @@ class UniverseController extends Controller
      */
     public function destroy(Request $request, int $id): void
     {
-        // 1. Check for dependencies
-        // (Ensure these methods exist in your ToyLine/CatalogToy models, or return 0 for now)
-        $toyLineCount = method_exists(ToyLine::class, 'countByUniverse') ? ToyLine::countByUniverse($id) : 0;
-        $catalogToyCount = method_exists(CatalogToy::class, 'countByUniverse') ? CatalogToy::countByUniverse($id) : 0;
-        $totalCount = $toyLineCount + $catalogToyCount;
+        // 1. Check Dependencies across ALL 3 Children
+        // We use fully qualified names here to ensure no "Class not found" errors
+        // if you haven't added them to the 'use' statements at the top.
+        $toyLineCount = \App\Modules\Meta\Models\ToyLine::countByUniverse($id);
+        $catToyCount  = \App\Modules\Catalog\Models\CatalogToy::countByUniverse($id);
+        
+        // Ensure EntertainmentSource model is loaded and check its count
+        $entSourceCount = 0;
+        if (class_exists(\App\Modules\Meta\Models\EntertainmentSource::class)) {
+            $entSourceCount = \App\Modules\Meta\Models\EntertainmentSource::countByUniverse($id);
+        }
 
-        // 2. Validate Migration Request
+        $totalDependencies = $toyLineCount + $catToyCount + $entSourceCount;
+
+        // 2. Validate Migration Target
         $migrateTo = (int) $request->input('migrate_to', 0);
-
+        
         if ($migrateTo > 0) {
-            // A. Prevent migrating to self
+            // Error 1: Trying to migrate to itself
             if ($migrateTo === $id) {
                 $this->json(['error' => 'Cannot migrate items to the universe being deleted.'], 400);
                 return;
             }
-            // B. Verify target exists
-            $target = Universe::find($migrateTo);
-            if (!$target) {
-                $this->json(['error' => 'The selected universe for reassignment does not exist.'], 400);
+            
+            // Error 2: Target does not exist
+            if (!Universe::find($migrateTo)) {
+                $this->json(['error' => 'The selected destination universe does not exist.'], 400);
                 return;
             }
         }
 
-        // 3. Handle Migration Requirement (409 Conflict)
-        if ($totalCount > 0 && $migrateTo === 0) {
+        // 3. Conflict Check (409) - Stop here if we have items but no migration target
+        if ($totalDependencies > 0 && $migrateTo === 0) {
+            $msg = "This universe is in use by: ";
+            $parts = [];
+            
+            if ($toyLineCount > 0) {
+                $parts[] = "{$toyLineCount} toy line(s)";
+            }
+            if ($entSourceCount > 0) {
+                $parts[] = "{$entSourceCount} entertainment source(s)";
+            }
+            if ($catToyCount > 0) {
+                $parts[] = "{$catToyCount} toy(s)";
+            }
+            
+            $msg .= implode(', ', $parts) . ". Please reassign them before deleting.";
+
             $this->json([
                 'requires_migration' => true,
-                'message' => "This universe is linked to {$toyLineCount} toy line(s) and {$catalogToyCount} catalog toy(s). Please reassign them to another universe before deleting.",
+                'message' => $msg,
+                // This URL must match your route for the migration dropdown
                 'options_url' => "universe/migrate-on-delete-options?exclude={$id}"
             ], 409);
             return;
         }
 
+        // 4. Execute Deletion with Transaction
         $db = Database::getInstance();
 
         try {
-            // START TRANSACTION 🛡️
             $db->beginTransaction();
 
-            // 4. Migrate items if requested (and validated)
-            if ($totalCount > 0 && $migrateTo > 0) {
-                if (method_exists(ToyLine::class, 'migrateUniverse')) {
-                    ToyLine::migrateUniverse($id, $migrateTo);
+            // Migrate if requested
+            if ($totalDependencies > 0 && $migrateTo > 0) {
+                
+                // A. Migrate Toy Lines
+                if ($toyLineCount > 0) {
+                    \App\Modules\Meta\Models\ToyLine::migrateUniverse($id, $migrateTo);
                 }
-                if (method_exists(CatalogToy::class, 'migrateUniverse')) {
-                    CatalogToy::migrateUniverse($id, $migrateTo);
+                
+                // B. Migrate Entertainment Sources
+                if ($entSourceCount > 0) {
+                    \App\Modules\Meta\Models\EntertainmentSource::migrateUniverse($id, $migrateTo);
+                }
+                
+                // C. Migrate Catalog Toys
+                if ($catToyCount > 0) {
+                    \App\Modules\Catalog\Models\CatalogToy::migrateUniverse($id, $migrateTo);
                 }
             }
 
-            // 5. Delete the record
+            // Finally, delete the Universe
             Universe::delete($id);
 
-            // COMMIT TRANSACTION ✅
             $db->commit();
-            
             $this->json(['success' => true]);
 
         } catch (\Exception $e) {
-            // ROLLBACK ON FAILURE ❌
             $db->rollBack();
             $this->json(['error' => 'Delete failed: ' . $e->getMessage()], 500);
         }

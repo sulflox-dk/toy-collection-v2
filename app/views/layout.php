@@ -73,7 +73,7 @@ $baseUrl = rtrim(Config::get('app.url', ''), '/') . '/';
                         <li><a href="<?= $baseUrl ?>universe" class="nav-link">Universes</a></li>
                         <li><hr class="dropdown-divider bg-secondary"></li>
                         <li><a href="#" class="nav-link">Product Types</a></li>
-                        <li><a href="#" class="nav-link">Entertainment Sources</a></li>
+                        <li><a href="<?= $baseUrl ?>entertainment-source" class="nav-link">Entertainment Sources</a></li>
                         <li><a href="#" class="nav-link">Subjects</a></li>
                     </ul>
                 </div>
