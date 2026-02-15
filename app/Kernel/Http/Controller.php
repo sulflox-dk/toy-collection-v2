@@ -107,13 +107,34 @@ abstract class Controller
      * Uses the controller's own directory to find the sibling Views/ folder.
      * e.g. app/Modules/Meta/Controllers/ManufacturerController.php
      *   → app/Modules/Meta/Views/manufacturer_index.php
+     * 
+     * 1. Checks module-specific path (e.g. app/Modules/Meta/Views/toy_line_index.php)
+     * 2. Checks global path (e.g. app/Views/common/index_header.php)
      */
     private function resolveViewPath(string $view): string
     {
+        // 1. Try Module-Specific View (Current Behavior)
         $reflector = new ReflectionClass(static::class);
         $controllerDir = dirname($reflector->getFileName());
-        $moduleDir = dirname($controllerDir); // up from Controllers/
+        
+        // Go up one level from Controllers to find Views
+        // e.g. app/Modules/Meta/Controllers/../Views/
+        $moduleViewPath = $controllerDir . '/../Views/' . $view . '.php';
+        
+        if (file_exists($moduleViewPath)) {
+            return $moduleViewPath;
+        }
 
-        return $moduleDir . '/Views/' . $view . '.php';
+        // 2. Try Global View (New Fallback)
+        // This handles "common/index_header" -> app/Views/common/index_header.php
+        $globalViewPath = ROOT_PATH . '/app/Views/' . $view . '.php';
+
+        if (file_exists($globalViewPath)) {
+            return $globalViewPath;
+        }
+
+        // 3. Error
+        throw new \RuntimeException("View file not found: {$view}. Checked:\n - {$moduleViewPath}\n - {$globalViewPath}");
     }
+
 }

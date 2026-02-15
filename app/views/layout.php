@@ -70,11 +70,11 @@ $baseUrl = rtrim(Config::get('app.url', ''), '/') . '/';
                     <ul class="sidebar-submenu btn-toggle-nav-list align-items-center rounded">
                         <li><a href="<?= $baseUrl ?>manufacturer" class="nav-link">Manufacturers</a></li>
                         <li><a href="<?= $baseUrl ?>toy-line" class="nav-link">Toy Lines</a></li>
-                        <li><a href="<?= $baseUrl ?>universe" class="nav-link">Universes</a></li>
-                        <li><hr class="dropdown-divider bg-secondary"></li>
-                        <li><a href="#" class="nav-link">Product Types</a></li>
+                        <li><a href="<?= $baseUrl ?>product-type" class="nav-link">Product Types</a></li>
+                        <li class="py-2"><hr class="dropdown-divider bg-primary" style="height:3px;"></li>
+                        <li><a href="<?= $baseUrl ?>universe" class="nav-link">Universes</a></li>                        
                         <li><a href="<?= $baseUrl ?>entertainment-source" class="nav-link">Entertainment Sources</a></li>
-                        <li><a href="#" class="nav-link">Subjects</a></li>
+                        <li><a href="<?= $baseUrl ?>subject" class="nav-link">Subjects</a></li>
                     </ul>
                 </div>
             </li>

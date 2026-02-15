@@ -1,39 +1,26 @@
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h1 class="h3 mb-0 text-gray-800">Meta / Universes</h1>
-        <p class="text-muted small mb-0">Manage the intellectual properties and worlds (e.g. Star Wars, Marvel).</p>
-    </div>
-    <button id="btn-add-universe" class="btn btn-primary">
-        <i class="fa-solid fa-plus me-2"></i> Add Universe
-    </button>
+<?php
+// 1. Build Custom Filters (Visibility)
+ob_start(); 
+?>
+<div class="col-md-2 mb-2 mb-md-0">
+    <select class="form-select data-filter" name="visibility">
+        <option value="">All Visibilities</option>
+        <option value="1">Visible on Dashboard</option>
+        <option value="0">Hidden from Dashboard</option>
+    </select>
 </div>
+<?php 
+$customFilters = ob_get_clean();
 
-<div class="row mb-3 gx-2 align-items-center">
-    <div class="col-md-2 mb-2 mb-md-0">
-        <div class="input-group">
-            <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-search text-muted"></i></span>
-            <input type="text" class="form-control border-start-0 ps-1" id="search-input" placeholder="Search...">
-        </div>
-    </div>
-    <div class="col-md-2 mb-2 mb-md-0">
-        <select class="form-select data-filter" name="visibility">
-            <option value="">All Visibilities</option>
-            <option value="1">Visible on Dashboard</option>
-            <option value="0">Hidden from Dashboard</option>
-        </select>
-    </div>
-    <div class="col-md-auto ms-auto">
-        <button class="btn btn-light border" id="btn-reset-filters" title="Reset Filters">
-            <i class="fa-solid fa-rotate-left text-muted"></i>
-        </button>
-    </div>
-</div>
-
-<div class="card shadow-sm border-0">
-    <div class="card-body p-0">
-        <div id="universe-grid"></div>
-    </div>
-</div>
+// 2. Render Generic Header
+echo $this->renderPartial('common/index_header', [
+    'title' => 'Meta / Universes',
+    'subtitle' => 'Manage the intellectual properties and worlds (e.g. Star Wars, Marvel).',
+    'entityKey' => 'universe',
+    'addBtnText' => 'Add Universe',
+    'extraFilters' => $customFilters
+]);
+?>
 
 <div class="modal fade" id="universe-modal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -85,7 +72,6 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // This uses the EntityManager we just refined with AbortController support!
     new EntityManager('universe', {
         mode: 'html',
         endpoint: '/universe',

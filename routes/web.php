@@ -5,6 +5,8 @@ use App\Modules\Meta\Controllers\UniverseController;
 use App\Modules\Meta\Controllers\ManufacturerController;
 use App\Modules\Meta\Controllers\ToyLineController;
 use App\Modules\Meta\Controllers\EntertainmentSourceController;
+use App\Modules\Meta\Controllers\ProductTypeController;
+use App\Modules\Meta\Controllers\SubjectController;
 
 /** @var Router $router */
 
@@ -41,3 +43,19 @@ $router->post('/entertainment-source',      [EntertainmentSourceController::clas
 $router->put('/entertainment-source/{id}',  [EntertainmentSourceController::class, 'update']);
 $router->get('/entertainment-source/migrate-on-delete-options', [EntertainmentSourceController::class, 'migrateOnDeleteOptions']);
 $router->delete('/entertainment-source/{id}', [EntertainmentSourceController::class, 'destroy']);
+
+// ── Meta: Product Types ──────────────────────────────────────
+$router->get('/product-type',       [ProductTypeController::class, 'index']);
+$router->get('/product-type/list',  [ProductTypeController::class, 'list']);
+$router->post('/product-type',      [ProductTypeController::class, 'store']);
+$router->put('/product-type/{id}',  [ProductTypeController::class, 'update']);
+$router->delete('/product-type/{id}', [ProductTypeController::class, 'destroy']);
+$router->get('/product-type/migrate-on-delete-options', [ProductTypeController::class, 'migrateOnDeleteOptions']);
+
+// ── Meta: Subjects ──────────────────────────────────────
+$router->get('/subject',        [SubjectController::class, 'index']);
+$router->get('/subject/list',   [SubjectController::class, 'list']);
+$router->post('/subject',       [SubjectController::class, 'store']);
+$router->put('/subject/{id}',   [SubjectController::class, 'update']);
+$router->delete('/subject/{id}',[SubjectController::class, 'destroy']);
+$router->get('/subject/migrate-on-delete-options', [SubjectController::class, 'migrateOnDeleteOptions']);

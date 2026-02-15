@@ -1,59 +1,47 @@
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h1 class="h3 mb-0 text-gray-800">Meta / Toy Lines</h1>
-        <p class="text-muted small mb-0">Manage product lines (e.g. Vintage Collection, Classified Series).</p>
-    </div>
-    <button id="btn-add-toy-line" class="btn btn-primary">
-        <i class="fa-solid fa-plus me-2"></i> Add Toy Line
-    </button>
+<?php
+// 1. Build the HTML for your custom filters
+ob_start(); 
+?>
+<div class="col-md-2 mb-2 mb-md-0">
+    <select class="form-select data-filter" name="manufacturer_id">
+        <option value="">All Manufacturers</option>
+        <?php foreach ($manufacturers as $m): ?>
+            <option value="<?= $m['id'] ?>"><?= htmlspecialchars($m['name']) ?></option>
+        <?php endforeach; ?>
+    </select>
 </div>
-
-<div class="row mb-3 gx-2 align-items-center">
-    <div class="col-md-2 mb-2 mb-md-0">
-        <div class="input-group">
-            <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-search text-muted"></i></span>
-            <input type="text" class="form-control border-start-0 ps-1" id="search-input" placeholder="Search...">
-        </div>
-    </div>
-
-    <div class="col-md-2 mb-2 mb-md-0">
-        <select class="form-select data-filter" name="manufacturer_id">
-            <option value="">All Manufacturers</option>
-            <?php foreach ($manufacturers as $m): ?>
-                <option value="<?= $m['id'] ?>"><?= htmlspecialchars($m['name']) ?></option>
-            <?php endforeach; ?>
-        </select>
-    </div>
-
-    <div class="col-md-2 mb-2 mb-md-0">
-        <select class="form-select data-filter" name="universe_id">
-            <option value="">All Universes</option>
-            <?php foreach ($universes as $u): ?>
-                <option value="<?= $u['id'] ?>"><?= htmlspecialchars($u['name']) ?></option>
-            <?php endforeach; ?>
-        </select>
-    </div>
-
-    <div class="col-md-2 mb-2 mb-md-0">
-        <select class="form-select data-filter" name="visibility">
-            <option value="">All Dashboard</option>
-            <option value="1">Visible</option>
-            <option value="0">Hidden</option>
-        </select>
-    </div>
-
-    <div class="col-md-auto ms-auto">
-        <button class="btn btn-light border" id="btn-reset-filters" title="Reset Filters">
-            <i class="fa-solid fa-rotate-left text-muted"></i>
-        </button>
-    </div>
+<div class="col-md-2 mb-2 mb-md-0">
+    <select class="form-select data-filter" name="universe_id">
+        <option value="">All Universes</option>
+        <?php foreach ($universes as $u): ?>
+            <option value="<?= $u['id'] ?>"><?= htmlspecialchars($u['name']) ?></option>
+        <?php endforeach; ?>
+    </select>
 </div>
-
-<div class="card shadow-sm border-0">
-    <div class="card-body p-0">
-        <div id="toy-line-grid"></div>
-    </div>
+<div class="col-md-2 mb-2 mb-md-0">
+    <select class="form-select data-filter" name="visibility">
+        <option value="">All Status</option>
+        <option value="1">Visible</option>
+        <option value="0">Hidden</option>
+    </select>
 </div>
+<?php 
+$customFiltersHTML = ob_get_clean();
+
+// 2. Pass it to the generic header
+echo $this->renderPartial('common/index_header', [
+    'title' => 'Meta / Toy Lines',
+    'subtitle' => 'Manage product lines (e.g. Vintage Collection, Classified Series).',
+    'entityKey' => 'toy-line',
+    'addBtnText' => 'Add Toy Line',
+    
+    // Inject the HTML we just built
+    'extraFilters' => $customFiltersHTML, 
+    
+    // Toggle standard stuff if you want
+    'showVisibility' => true 
+]);
+?>
 
 <div class="modal fade" id="toy-line-modal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">

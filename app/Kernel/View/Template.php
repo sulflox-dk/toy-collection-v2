@@ -74,23 +74,47 @@ class Template
     }
 
     /**
-     * NEW: Render a sub-view (partial) without layout.
-     * Looks in the same directory as the current view first.
+     * Render a partial view (a view inside another view).
+     * * Search Order:
+     * 1. Relative to the current view file (e.g. app/Modules/Meta/Views/)
+     * 2. Global Views folder (e.g. app/Views/)
      */
     public function renderPartial(string $viewName, array $data = []): string
     {
-        // 1. Try finding it relative to the current file (e.g. manufacturer_row next to manufacturer_list)
+        // 1. Try relative path (sibling to current view)
         if ($this->currentViewFile) {
             $currentDir = dirname($this->currentViewFile);
             $localPath = $currentDir . '/' . ltrim($viewName, '/') . '.php';
-            
             if (file_exists($localPath)) {
                 return $this->capture($localPath, $data);
             }
         }
 
-        // 2. Fallback: absolute path or check root views (optional, strict for now)
-        throw new RuntimeException("Partial view not found: {$viewName} (looked in " . dirname($this->currentViewFile ?? '') . ")");
+        // 2. Try Global path (app/Views/)
+        $globalPath = $this->viewsPath . '/' . ltrim($viewName, '/') . '.php';
+        if (file_exists($globalPath)) {
+            return $this->capture($globalPath, $data);
+        }
+
+        // 3. NEW: Try looking in Modules (Expensive scan, but works for "magic" finding)
+        // This is a bit "hacky" but solves your exact problem without changing 50 files.
+        // It looks for app/Modules/{ANY}/Views/{viewName}.php
+        $modulesPath = dirname($this->viewsPath) . '/Modules'; // app/Modules
+        if (is_dir($modulesPath)) {
+            // Recursive glob is slow, so let's try to be specific if we can.
+            // But since we don't know the module, we can iterate top-level folders.
+            $modules = glob($modulesPath . '/*', GLOB_ONLYDIR);
+            foreach ($modules as $moduleDir) {
+                $moduleViewPath = $moduleDir . '/Views/' . ltrim($viewName, '/') . '.php';
+                if (file_exists($moduleViewPath)) {
+                    return $this->capture($moduleViewPath, $data);
+                }
+            }
+        }
+
+        // 4. Error
+        $lookedIn = dirname($this->currentViewFile ?? 'unknown');
+        throw new RuntimeException("Partial view not found: {$viewName}\nChecked:\n - {$lookedIn}\n - {$this->viewsPath}");
     }
 
     /**
