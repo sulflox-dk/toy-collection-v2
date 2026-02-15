@@ -20,7 +20,7 @@ class UniverseController extends Controller
     public function list(Request $request): void
     {
         $page = (int) $request->input('page', 1);
-        $perPage = 2;
+        $perPage = 20;
         $search = trim($request->input('q', ''));
         $visibility = trim($request->input('visibility', ''));
 

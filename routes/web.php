@@ -3,6 +3,7 @@
 use App\Kernel\Http\Router;
 use App\Modules\Meta\Controllers\UniverseController;
 use App\Modules\Meta\Controllers\ManufacturerController;
+use App\Modules\Meta\Controllers\ToyLineController;
 
 /** @var Router $router */
 
@@ -23,3 +24,10 @@ $router->post('/manufacturer',      [ManufacturerController::class, 'store']);
 $router->put('/manufacturer/{id}',  [ManufacturerController::class, 'update']);
 $router->get('/manufacturer/migrate-on-delete-options', [ManufacturerController::class, 'migrateOnDeleteOptions']);
 $router->delete('/manufacturer/{id}', [ManufacturerController::class, 'destroy']);
+
+// ── Meta: Toy Lines ──────────────────────────────────────
+$router->get('/toy-line',       [ToyLineController::class, 'index']);
+$router->get('/toy-line/list',  [ToyLineController::class, 'list']);
+$router->post('/toy-line',      [ToyLineController::class, 'store']);
+$router->put('/toy-line/{id}',  [ToyLineController::class, 'update']);
+$router->delete('/toy-line/{id}', [ToyLineController::class, 'destroy']);

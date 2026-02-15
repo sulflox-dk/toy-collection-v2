@@ -16,77 +16,126 @@ $baseUrl = rtrim(Config::get('app.url', ''), '/') . '/';
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer">
   </head>
   <body class="bg-light">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
-      <div class="container">
-        <a class="navbar-brand" href="<?= $baseUrl ?>">
-            <i class="fa-solid fa-jedi"></i> <?= $appName ?>
-        </a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain">
-          <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarMain">
-          <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-            <li class="nav-item">
-              <a class="nav-link" href="<?= $baseUrl ?>">Dashboard</a>
-            </li>
-            <li class="nav-item dropdown">
-              <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                  My Collection
-              </a>
-              <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="#">Collection</a></li>
-                <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item" href="#">Storage</a></li>
-              </ul>
-            </li>
-            <li class="nav-item dropdown">
-              <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Catalog</a>
-              <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="#">Master Toys</a></li>
-              </ul>
-            </li>
-            <li class="nav-item dropdown">
-              <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                  Meta
-              </a>
-              <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="#">Product Types</a></li>
-                <li><a class="dropdown-item" href="#">Toy Lines</a></li>
-                <li><a class="dropdown-item" href="<?= $baseUrl ?>manufacturer">Manufacturers</a></li>  
-                <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item" href="<?= $baseUrl ?>universe">Universes</a></li>
-                <li><a class="dropdown-item" href="#">Subjects</a></li>
-                <li><a class="dropdown-item" href="#">Entertainment Sources</a></li>
-              </ul>
-            </li>
-            <li class="nav-item dropdown">
-              <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                  Media
-              </a>
-              <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="#">Media Library</a></li>
-                <li><a class="dropdown-item" href="#">Media Tags</a></li>
-              </ul>
-            </li>
-          </ul>
-          <ul class="navbar-nav ms-auto">
-            <li class="nav-item">
-              <a class="nav-link" href="#"><i class="fa-solid fa-gear"></i> Settings</a>
-            </li>
-          </ul>
+
+  <div class="app-layout">
+    <nav class="sidebar d-flex flex-column flex-shrink-0 p-3 text-white bg-dark" id="sidebarMenu">
+        <div class="d-flex align-items-center justify-content-between mb-0 w-100">
+            <a href="<?= $baseUrl ?>" class="d-flex align-items-center text-white text-decoration-none text-truncate">
+                <span class="fs-4 fw-bold"><?= $appName ?></span>
+            </a>
+            
+            <button class="btn btn-link text-white-50 p-0 ms-2 me-3" id="btn-toggle-all" title="Expand/Collapse All">
+                <i class="fa-solid fa-angles-right"></i>
+            </button>
         </div>
-      </div>
+        <hr>
+
+
+        <ul class="nav nav-pills flex-column mb-auto">
+            <li class="nav-item">
+                <a href="<?= $baseUrl ?>" class="nav-link text-white" aria-current="page">
+                    <i class="fa-solid fa-gauge-high"></i>
+                    Dashboard
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link btn-toggle-nav collapsed" data-bs-toggle="collapse" href="#menu-collection" role="button" aria-expanded="false">
+                    <i class="fa-solid fa-boxes-stacked"></i> My Collection
+                </a>
+                <div class="collapse" id="menu-collection">
+                    <ul class="sidebar-submenu btn-toggle-nav-list align-items-center rounded">
+                        <li><a href="#" class="nav-link">Collection</a></li>
+                        <li><a href="#" class="nav-link">Storage</a></li>
+                    </ul>
+                </div>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link btn-toggle-nav collapsed" data-bs-toggle="collapse" href="#menu-catalog" role="button" aria-expanded="false">
+                    <i class="fa-solid fa-book-open"></i> Catalog
+                </a>
+                <div class="collapse" id="menu-catalog">
+                    <ul class="sidebar-submenu btn-toggle-nav-list align-items-center rounded">
+                        <li><a href="#" class="nav-link">Master Toys</a></li>
+                    </ul>
+                </div>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link btn-toggle-nav collapsed" data-bs-toggle="collapse" href="#menu-meta" role="button" aria-expanded="false">
+                    <i class="fa-solid fa-tags"></i> Meta Data
+                </a>
+                <div class="collapse" id="menu-meta">
+                    <ul class="sidebar-submenu btn-toggle-nav-list align-items-center rounded">
+                        <li><a href="<?= $baseUrl ?>manufacturer" class="nav-link">Manufacturers</a></li>
+                        <li><a href="<?= $baseUrl ?>toy-line" class="nav-link">Toy Lines</a></li>
+                        <li><a href="<?= $baseUrl ?>universe" class="nav-link">Universes</a></li>
+                        <li><hr class="dropdown-divider bg-secondary"></li>
+                        <li><a href="#" class="nav-link">Product Types</a></li>
+                        <li><a href="#" class="nav-link">Entertainment Sources</a></li>
+                        <li><a href="#" class="nav-link">Subjects</a></li>
+                    </ul>
+                </div>
+            </li>
+
+             <li class="nav-item">
+                <a class="nav-link btn-toggle-nav collapsed" data-bs-toggle="collapse" href="#menu-media" role="button" aria-expanded="false">
+                    <i class="fa-solid fa-images"></i> Media
+                </a>
+                <div class="collapse" id="menu-media">
+                    <ul class="sidebar-submenu btn-toggle-nav-list align-items-center rounded">
+                        <li><a href="#" class="nav-link">Media Library</a></li>
+                        <li><a href="#" class="nav-link">Media Tags</a></li>
+                    </ul>
+                </div>
+            </li>
+        </ul>
+        <hr>
+        <div class="dropdown">
+            <a href="#" class="d-flex align-items-center text-white text-decoration-none dropdown-toggle" id="dropdownUser1" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="fa-solid fa-gear me-2"></i>
+                <strong>Settings</strong>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="dropdownUser1">
+                <li><a class="dropdown-item" href="#">Profile</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="#">Sign out</a></li>
+            </ul>
+        </div>
     </nav>
 
-    <div class="container min-vh-100">
-        <?= $content ?>
+    <div class="main-content-wrapper">
+        
+        <header class="navbar navbar-dark bg-dark d-xl-none sticky-top mb-4">
+            <div class="container-fluid">
+                <button class="navbar-toggler" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasSidebar" aria-controls="offcanvasSidebar">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <span class="navbar-brand m-0"><?= $appName ?></span>
+            </div>
+        </header>
+
+        <main class="container-fluid ms-0 py-3 px-4 flex-grow-1" style="max-width: 1280px;">
+            <?= $content ?>
+        </main>
+
+        <footer class="bg-dark text-white text-center py-3 mt-auto">
+            <div class="container">
+                <small>&copy; <?= date('Y') ?> <?= $appName ?>. May the Force be with you.</small>
+            </div>
+        </footer>
+    </div>
+</div>
+    <div class="offcanvas offcanvas-start text-bg-dark" tabindex="-1" id="offcanvasSidebar" aria-labelledby="offcanvasSidebarLabel">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="offcanvasSidebarLabel"><?= $appName ?></h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body p-0">
+            </div>
     </div>
 
-    <footer class="bg-dark text-white text-center py-3 mt-5">
-        <div class="container">
-            <small>&copy; <?= date('Y') ?> <?= $appName ?>. May the Force be with you.</small>
-        </div>
-    </footer>
 
     <div class="modal fade" id="appModal" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -158,8 +207,8 @@ $baseUrl = rtrim(Config::get('app.url', ''), '/') . '/';
     <script src="<?= $e($baseUrl) ?>assets/js/core/api-client.js?v=<?= \App\Kernel\Core\Config::get('app.version', '1.0.0') ?>"></script>
     <script src="<?= $e($baseUrl) ?>assets/js/core/ui-helper.js?v=<?= \App\Kernel\Core\Config::get('app.version', '1.0.0') ?>"></script>
     <script src="<?= $e($baseUrl) ?>assets/js/core/validation.js?v=<?= \App\Kernel\Core\Config::get('app.version', '1.0.0') ?>"></script>
-    
     <script src="<?= $e($baseUrl) ?>assets/js/core/entity-manager.js?v=<?= \App\Kernel\Core\Config::get('app.version', '1.0.0') ?>"></script>
+    <script src="<?= $e($baseUrl) ?>assets/js/core/layout.js?v=<?= \App\Kernel\Core\Config::get('app.version', '1.0.0') ?>"></script>
 
     <?php if (!empty($scripts) && is_array($scripts)): ?>
         <?php foreach ($scripts as $script): ?>

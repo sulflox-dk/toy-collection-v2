@@ -8,14 +8,14 @@
     </button>
 </div>
 
-<div class="row mb-3 align-items-center">
-    <div class="col-md-4 mb-2 mb-md-0">
+<div class="row mb-3 gx-2 align-items-center">
+    <div class="col-md-2 mb-2 mb-md-0">
         <div class="input-group">
-            <span class="input-group-text bg-white"><i class="fa-solid fa-search text-muted"></i></span>
-            <input type="text" class="form-control" id="search-input" placeholder="Search manufacturers...">
+            <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-search text-muted"></i></span>
+            <input type="text" class="form-control border-start-0 ps-1" id="search-input" placeholder="Search...">
         </div>
     </div>
-    <div class="col-md-3 mb-2 mb-md-0">
+    <div class="col-md-2 mb-2 mb-md-0">
         <select class="form-select data-filter" name="visibility">
             <option value="">All Visibilities</option>
             <option value="1">Visible on Dashboard</option>
@@ -23,8 +23,8 @@
         </select>
     </div>
     <div class="col-md-auto ms-auto">
-        <button class="btn btn-outline-secondary btn-sm" id="btn-reset-filters">
-            <i class="fa-solid fa-rotate-left me-1"></i> Reset
+        <button class="btn btn-light border" id="btn-reset-filters" title="Reset Filters">
+            <i class="fa-solid fa-rotate-left text-muted"></i>
         </button>
     </div>
 </div>
