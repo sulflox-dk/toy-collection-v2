@@ -75,6 +75,9 @@ $baseUrl = rtrim(Config::get('app.url', ''), '/') . '/';
                         <li><a href="<?= $baseUrl ?>universe" class="nav-link">Universes</a></li>                        
                         <li><a href="<?= $baseUrl ?>entertainment-source" class="nav-link">Entertainment Sources</a></li>
                         <li><a href="<?= $baseUrl ?>subject" class="nav-link">Subjects</a></li>
+                        <li class="py-2"><hr class="dropdown-divider bg-primary" style="height:3px;"></li>
+                        <li><a href="<?= $baseUrl ?>packaging-type" class="nav-link">Packaging Types</a></li>
+                        <li><a href="<?= $baseUrl ?>acquisition-status" class="nav-link">Acquisition Statuses</a></li>
                     </ul>
                 </div>
             </li>

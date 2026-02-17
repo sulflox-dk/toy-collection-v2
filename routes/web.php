@@ -7,6 +7,8 @@ use App\Modules\Meta\Controllers\ToyLineController;
 use App\Modules\Meta\Controllers\EntertainmentSourceController;
 use App\Modules\Meta\Controllers\ProductTypeController;
 use App\Modules\Meta\Controllers\SubjectController;
+use App\Modules\Meta\Controllers\AcquisitionStatusController;
+use App\Modules\Meta\Controllers\PackagingTypeController;
 
 /** @var Router $router */
 
@@ -59,3 +61,19 @@ $router->post('/subject',       [SubjectController::class, 'store']);
 $router->put('/subject/{id}',   [SubjectController::class, 'update']);
 $router->delete('/subject/{id}',[SubjectController::class, 'destroy']);
 $router->get('/subject/migrate-on-delete-options', [SubjectController::class, 'migrateOnDeleteOptions']);
+
+// ── Meta: Acquisition Status ──────────────────────────────────────
+$router->get('/acquisition-status',        [AcquisitionStatusController::class, 'index']);
+$router->get('/acquisition-status/list',   [AcquisitionStatusController::class, 'list']);
+$router->post('/acquisition-status',       [AcquisitionStatusController::class, 'store']);
+$router->put('/acquisition-status/{id}',   [AcquisitionStatusController::class, 'update']);
+$router->delete('/acquisition-status/{id}',[AcquisitionStatusController::class, 'destroy']);
+$router->get('/acquisition-status/migrate-on-delete-options', [AcquisitionStatusController::class, 'migrateOnDeleteOptions']);
+
+// ── Meta: Packaging type ──────────────────────────────────────
+$router->get('/packaging-type',        [PackagingTypeController::class, 'index']);
+$router->get('/packaging-type/list',   [PackagingTypeController::class, 'list']);
+$router->post('/packaging-type',       [PackagingTypeController::class, 'store']);
+$router->put('/packaging-type/{id}',   [PackagingTypeController::class, 'update']);
+$router->delete('/packaging-type/{id}',[PackagingTypeController::class, 'destroy']);
+$router->get('/packaging-type/migrate-on-delete-options', [PackagingTypeController::class, 'migrateOnDeleteOptions']);
