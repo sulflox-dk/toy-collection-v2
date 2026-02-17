@@ -9,6 +9,9 @@ use App\Modules\Meta\Controllers\ProductTypeController;
 use App\Modules\Meta\Controllers\SubjectController;
 use App\Modules\Meta\Controllers\AcquisitionStatusController;
 use App\Modules\Meta\Controllers\PackagingTypeController;
+use App\Modules\Meta\Controllers\ConditionGradeController;
+use App\Modules\Meta\Controllers\GraderTierController;
+use App\Modules\Meta\Controllers\GradingCompanyController;
 
 /** @var Router $router */
 
@@ -77,3 +80,24 @@ $router->post('/packaging-type',       [PackagingTypeController::class, 'store']
 $router->put('/packaging-type/{id}',   [PackagingTypeController::class, 'update']);
 $router->delete('/packaging-type/{id}',[PackagingTypeController::class, 'destroy']);
 $router->get('/packaging-type/migrate-on-delete-options', [PackagingTypeController::class, 'migrateOnDeleteOptions']);
+
+$router->get('/condition-grade',        [ConditionGradeController::class, 'index']);
+$router->get('/condition-grade/list',   [ConditionGradeController::class, 'list']);
+$router->post('/condition-grade',       [ConditionGradeController::class, 'store']);
+$router->put('/condition-grade/{id}',   [ConditionGradeController::class, 'update']);
+$router->delete('/condition-grade/{id}',[ConditionGradeController::class, 'destroy']);
+$router->get('/condition-grade/migrate-on-delete-options', [ConditionGradeController::class, 'migrateOnDeleteOptions']);
+
+$router->get('/grader-tier',        [GraderTierController::class, 'index']);
+$router->get('/grader-tier/list',   [GraderTierController::class, 'list']);
+$router->post('/grader-tier',       [GraderTierController::class, 'store']);
+$router->put('/grader-tier/{id}',   [GraderTierController::class, 'update']);
+$router->delete('/grader-tier/{id}',[GraderTierController::class, 'destroy']);
+$router->get('/grader-tier/migrate-on-delete-options', [GraderTierController::class, 'migrateOnDeleteOptions']);
+
+$router->get('/grading-company',        [GradingCompanyController::class, 'index']);
+$router->get('/grading-company/list',   [GradingCompanyController::class, 'list']);
+$router->post('/grading-company',       [GradingCompanyController::class, 'store']);
+$router->put('/grading-company/{id}',   [GradingCompanyController::class, 'update']);
+$router->delete('/grading-company/{id}',[GradingCompanyController::class, 'destroy']);
+$router->get('/grading-company/migrate-on-delete-options', [GradingCompanyController::class, 'migrateOnDeleteOptions']);

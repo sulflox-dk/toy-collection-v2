@@ -78,6 +78,9 @@ $baseUrl = rtrim(Config::get('app.url', ''), '/') . '/';
                         <li class="py-2"><hr class="dropdown-divider bg-primary" style="height:3px;"></li>
                         <li><a href="<?= $baseUrl ?>packaging-type" class="nav-link">Packaging Types</a></li>
                         <li><a href="<?= $baseUrl ?>acquisition-status" class="nav-link">Acquisition Statuses</a></li>
+                        <li><a href="<?= $baseUrl ?>grading-company" class="nav-link">Grading Companies</a></li>
+                        <li><a href="<?= $baseUrl ?>grader-tier" class="nav-link">Grader Tiers</a></li>
+                        <li><a href="<?= $baseUrl ?>condition-grade" class="nav-link">Condition Grades</a></li>
                     </ul>
                 </div>
             </li>
