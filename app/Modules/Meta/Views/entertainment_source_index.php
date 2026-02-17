@@ -6,7 +6,7 @@ ob_start();
     <select class="form-select data-filter" name="type">
         <option value="">All Types</option>
         <?php foreach ($types as $type): ?>
-            <option value="<?= $type ?>"><?= $type ?></option>
+            <option value="<?= $type ?>"><?= $e($type) ?></option>
         <?php endforeach; ?>
     </select>
 </div>
@@ -15,7 +15,7 @@ ob_start();
     <select class="form-select data-filter" name="universe_id">
         <option value="">All Universes</option>
         <?php foreach ($universes as $u): ?>
-            <option value="<?= $u['id'] ?>"><?= htmlspecialchars($u['name']) ?></option>
+            <option value="<?= $u['id'] ?>"><?= $e($u['name']) ?></option>
         <?php endforeach; ?>
     </select>
 </div>
@@ -77,7 +77,7 @@ echo $this->renderPartial('common/index_header', [
                         <select class="form-select" name="universe_id" required>
                             <option value="">Select...</option>
                             <?php foreach ($universes as $u): ?>
-                                <option value="<?= $u['id'] ?>"><?= htmlspecialchars($u['name']) ?></option>
+                                <option value="<?= $u['id'] ?>"><?= $e($u['name']) ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -111,14 +111,17 @@ echo $this->renderPartial('common/index_header', [
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    // FIX: Moved UI selectors into the 'ui' object
     new EntityManager('source', {
         mode: 'html',
         endpoint: '/entertainment-source',
         listUrl: '/entertainment-source/list',
-        modalId: 'source-modal',
-        formId: 'source-form',
-        gridId: 'source-grid',
-        btnAddId: 'btn-add-source'
+        ui: {
+            modalId: 'source-modal',
+            formId: 'source-form',
+            gridId: 'source-grid',
+            btnAddId: 'btn-add-source'
+        }
     });
 });
 </script>

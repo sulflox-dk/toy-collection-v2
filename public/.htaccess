@@ -1,30 +1,9 @@
 # ==========================================
-# SECURITY HEADERS
+
+# URL REWRITING & ROUTING
+
 # ==========================================
-<IfModule mod_headers.c>
-    # 1. Prevent Clickjacking
-    # Blocks your site from being embedded in an iframe on other sites.
-    Header set X-Frame-Options "SAMEORIGIN"
 
-    # 2. Prevent MIME-sniffing
-    # Forces the browser to trust the Content-Type header sent by the server.
-    Header set X-Content-Type-Options "nosniff"
-
-    # 3. Content Security Policy (CSP) - Starter Policy
-    # Only allows scripts/styles from your own domain (self) and cdnjs/jsdelivr (for Bootstrap/FontAwesome).
-    # You might need to adjust this if you add more external libraries (like Google Fonts).
-    Header set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; img-src 'self' data:; font-src 'self' https://cdnjs.cloudflare.com;"
-
-    # 4. Strict Transport Security (HSTS)
-    # Forces HTTPS. Only uncomment this if you have a valid SSL certificate!
-    # Header set Strict-Transport-Security "max-age=31536000; includeSubDomains"
-
-    # 5. Referrer Policy
-    # Controls how much referrer information is sent to other sites.
-    Header set Referrer-Policy "strict-origin-when-cross-origin"
-</IfModule>
-
-# ... (Rest of your existing rewrite rules below) ...
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes
@@ -32,11 +11,24 @@
 
     RewriteEngine On
 
-    # Redirect Trailing Slashes
-    RewriteRule ^(.*)/$ /$1 [L,R=301]
+    # Redirect Trailing Slashes if not a folder...
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_URI} (.+)/$
+    RewriteRule ^ %1 [L,R=301]
 
     # Handle Front Controller...
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
+
 </IfModule>
+
+# ==========================================
+
+# OPTIONAL: PHP SETTINGS
+
+# ==========================================
+
+# Ideally set in php.ini, but safe to keep here if needed
+
+# php_flag display_errors off

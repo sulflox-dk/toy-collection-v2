@@ -57,8 +57,22 @@ class EntertainmentSourceController extends Controller
     public function store(Request $request): void
     {
         $name = trim($request->input('name', ''));
+        
+        // VALIDATION
         if ($name === '') {
             $this->json(['field' => 'name', 'message' => 'Name is required'], 422);
+            return;
+        }
+        if (mb_strlen($name) > 255) {
+            $this->json(['field' => 'name', 'message' => 'Name cannot exceed 255 characters'], 422);
+            return;
+        }
+
+        // ENUM VALIDATION
+        $allowedTypes = ['Movie', 'TV Show', 'Video Game', 'Book', 'Other'];
+        $type = $request->input('type', 'Movie');
+        if (!in_array($type, $allowedTypes)) {
+            $this->json(['field' => 'type', 'message' => 'Invalid type selected.'], 422);
             return;
         }
 
@@ -77,11 +91,12 @@ class EntertainmentSourceController extends Controller
         EntertainmentSource::create([
             'name' => $name,
             'slug' => $slug,
-            'type' => $request->input('type', 'Movie'),
+            'type' => $type,
             'release_year' => $request->input('release_year') ?: null,
             'description' => trim($request->input('description', '')),
             'universe_id' => $universeId,
-            'show_on_dashboard' => $request->input('show_on_dashboard') !== null ? 1 : 0
+            // BOOLEAN LOGIC FIX
+            'show_on_dashboard' => filter_var($request->input('show_on_dashboard'), FILTER_VALIDATE_BOOLEAN) ? 1 : 0
         ]);
 
         $this->json(['success' => true]);
@@ -96,6 +111,23 @@ class EntertainmentSourceController extends Controller
 
         $name = trim($request->input('name', ''));
         
+        if ($name === '') {
+            $this->json(['field' => 'name', 'message' => 'Name is required'], 422);
+            return;
+        }
+        if (mb_strlen($name) > 255) {
+            $this->json(['field' => 'name', 'message' => 'Name cannot exceed 255 characters'], 422);
+            return;
+        }
+
+        // ENUM VALIDATION
+        $allowedTypes = ['Movie', 'TV Show', 'Video Game', 'Book', 'Other'];
+        $type = $request->input('type', 'Movie');
+        if (!in_array($type, $allowedTypes)) {
+            $this->json(['field' => 'type', 'message' => 'Invalid type selected.'], 422);
+            return;
+        }
+
         $slug = EntertainmentSource::validateUniqueSlug($request->input('slug'), $name, $id);
         if ($slug === null) {
             $this->json(['field' => 'slug', 'message' => 'This slug is already in use.'], 422);
@@ -105,26 +137,20 @@ class EntertainmentSourceController extends Controller
         EntertainmentSource::update($id, [
             'name' => $name,
             'slug' => $slug,
-            'type' => $request->input('type', 'Movie'),
+            'type' => $type,
             'release_year' => $request->input('release_year') ?: null,
             'description' => trim($request->input('description', '')),
             'universe_id' => (int) $request->input('universe_id'),
-            'show_on_dashboard' => $request->input('show_on_dashboard') ? 1 : 0
+            // BOOLEAN LOGIC FIX
+            'show_on_dashboard' => filter_var($request->input('show_on_dashboard'), FILTER_VALIDATE_BOOLEAN) ? 1 : 0
         ]);
 
-        // Re-fetch with joined universe name for the row update
         $db = Database::getInstance();
-        $sql = "
-            SELECT e.*, u.name as universe_name
-            FROM meta_entertainment_sources e
-            LEFT JOIN meta_universes u ON e.universe_id = u.id
-            WHERE e.id = ?
-        ";
+        $sql = "SELECT e.*, u.name as universe_name FROM meta_entertainment_sources e LEFT JOIN meta_universes u ON e.universe_id = u.id WHERE e.id = ?";
         $updated = $db->query($sql, [$id])->fetch(\PDO::FETCH_ASSOC);
 
         ob_start();
         $this->renderPartial('entertainment_source_row', ['s' => $updated]);
-        
         $this->json(['success' => true, 'row_html' => ob_get_clean()]);
     }
 
@@ -171,12 +197,13 @@ class EntertainmentSourceController extends Controller
             // 5. Delete
             EntertainmentSource::delete($id);
 
+            EntertainmentSource::delete($id);
             $db->commit();
             $this->json(['success' => true]);
-
         } catch (\Exception $e) {
             $db->rollBack();
-            $this->json(['error' => 'Delete failed: ' . $e->getMessage()], 500);
+            error_log('Delete failed: ' . $e->getMessage());
+            $this->json(['error' => 'Failed to delete record.'], 500);
         }
     }
 

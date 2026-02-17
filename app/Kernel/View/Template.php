@@ -137,10 +137,10 @@ class Template
 
         try {
             require $__file;
-        } catch (\Throwable $e) {
+        } catch (\Throwable $error) {
             // Clean buffer if error occurs so we don't output half-broken HTML
             ob_end_clean();
-            throw $e;
+            throw $error;
         } finally {
             // Restore context (important!)
             $this->currentViewFile = $previousViewFile;

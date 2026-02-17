@@ -52,14 +52,27 @@ class SubjectController extends Controller
     public function store(Request $request): void
     {
         $name = trim($request->input('name', ''));
+        
         if ($name === '') {
             $this->json(['field' => 'name', 'message' => 'Name is required'], 422);
+            return;
+        }
+        if (mb_strlen($name) > 255) {
+            $this->json(['field' => 'name', 'message' => 'Name cannot exceed 255 characters'], 422);
             return;
         }
 
         $universeId = (int) $request->input('universe_id');
         if ($universeId <= 0) {
             $this->json(['field' => 'universe_id', 'message' => 'Please select a universe'], 422);
+            return;
+        }
+
+        // ENUM VALIDATION
+        $allowedTypes = ['Character','Vehicle','Environment','Creature','Accessory','Packaging','Paperwork'];
+        $type = $request->input('type', 'Character');
+        if (!in_array($type, $allowedTypes)) {
+            $this->json(['field' => 'type', 'message' => 'Invalid type selected.'], 422);
             return;
         }
 
@@ -72,7 +85,7 @@ class SubjectController extends Controller
         Subject::create([
             'name' => $name,
             'slug' => $slug,
-            'type' => $request->input('type', 'Character'),
+            'type' => $type,
             'universe_id' => $universeId,
             'description' => trim($request->input('description', ''))
         ]);
@@ -88,8 +101,25 @@ class SubjectController extends Controller
         }
 
         $name = trim($request->input('name', ''));
-        $slug = Subject::validateUniqueSlug($request->input('slug'), $name, $id);
         
+        if ($name === '') {
+            $this->json(['field' => 'name', 'message' => 'Name is required'], 422);
+            return;
+        }
+        if (mb_strlen($name) > 255) {
+            $this->json(['field' => 'name', 'message' => 'Name cannot exceed 255 characters'], 422);
+            return;
+        }
+
+        // ENUM VALIDATION
+        $allowedTypes = ['Character','Vehicle','Environment','Creature','Accessory','Packaging','Paperwork'];
+        $type = $request->input('type', 'Character');
+        if (!in_array($type, $allowedTypes)) {
+            $this->json(['field' => 'type', 'message' => 'Invalid type selected.'], 422);
+            return;
+        }
+
+        $slug = Subject::validateUniqueSlug($request->input('slug'), $name, $id);
         if ($slug === null) {
             $this->json(['field' => 'slug', 'message' => 'This slug is already in use.'], 422);
             return;
@@ -98,22 +128,17 @@ class SubjectController extends Controller
         Subject::update($id, [
             'name' => $name,
             'slug' => $slug,
-            'type' => $request->input('type', 'Character'),
+            'type' => $type,
             'universe_id' => (int) $request->input('universe_id'),
             'description' => trim($request->input('description', ''))
         ]);
 
-        // Fetch updated row with joins
         $db = Database::getInstance();
-        $sql = "SELECT s.*, u.name as universe_name 
-                FROM meta_subjects s 
-                LEFT JOIN meta_universes u ON s.universe_id = u.id 
-                WHERE s.id = ?";
+        $sql = "SELECT s.*, u.name as universe_name FROM meta_subjects s LEFT JOIN meta_universes u ON s.universe_id = u.id WHERE s.id = ?";
         $updated = $db->query($sql, [$id])->fetch(\PDO::FETCH_ASSOC);
 
         ob_start();
         $this->renderPartial('subject_row', ['s' => $updated]);
-        
         $this->json(['success' => true, 'row_html' => ob_get_clean()]);
     }
 
@@ -162,12 +187,13 @@ class SubjectController extends Controller
 
             Subject::delete($id);
 
+            Subject::delete($id);
             $db->commit();
             $this->json(['success' => true]);
-
         } catch (\Exception $e) {
             $db->rollBack();
-            $this->json(['error' => 'Delete failed: ' . $e->getMessage()], 500);
+            error_log('Delete failed: ' . $e->getMessage());
+            $this->json(['error' => 'Failed to delete record.'], 500);
         }
     }
 

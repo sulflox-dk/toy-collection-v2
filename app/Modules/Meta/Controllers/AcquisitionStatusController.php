@@ -5,8 +5,6 @@ use App\Kernel\Http\Controller;
 use App\Kernel\Http\Request;
 use App\Kernel\Database\Database;
 use App\Modules\Meta\Models\AcquisitionStatus;
-
-// Ensure these exist or create placeholders if you haven't built the Collection module yet
 use App\Modules\Collection\Models\CollectionToy;
 use App\Modules\Collection\Models\CollectionToyItem;
 
@@ -38,8 +36,14 @@ class AcquisitionStatusController extends Controller
     public function store(Request $request): void
     {
         $name = trim($request->input('name', ''));
+        
+        // VALIDATION
         if ($name === '') {
             $this->json(['field' => 'name', 'message' => 'Name is required'], 422);
+            return;
+        }
+        if (mb_strlen($name) > 50) {
+            $this->json(['field' => 'name', 'message' => 'Name cannot exceed 50 characters'], 422);
             return;
         }
 
@@ -66,8 +70,18 @@ class AcquisitionStatusController extends Controller
         }
 
         $name = trim($request->input('name', ''));
+
+        // VALIDATION
+        if ($name === '') {
+            $this->json(['field' => 'name', 'message' => 'Name is required'], 422);
+            return;
+        }
+        if (mb_strlen($name) > 50) {
+            $this->json(['field' => 'name', 'message' => 'Name cannot exceed 50 characters'], 422);
+            return;
+        }
+
         $slug = AcquisitionStatus::validateUniqueSlug($request->input('slug'), $name, $id);
-        
         if ($slug === null) {
             $this->json(['field' => 'slug', 'message' => 'Slug already exists'], 422);
             return;
@@ -140,7 +154,9 @@ class AcquisitionStatusController extends Controller
 
         } catch (\Exception $e) {
             $db->rollBack();
-            $this->json(['error' => $e->getMessage()], 500);
+            // SECURITY FIX: Generic error message
+            error_log('Delete failed: ' . $e->getMessage()); // Log internal error
+            $this->json(['error' => 'Failed to delete record. Please try again.'], 500);
         }
     }
 

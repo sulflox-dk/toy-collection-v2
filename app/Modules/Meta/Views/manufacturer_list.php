@@ -14,7 +14,7 @@
         ]
     ],
     'items' => $manufacturers,
-    'rowPartial' => 'manufacturer_row', // Or use the relative path if needed
+    'rowPartial' => '../../Modules/Meta/Views/manufacturer_row',
     'itemKey' => 'm',
     'pagination' => $pagination,
     'emptyMessage' => 'No manufacturers found.',

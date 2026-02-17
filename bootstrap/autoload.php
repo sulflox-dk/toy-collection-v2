@@ -25,6 +25,7 @@ spl_autoload_register(function (string $class): void {
     }
 });
 
+// Load .env file manually (Custom Parser to handle quotes and # correctly)
 $envPath = ROOT_PATH . '/.env';
 if (file_exists($envPath)) {
     $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
@@ -66,6 +67,7 @@ if (file_exists($envPath)) {
             continue;
         }
 
+        // Populate Environment Variables
         if (!array_key_exists($name, $_SERVER) && !array_key_exists($name, $_ENV)) {
             putenv(sprintf('%s=%s', $name, $value));
             $_ENV[$name] = $value;
@@ -74,4 +76,5 @@ if (file_exists($envPath)) {
     }
 }
 
+// Load Application Config
 \App\Kernel\Core\Config::load(ROOT_PATH . '/app/config');

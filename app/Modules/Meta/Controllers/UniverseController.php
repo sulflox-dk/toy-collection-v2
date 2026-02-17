@@ -39,19 +39,17 @@ class UniverseController extends Controller
     public function store(Request $request): void
     {
         $name = trim($request->input('name', ''));
+        
         if ($name === '') {
             $this->json(['field' => 'name', 'message' => 'Name is required'], 422);
             return;
         }
-
         if (mb_strlen($name) > 255) {
-            $this->json(['field' => 'name', 'message' => 'Name too long'], 422);
+            $this->json(['field' => 'name', 'message' => 'Name cannot exceed 255 characters'], 422);
             return;
         }
 
-        $slug = Universe::validateUniqueSlug($request->input('slug'), $name, 0);
-        
-        // Check if slug validation failed
+        $slug = Universe::validateUniqueSlug($request->input('slug'), $name);
         if ($slug === null) {
             $this->json(['field' => 'slug', 'message' => 'This slug is already in use.'], 422);
             return;
@@ -61,7 +59,7 @@ class UniverseController extends Controller
             'name' => $name,
             'slug' => $slug,
             'description' => trim($request->input('description', '')),
-            'show_on_dashboard' => $request->input('show_on_dashboard') !== null ? 1 : 0
+            'show_on_dashboard' => filter_var($request->input('show_on_dashboard'), FILTER_VALIDATE_BOOLEAN) ? 1 : 0
         ]);
 
         $this->json(['success' => true]);
@@ -70,15 +68,22 @@ class UniverseController extends Controller
     public function update(Request $request, int $id): void
     {
         if (!Universe::find($id)) {
-            $this->json(['error' => 'Universe not found'], 404);
+            $this->json(['error' => 'Record not found'], 404);
             return;
         }
 
         $name = trim($request->input('name', ''));
 
+        if ($name === '') {
+            $this->json(['field' => 'name', 'message' => 'Name is required'], 422);
+            return;
+        }
+        if (mb_strlen($name) > 255) {
+            $this->json(['field' => 'name', 'message' => 'Name cannot exceed 255 characters'], 422);
+            return;
+        }
+
         $slug = Universe::validateUniqueSlug($request->input('slug'), $name, $id);
-        
-        // Check if slug validation failed
         if ($slug === null) {
             $this->json(['field' => 'slug', 'message' => 'This slug is already in use.'], 422);
             return;
@@ -88,13 +93,16 @@ class UniverseController extends Controller
             'name' => $name,
             'slug' => $slug,
             'description' => trim($request->input('description', '')),
-            'show_on_dashboard' => $request->input('show_on_dashboard') ? 1 : 0
+            'show_on_dashboard' => filter_var($request->input('show_on_dashboard'), FILTER_VALIDATE_BOOLEAN) ? 1 : 0
         ]);
 
-        $updated = Universe::find($id);
+        // ... refetch ...
+        $db = Database::getInstance();
+        $sql = "SELECT u.*, COUNT(l.id) as lines_count FROM meta_universes u ...";
+        $updated = $db->query($sql, [$id])->fetch(\PDO::FETCH_ASSOC);
+
         ob_start();
         $this->renderPartial('universe_row', ['u' => $updated]);
-        
         $this->json(['success' => true, 'row_html' => ob_get_clean()]);
     }
 
@@ -194,6 +202,7 @@ class UniverseController extends Controller
 
         } catch (\Exception $e) {
             $db->rollBack();
+            error_log('Delete failed: ' . $e->getMessage());
             $this->json(['error' => 'Delete failed: ' . $e->getMessage()], 500);
         }
     }

@@ -5,8 +5,6 @@ use App\Kernel\Http\Controller;
 use App\Kernel\Http\Request;
 use App\Kernel\Database\Database;
 use App\Modules\Meta\Models\PackagingType;
-
-// Placeholders for Collection module classes
 use App\Modules\Collection\Models\CollectionToy;
 use App\Modules\Collection\Models\CollectionToyItem;
 
@@ -38,8 +36,13 @@ class PackagingTypeController extends Controller
     public function store(Request $request): void
     {
         $name = trim($request->input('name', ''));
+        
         if ($name === '') {
             $this->json(['field' => 'name', 'message' => 'Name is required'], 422);
+            return;
+        }
+        if (mb_strlen($name) > 50) {
+            $this->json(['field' => 'name', 'message' => 'Name cannot exceed 50 characters'], 422);
             return;
         }
 
@@ -67,8 +70,17 @@ class PackagingTypeController extends Controller
         }
 
         $name = trim($request->input('name', ''));
+
+        if ($name === '') {
+            $this->json(['field' => 'name', 'message' => 'Name is required'], 422);
+            return;
+        }
+        if (mb_strlen($name) > 50) {
+            $this->json(['field' => 'name', 'message' => 'Name cannot exceed 50 characters'], 422);
+            return;
+        }
+
         $slug = PackagingType::validateUniqueSlug($request->input('slug'), $name, $id);
-        
         if ($slug === null) {
             $this->json(['field' => 'slug', 'message' => 'Slug already exists'], 422);
             return;
@@ -139,10 +151,10 @@ class PackagingTypeController extends Controller
             PackagingType::delete($id);
             $db->commit();
             $this->json(['success' => true]);
-
         } catch (\Exception $e) {
             $db->rollBack();
-            $this->json(['error' => $e->getMessage()], 500);
+            error_log('Delete failed: ' . $e->getMessage());
+            $this->json(['error' => 'Failed to delete record. Please try again.'], 500);
         }
     }
 

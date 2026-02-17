@@ -37,8 +37,13 @@ class ProductTypeController extends Controller
     public function store(Request $request): void
     {
         $name = trim($request->input('name', ''));
+        
         if ($name === '') {
             $this->json(['field' => 'name', 'message' => 'Name is required'], 422);
+            return;
+        }
+        if (mb_strlen($name) > 100) {
+            $this->json(['field' => 'name', 'message' => 'Name cannot exceed 100 characters'], 422);
             return;
         }
 
@@ -65,8 +70,17 @@ class ProductTypeController extends Controller
         }
 
         $name = trim($request->input('name', ''));
-        $slug = ProductType::validateUniqueSlug($request->input('slug'), $name, $id);
         
+        if ($name === '') {
+            $this->json(['field' => 'name', 'message' => 'Name is required'], 422);
+            return;
+        }
+        if (mb_strlen($name) > 100) {
+            $this->json(['field' => 'name', 'message' => 'Name cannot exceed 100 characters'], 422);
+            return;
+        }
+
+        $slug = ProductType::validateUniqueSlug($request->input('slug'), $name, $id);
         if ($slug === null) {
             $this->json(['field' => 'slug', 'message' => 'This slug is already in use.'], 422);
             return;
@@ -126,12 +140,13 @@ class ProductTypeController extends Controller
 
             ProductType::delete($id);
 
+            ProductType::delete($id);
             $db->commit();
             $this->json(['success' => true]);
-
         } catch (\Exception $e) {
             $db->rollBack();
-            $this->json(['error' => 'Delete failed: ' . $e->getMessage()], 500);
+            error_log('Delete failed: ' . $e->getMessage());
+            $this->json(['error' => 'Failed to delete record.'], 500);
         }
     }
 

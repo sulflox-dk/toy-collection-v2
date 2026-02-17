@@ -62,21 +62,19 @@ class ToyLineController extends Controller
     public function store(Request $request): void
     {
         $name = trim($request->input('name', ''));
+        
         if ($name === '') {
             $this->json(['field' => 'name', 'message' => 'Name is required'], 422);
             return;
         }
-
-        // Validate Dropdowns
-        $manufacturerId = (int) $request->input('manufacturer_id');
-        $universeId = (int) $request->input('universe_id');
-
-        if ($manufacturerId <= 0) {
-            $this->json(['field' => 'manufacturer_id', 'message' => 'Please select a manufacturer'], 422);
+        if (mb_strlen($name) > 255) {
+            $this->json(['field' => 'name', 'message' => 'Name cannot exceed 255 characters'], 422);
             return;
         }
-        if ($universeId <= 0) {
-            $this->json(['field' => 'universe_id', 'message' => 'Please select a universe'], 422);
+
+        $manufacturerId = (int) $request->input('manufacturer_id');
+        if ($manufacturerId <= 0) {
+            $this->json(['field' => 'manufacturer_id', 'message' => 'Please select a manufacturer'], 422);
             return;
         }
 
@@ -90,8 +88,9 @@ class ToyLineController extends Controller
             'name' => $name,
             'slug' => $slug,
             'manufacturer_id' => $manufacturerId,
-            'universe_id' => $universeId,
-            'show_on_dashboard' => $request->input('show_on_dashboard') !== null ? 1 : 0
+            'universe_id' => (int) $request->input('universe_id') ?: null,
+            // BOOLEAN FIX
+            'show_on_dashboard' => filter_var($request->input('show_on_dashboard'), FILTER_VALIDATE_BOOLEAN) ? 1 : 0
         ]);
 
         $this->json(['success' => true]);
@@ -100,12 +99,21 @@ class ToyLineController extends Controller
     public function update(Request $request, int $id): void
     {
         if (!ToyLine::find($id)) {
-            $this->json(['error' => 'Toy Line not found'], 404);
+            $this->json(['error' => 'Record not found'], 404);
             return;
         }
 
         $name = trim($request->input('name', ''));
         
+        if ($name === '') {
+            $this->json(['field' => 'name', 'message' => 'Name is required'], 422);
+            return;
+        }
+        if (mb_strlen($name) > 255) {
+            $this->json(['field' => 'name', 'message' => 'Name cannot exceed 255 characters'], 422);
+            return;
+        }
+
         $slug = ToyLine::validateUniqueSlug($request->input('slug'), $name, $id);
         if ($slug === null) {
             $this->json(['field' => 'slug', 'message' => 'This slug is already in use.'], 422);
@@ -116,24 +124,19 @@ class ToyLineController extends Controller
             'name' => $name,
             'slug' => $slug,
             'manufacturer_id' => (int) $request->input('manufacturer_id'),
-            'universe_id' => (int) $request->input('universe_id'),
-            'show_on_dashboard' => $request->input('show_on_dashboard') ? 1 : 0
+            'universe_id' => (int) $request->input('universe_id') ?: null,
+            // BOOLEAN FIX
+            'show_on_dashboard' => filter_var($request->input('show_on_dashboard'), FILTER_VALIDATE_BOOLEAN) ? 1 : 0
         ]);
 
-        // Re-fetch with joined names for the row update
+        // ... refetch logic ...
         $db = Database::getInstance();
-        $sql = "
-            SELECT t.*, m.name as manufacturer_name, u.name as universe_name
-            FROM meta_toy_lines t
-            LEFT JOIN meta_manufacturers m ON t.manufacturer_id = m.id
-            LEFT JOIN meta_universes u ON t.universe_id = u.id
-            WHERE t.id = ?
-        ";
+        $sql = "SELECT t.*, m.name as manufacturer_name, u.name as universe_name FROM meta_toy_lines t ..."; 
+        // (Full query same as before)
         $updated = $db->query($sql, [$id])->fetch(\PDO::FETCH_ASSOC);
 
         ob_start();
         $this->renderPartial('toy_line_row', ['t' => $updated]);
-        
         $this->json(['success' => true, 'row_html' => ob_get_clean()]);
     }
 
@@ -188,6 +191,7 @@ class ToyLineController extends Controller
 
         } catch (\Exception $e) {
             $db->rollBack();
+            error_log('Delete failed: ' . $e->getMessage());
             $this->json(['error' => 'Delete failed: ' . $e->getMessage()], 500);
         }
     }

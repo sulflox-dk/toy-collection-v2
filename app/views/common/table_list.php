@@ -31,8 +31,8 @@
             <?php if (empty($items)): ?>
                 <tr>
                     <td colspan="<?= count($headers) + 1 ?>" class="text-center py-5 text-muted">
-                        <i class=\"fa-solid <?= $e($emptyIcon ?? 'fa-box-open') ?> fa-2x mb-2\"></i>
-                        <p class=\"mb-0\"><?= $e($emptyMessage ?? 'No items found.') ?></p>
+                        <i class="fa-solid <?= $e($emptyIcon ?? 'fa-box-open') ?> fa-2x mb-2"></i>
+                        <p class="mb-0"><?= $e($emptyMessage ?? 'No items found.') ?></p>
                     </td>
                 </tr>
             <?php else: ?>

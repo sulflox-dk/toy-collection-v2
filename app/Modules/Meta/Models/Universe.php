@@ -15,8 +15,6 @@ class Universe extends BaseModel
         $params = [];
         $whereConditions = [];
 
-        $sql = "SELECT * FROM " . static::$table;
-
         $sql = "
             SELECT 
                 u.*, 

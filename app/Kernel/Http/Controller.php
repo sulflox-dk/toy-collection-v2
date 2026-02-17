@@ -33,8 +33,6 @@ abstract class Controller
      */
     protected function renderPartial(string $view, array $data = []): void
     {
-        $prevLayout = $this->template;
-
         $template = new Template(ROOT_PATH . '/app/views');
         $path = $this->resolveViewPath($view);
         echo $template->render($path, $data);

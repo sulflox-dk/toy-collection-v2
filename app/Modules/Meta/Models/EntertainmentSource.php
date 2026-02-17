@@ -11,11 +11,6 @@ class EntertainmentSource extends BaseModel
 
     protected static string $table = 'meta_entertainment_sources';
 
-    public static function getTableName(): string
-    {
-        return static::$table;
-    }
-
     /**
      * Get paginated list with Universe names joined
      */

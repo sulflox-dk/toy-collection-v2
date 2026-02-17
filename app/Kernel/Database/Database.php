@@ -14,26 +14,22 @@ class Database
      */
     private static $instance = null;
     private PDO $pdo;
-    private bool $debug;
 
     private function __construct()
     {
-        $envPath = ROOT_PATH . '/.env';
+        // FIX: We no longer parse .env here. We assume autoload.php did it.
+        
+        // Try getenv() first, fall back to $_ENV superglobal
+        $host    = getenv('DB_HOST') ?: $_ENV['DB_HOST'] ?? '127.0.0.1';
+        $port    = getenv('DB_PORT') ?: $_ENV['DB_PORT'] ?? '3306';
+        $dbName  = getenv('DB_DATABASE') ?: $_ENV['DB_DATABASE'] ?? '';
+        $user    = getenv('DB_USERNAME') ?: $_ENV['DB_USERNAME'] ?? 'root';
+        $pass    = getenv('DB_PASSWORD') ?: $_ENV['DB_PASSWORD'] ?? '';
+        $charset = getenv('DB_CHARSET') ?: $_ENV['DB_CHARSET'] ?? 'utf8mb4';
 
-        if (!file_exists($envPath)) {
-            throw new RuntimeException('.env file not found at: ' . $envPath);
+        if (empty($dbName)) {
+            throw new RuntimeException('Database name (DB_DATABASE) is not set in the environment.');
         }
-
-        $env = parse_ini_file($envPath);
-
-        if ($env === false) {
-            throw new RuntimeException('Failed to parse .env file');
-        }
-
-        $host    = $env['DB_HOST'] ?? '127.0.0.1';
-        $port    = $env['DB_PORT'] ?? '3306';
-        $dbName  = $env['DB_DATABASE'] ?? '';
-        $charset = $env['DB_CHARSET'] ?? 'utf8mb4';
 
         $dsn = "mysql:host={$host};port={$port};dbname={$dbName};charset={$charset}";
 
@@ -44,24 +40,13 @@ class Database
         ];
 
         try {
-            $this->pdo = new PDO(
-                $dsn,
-                $env['DB_USERNAME'] ?? 'root',
-                $env['DB_PASSWORD'] ?? '',
-                $options
-            );
+            $this->pdo = new PDO($dsn, $user, $pass, $options);
         } catch (PDOException $e) {
-            throw new RuntimeException('Database connection failed: ' . $e->getMessage(), 0, $e);
+            // Security: Don't expose connection details in production
+            throw new RuntimeException('Database connection failed: ' . $e->getMessage());
         }
-
-        $this->debug = ($env['APP_DEBUG'] ?? 'false') === 'true';
     }
 
-    /**
-     * Returns a cached instance of a Database object
-     *
-     * @return Database
-     */
     public static function getInstance(): self
     {
         if (self::$instance === null) {
@@ -70,77 +55,21 @@ class Database
         return self::$instance;
     }
 
-    /**
-     * Returns the raw PDO connection for cases that need it directly
-     * (e.g. the migration runner executing DDL).
-     */
-    public function getConnection(): PDO
+    public function getPdo(): PDO
     {
         return $this->pdo;
     }
 
-    // ── Query helpers ─────────────────────────────────────────────
-
     /**
-     * Prepare and execute a statement, returning the PDOStatement.
-     * Use this when you need cursor-level access (e.g. large result sets).
+     * Helper to execute a query with bound parameters.
      */
-   public function query(string $sql, array $params = []): PDOStatement
+    public function query(string $sql, array $params = []): \PDOStatement
     {
-        try {
-            $stmt = $this->pdo->prepare($sql);
-            foreach ($params as $key => $value) {
-                $paramKey = is_int($key) ? $key + 1 : $key;
-                
-                // --- SMART BINDING 🧠 ---
-                // Detect the type so LIMIT/OFFSET works with parameters
-                $type = PDO::PARAM_STR;
-                if (is_int($value)) {
-                    $type = PDO::PARAM_INT;
-                } elseif (is_bool($value)) {
-                    $type = PDO::PARAM_BOOL;
-                } elseif (is_null($value)) {
-                    $type = PDO::PARAM_NULL;
-                }
-
-                $stmt->bindValue($paramKey, $value, $type);
-                // -------------------------
-            }
-            $stmt->execute();
-            return $stmt;
-        } catch (PDOException $e) {
-            throw new RuntimeException("Database Query Error: " . $e->getMessage());
-        }
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        return $stmt;
     }
 
-    /**
-     * Execute a SELECT and return all rows.
-     */
-    public function fetchAll(string $sql, array $params = []): array
-    {
-        return $this->query($sql, $params)->fetchAll();
-    }
-
-    /**
-     * Execute a SELECT and return a single row (or null).
-     */
-    public function fetch(string $sql, array $params = []): ?array
-    {
-        $row = $this->query($sql, $params)->fetch();
-        return $row !== false ? $row : null;
-    }
-
-    /**
-     * Execute an INSERT / UPDATE / DELETE and return the number of affected rows.
-     */
-    public function execute(string $sql, array $params = []): int
-    {
-        return $this->query($sql, $params)->rowCount();
-    }
-
-    /**
-     * Return the last auto-increment ID after an INSERT.
-     */
     public function lastInsertId(): int
     {
         return (int) $this->pdo->lastInsertId();
@@ -183,15 +112,5 @@ class Database
         }
 
         return [];
-    }
-
-    // ── Internal ──────────────────────────────────────────────────
-
-    /**
-     * Append the SQL text to error messages only when APP_DEBUG is enabled.
-     */
-    private function debugSql(string $sql): string
-    {
-        return $this->debug ? " [SQL: {$sql}]" : '';
     }
 }
