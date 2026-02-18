@@ -5,6 +5,7 @@ class Router
 {
     private array $routes = [];
     private array $guestRoutes = [];
+    private array $adminRoutes = [];
 
     public function get(string $uri, callable|array $action): void
     {
@@ -32,6 +33,15 @@ class Router
     public function guest(string $uri): void
     {
         $this->guestRoutes[] = '/' . ltrim($uri, '/');
+    }
+
+    /**
+     * Mark a URI prefix as admin-only.
+     * Any route starting with this prefix requires the admin role.
+     */
+    public function admin(string $prefix): void
+    {
+        $this->adminRoutes[] = '/' . ltrim($prefix, '/');
     }
 
     private function register(string $method, string $uri, callable|array $action): void
@@ -95,7 +105,22 @@ class Router
             exit;
         }
 
-        // 4. Find & Execute Route
+        // 4. Admin Gate
+        if ($this->isAdminRoute($uri) && !\App\Kernel\Auth\Auth::isAdmin()) {
+            if (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])
+                && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+                http_response_code(403);
+                header('Content-Type: application/json');
+                echo json_encode(['error' => 'Access denied. Admin privileges required.']);
+                return null;
+            }
+
+            http_response_code(403);
+            echo '<h1>403 - Forbidden</h1><p>You do not have permission to access this page.</p>';
+            return null;
+        }
+
+        // 5. Find & Execute Route
         foreach ($this->routes[$method] ?? [] as $route) {
             if (preg_match($route['pattern'], $uri, $matches)) {
                 $params = array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
@@ -103,7 +128,7 @@ class Router
             }
         }
 
-        // 5. 404 Not Found
+        // 6. 404 Not Found
         http_response_code(404);
         $safeUri = htmlspecialchars($uri, ENT_QUOTES, 'UTF-8');
         echo "<h1>404 - Not Found</h1>";
@@ -117,6 +142,19 @@ class Router
     private function isGuestRoute(string $uri): bool
     {
         return in_array($uri, $this->guestRoutes, true);
+    }
+
+    /**
+     * Check if a URI falls under an admin-only prefix.
+     */
+    private function isAdminRoute(string $uri): bool
+    {
+        foreach ($this->adminRoutes as $prefix) {
+            if ($uri === $prefix || str_starts_with($uri, $prefix . '/')) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

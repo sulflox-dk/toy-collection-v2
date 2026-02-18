@@ -96,6 +96,19 @@ $baseUrl = rtrim(Config::get('app.url', ''), '/') . '/';
                     </ul>
                 </div>
             </li>
+
+            <?php if (\App\Kernel\Auth\Auth::isAdmin()): ?>
+            <li class="nav-item">
+                <a class="nav-link btn-toggle-nav collapsed" data-bs-toggle="collapse" href="#menu-admin" role="button" aria-expanded="false">
+                    <i class="fa-solid fa-gear"></i> Administration
+                </a>
+                <div class="collapse" id="menu-admin">
+                    <ul class="sidebar-submenu btn-toggle-nav-list align-items-center rounded">
+                        <li><a href="<?= $baseUrl ?>user" class="nav-link">Users</a></li>
+                    </ul>
+                </div>
+            </li>
+            <?php endif; ?>
         </ul>
         <hr>
         <?php $authUser = \App\Kernel\Auth\Auth::user(); ?>
@@ -107,6 +120,7 @@ $baseUrl = rtrim(Config::get('app.url', ''), '/') . '/';
             </a>
             <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="dropdownUser1">
                 <li class="px-3 py-1 text-white-50 small"><?= $e($authUser['email']) ?></li>
+                <li class="px-3 py-1"><span class="badge <?= ($authUser['role'] ?? '') === 'admin' ? 'bg-primary' : 'bg-secondary' ?>"><?= $e(ucfirst($authUser['role'] ?? 'user')) ?></span></li>
                 <li><hr class="dropdown-divider"></li>
                 <li>
                     <form method="POST" action="<?= $baseUrl ?>logout" class="m-0">

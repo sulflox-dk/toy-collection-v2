@@ -71,12 +71,21 @@ class Auth
         if (static::$cachedUser === null) {
             $db = Database::getInstance();
             static::$cachedUser = $db->query(
-                "SELECT id, name, email, created_at FROM users WHERE id = ?",
+                "SELECT id, name, email, role, created_at FROM users WHERE id = ?",
                 [$_SESSION['user_id']]
             )->fetch(\PDO::FETCH_ASSOC) ?: null;
         }
 
         return static::$cachedUser;
+    }
+
+    /**
+     * Check if the authenticated user is an admin.
+     */
+    public static function isAdmin(): bool
+    {
+        $user = static::user();
+        return $user !== null && ($user['role'] ?? '') === 'admin';
     }
 
     /**
