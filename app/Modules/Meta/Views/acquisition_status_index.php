@@ -4,7 +4,7 @@ echo $this->renderPartial('common/index_header', [
     'title' => 'Meta / Acquisition Statuses',
     'subtitle' => 'Track the lifecycle of items (e.g. Ordered, Pre-ordered, Arrived).',
     'entityKey' => 'acquisition-status',
-    'addBtnText' => 'Add Status',
+    'addBtnText' => 'Add Acquisition Status',
     'showVisibility' => false // Not used here
 ]);
 ?>

@@ -1,0 +1,163 @@
+<?php
+namespace App\Modules\Media\Controllers;
+
+use App\Kernel\Http\Controller;
+use App\Kernel\Http\Request;
+use App\Kernel\Core\Config;
+use App\Modules\Media\Models\MediaFile;
+
+class MediaController extends Controller
+{
+    public function index(Request $request): void
+    {
+        $this->render('media_file_index', [
+            'title' => 'Media Library',
+            'scripts' => [
+                'assets/js/modules/media/media_files.js'
+            ]
+        ]);
+    }
+
+    public function list(Request $request): void
+    {
+        $page = (int) $request->input('page', 1);
+        $search = trim($request->input('q', ''));
+        
+        // 1. Grab the new filter from the request
+        $attachmentType = trim($request->input('attachment_type', ''));
+        
+        // 2. Pass it to the Model
+        $data = MediaFile::getPaginated($page, 24, $search, $attachmentType);
+
+        $baseUrl = Config::get('app.url');
+        $baseUrl = rtrim($baseUrl, '/') . '/';
+
+        $this->renderPartial('media_file_grid', [
+            'files' => $data['items'],
+            'baseUrl' => $baseUrl,
+            'pagination' => [
+                'current' => $page,
+                'total'   => $data['totalPages'],
+                'count'   => $data['total']
+            ]
+        ]);
+    }
+
+    public function store(Request $request): void
+    {
+        if (!empty($_FILES['file']['name'])) {
+            $this->handleUpload($request);
+            return;
+        }
+
+        $this->json(['error' => 'No file uploaded'], 400);
+    }
+
+    private function handleUpload(Request $request): void
+    {
+        $file = $_FILES['file'];
+        
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            $uploadErrors = [
+                UPLOAD_ERR_INI_SIZE   => 'The uploaded file exceeds the upload_max_filesize directive in php.ini.',
+                UPLOAD_ERR_FORM_SIZE  => 'The uploaded file exceeds the MAX_FILE_SIZE directive in the HTML form.',
+                UPLOAD_ERR_PARTIAL    => 'The uploaded file was only partially uploaded.',
+                UPLOAD_ERR_NO_FILE    => 'No file was uploaded.',
+                UPLOAD_ERR_NO_TMP_DIR => 'Missing a temporary folder.',
+                UPLOAD_ERR_CANT_WRITE => 'Failed to write file to disk.',
+                UPLOAD_ERR_EXTENSION  => 'A PHP extension stopped the file upload.',
+            ];
+
+            $errorMessage = $uploadErrors[$file['error']] ?? 'Unknown upload error.';
+            $this->json(['error' => $errorMessage], 400);
+            return;
+        }
+
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf'];
+        
+        if (!in_array($ext, $allowed)) {
+            $this->json(['error' => 'Invalid file type.'], 422);
+            return;
+        }
+
+        // 1. Get Path from Config
+        $uploadPath = Config::get('app.paths.media_uploads');
+        if (!$uploadPath) {
+            $this->json(['error' => 'Upload path not configured.'], 500);
+            return;
+        }
+        
+        // Ensure trailing slash
+        $uploadPath = rtrim($uploadPath, '/') . '/';
+
+        // 2. Generate Filename
+        $hashName = md5(uniqid()) . '.' . $ext;
+        
+        // 3. Create Directory if needed
+        if (!is_dir($uploadPath)) {
+            mkdir($uploadPath, 0755, true);
+        }
+
+        // 4. Determine "Web Path" for DB (Relative to public/)
+        $publicRoot = ROOT_PATH . '/public/';
+        $webPath = str_replace($publicRoot, '', $uploadPath);
+        
+        // Fallback if path isn't inside public
+        if ($webPath === $uploadPath) { 
+             $webPath = 'uploads/media/'; 
+        }
+
+        if (move_uploaded_file($file['tmp_name'], $uploadPath . $hashName)) {
+            MediaFile::create([
+                'filename' => $hashName,
+                'original_name' => $file['name'],
+                'filepath' => $webPath . $hashName,
+                'file_type' => $file['type'],
+                'file_size' => $file['size'],
+                'title' => pathinfo($file['name'], PATHINFO_FILENAME),
+                'alt_text' => pathinfo($file['name'], PATHINFO_FILENAME)
+            ]);
+            
+            $this->json(['success' => true]);
+        } else {
+            $this->json(['error' => 'Failed to move uploaded file.'], 500);
+        }
+    }
+
+    public function update(Request $request, int $id): void
+    {
+        if (!MediaFile::find($id)) {
+            $this->json(['error' => 'File not found'], 404);
+            return;
+        }
+
+        MediaFile::update($id, [
+            'title' => trim($request->input('title', '')),
+            'description' => trim($request->input('description', '')),
+            'alt_text' => trim($request->input('alt_text', ''))
+        ]);
+
+        $this->json(['success' => true]);
+    }
+
+    public function destroy(Request $request, int $id): void
+    {
+        $file = MediaFile::find($id);
+        if (!$file) {
+            $this->json(['error' => 'File not found'], 404);
+            return;
+        }
+
+        // Delete physical file
+        $fullPath = ROOT_PATH . '/public/' . $file['filepath'];
+        
+        if (file_exists($fullPath)) {
+            unlink($fullPath);
+        }
+
+        MediaFile::delete($id);
+
+        $this->json(['success' => true]);
+    }
+}

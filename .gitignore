@@ -23,8 +23,8 @@ Thumbs.db
 !/storage/sessions/.gitkeep
 
 # 5. Uploads (private collection images should not be in git)
-/public/assets/uploads/*
-!/public/assets/uploads/.gitkeep
+/public/uploads/*
+!/public/uploads/.gitkeep
 
 # Other
 documentation.php

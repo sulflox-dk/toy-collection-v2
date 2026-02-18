@@ -120,3 +120,13 @@
 		box-shadow: none;
 	}
 }
+
+.border-dashed {
+	border: 2px dashed #dee2e6;
+	background-color: #fcfcfc;
+	transition: all 0.2s ease-in-out;
+}
+.border-dashed.border-primary {
+	border-color: #0d6efd !important;
+	background-color: #f8fbff;
+}

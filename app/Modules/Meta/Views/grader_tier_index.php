@@ -3,7 +3,7 @@ echo $this->renderPartial('common/index_header', [
     'title' => 'Meta / Grader Tiers',
     'subtitle' => 'Grading levels (e.g. Gold, Silver, Archival).',
     'entityKey' => 'grader-tier',
-    'addBtnText' => 'Add Tier',
+    'addBtnText' => 'Add Grader Tier',
     'showVisibility' => false
 ]);
 ?>

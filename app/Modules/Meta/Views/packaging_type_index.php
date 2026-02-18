@@ -3,7 +3,7 @@ echo $this->renderPartial('common/index_header', [
     'title' => 'Meta / Packaging Types',
     'subtitle' => 'Define packaging states (e.g. MOC, MIB, Loose).',
     'entityKey' => 'packaging-type',
-    'addBtnText' => 'Add Type',
+    'addBtnText' => 'Add PackagingType',
     'showVisibility' => false
 ]);
 ?>

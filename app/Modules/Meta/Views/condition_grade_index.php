@@ -3,7 +3,7 @@ echo $this->renderPartial('common/index_header', [
     'title' => 'Meta / Condition Grades',
     'subtitle' => 'Standardized grading scale (e.g. C9, C8.5, Mint, Poor).',
     'entityKey' => 'condition-grade',
-    'addBtnText' => 'Add Grade',
+    'addBtnText' => 'Add Condition Grade',
     'showVisibility' => false
 ]);
 ?>

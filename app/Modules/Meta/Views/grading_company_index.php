@@ -3,7 +3,7 @@ echo $this->renderPartial('common/index_header', [
     'title' => 'Meta / Grading Companies',
     'subtitle' => 'Professional grading services (e.g. AFA, UKG).',
     'entityKey' => 'grading-company',
-    'addBtnText' => 'Add Company',
+    'addBtnText' => 'Add Grading Company',
     'showVisibility' => false
 ]);
 ?>

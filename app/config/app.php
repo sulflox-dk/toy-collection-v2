@@ -10,5 +10,6 @@ return [
         'base' => ROOT_PATH,
         'css'  => ROOT_PATH . '/public/assets/css',
         'js'   => ROOT_PATH . '/public/assets/js',
+        'media_uploads' => ROOT_PATH . '/public/uploads/media'
     ],
 ];

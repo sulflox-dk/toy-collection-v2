@@ -12,6 +12,7 @@ use App\Modules\Meta\Controllers\PackagingTypeController;
 use App\Modules\Meta\Controllers\ConditionGradeController;
 use App\Modules\Meta\Controllers\GraderTierController;
 use App\Modules\Meta\Controllers\GradingCompanyController;
+use App\Modules\Media\Controllers\MediaController;
 
 /** @var Router $router */
 
@@ -101,3 +102,9 @@ $router->post('/grading-company',       [GradingCompanyController::class, 'store
 $router->put('/grading-company/{id}',   [GradingCompanyController::class, 'update']);
 $router->delete('/grading-company/{id}',[GradingCompanyController::class, 'destroy']);
 $router->get('/grading-company/migrate-on-delete-options', [GradingCompanyController::class, 'migrateOnDeleteOptions']);
+
+$router->get('/media',        [MediaController::class, 'index']);
+$router->get('/media/list',   [MediaController::class, 'list']);
+$router->post('/media',       [MediaController::class, 'store']); // Handles Upload
+$router->put('/media/{id}',   [MediaController::class, 'update']); // Handles Meta Edit
+$router->delete('/media/{id}',[MediaController::class, 'destroy']);
