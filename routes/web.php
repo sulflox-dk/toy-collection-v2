@@ -14,6 +14,7 @@ use App\Modules\Meta\Controllers\ConditionGradeController;
 use App\Modules\Meta\Controllers\GraderTierController;
 use App\Modules\Meta\Controllers\GradingCompanyController;
 use App\Modules\Media\Controllers\MediaFileController;
+use App\Modules\Auth\Controllers\UserController;
 use App\Modules\Media\Controllers\MediaTagController;
 
 /** @var Router $router */
@@ -123,3 +124,11 @@ $router->get('/media-tag/list',   [MediaTagController::class, 'list']);
 $router->post('/media-tag',       [MediaTagController::class, 'store']); // Handles Upload
 $router->put('/media-tag/{id}',   [MediaTagController::class, 'update']); // Handles Meta Edit
 $router->delete('/media-tag/{id}',[MediaTagController::class, 'destroy']);
+
+// ── Admin: User Management ──────────────────────────────
+$router->admin('/user');
+$router->get('/user',           [UserController::class, 'index']);
+$router->get('/user/list',      [UserController::class, 'list']);
+$router->post('/user',          [UserController::class, 'store']);
+$router->put('/user/{id}',      [UserController::class, 'update']);
+$router->delete('/user/{id}',   [UserController::class, 'destroy']);
