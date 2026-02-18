@@ -1,6 +1,7 @@
 <?php
 
 use App\Kernel\Http\Router;
+use App\Modules\Auth\Controllers\LoginController;
 use App\Modules\Meta\Controllers\UniverseController;
 use App\Modules\Meta\Controllers\ManufacturerController;
 use App\Modules\Meta\Controllers\ToyLineController;
@@ -17,6 +18,13 @@ use App\Modules\Media\Controllers\MediaTagController;
 
 /** @var Router $router */
 
+// ── Auth (Guest Routes) ─────────────────────────────────
+$router->guest('/login');
+$router->get('/login',  [LoginController::class, 'showLoginForm']);
+$router->post('/login', [LoginController::class, 'login']);
+$router->post('/logout', [LoginController::class, 'logout']);
+
+// ── Dashboard ───────────────────────────────────────────
 $router->get('/',                   [ManufacturerController::class, 'index']);
 
 // ── Meta: Universes ──────────────────────────────────────

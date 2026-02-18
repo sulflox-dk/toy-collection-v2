@@ -98,17 +98,27 @@ $baseUrl = rtrim(Config::get('app.url', ''), '/') . '/';
             </li>
         </ul>
         <hr>
+        <?php $authUser = \App\Kernel\Auth\Auth::user(); ?>
+        <?php if ($authUser): ?>
         <div class="dropdown">
             <a href="#" class="d-flex align-items-center text-white text-decoration-none dropdown-toggle" id="dropdownUser1" data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="fa-solid fa-gear me-2"></i>
-                <strong>Settings</strong>
+                <i class="fa-solid fa-user-circle me-2"></i>
+                <strong><?= $e($authUser['name']) ?></strong>
             </a>
             <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="dropdownUser1">
-                <li><a class="dropdown-item" href="#">Profile</a></li>
+                <li class="px-3 py-1 text-white-50 small"><?= $e($authUser['email']) ?></li>
                 <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item" href="#">Sign out</a></li>
+                <li>
+                    <form method="POST" action="<?= $baseUrl ?>logout" class="m-0">
+                        <?= $csrfField() ?>
+                        <button type="submit" class="dropdown-item">
+                            <i class="fa-solid fa-right-from-bracket me-1"></i> Sign out
+                        </button>
+                    </form>
+                </li>
             </ul>
         </div>
+        <?php endif; ?>
     </nav>
 
     <div class="main-content-wrapper">
