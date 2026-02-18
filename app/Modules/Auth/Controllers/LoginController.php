@@ -14,7 +14,7 @@ class LoginController extends Controller
     public function showLoginForm(Request $request): void
     {
         if (Auth::check()) {
-            $this->redirect('/');
+            $this->redirect(Request::url('/'));
         }
 
         $this->withoutLayout()->render('login', [
@@ -30,7 +30,7 @@ class LoginController extends Controller
     public function login(Request $request): void
     {
         if (Auth::check()) {
-            $this->redirect('/');
+            $this->redirect(Request::url('/'));
         }
 
         $email = trim($request->input('email', ''));
@@ -56,7 +56,7 @@ class LoginController extends Controller
 
         $intended = $_SESSION['intended_url'] ?? '/';
         unset($_SESSION['intended_url']);
-        $this->redirect($intended);
+        $this->redirect(Request::url($intended));
     }
 
     /**
@@ -66,6 +66,6 @@ class LoginController extends Controller
     public function logout(Request $request): void
     {
         Auth::logout();
-        $this->redirect('/login');
+        $this->redirect(Request::url('/login'));
     }
 }

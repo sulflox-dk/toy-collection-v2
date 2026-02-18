@@ -91,7 +91,7 @@ class Router
             }
 
             http_response_code(302);
-            header('Location: /login');
+            header('Location: ' . Request::url('/login'));
             exit;
         }
 
