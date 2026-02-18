@@ -36,14 +36,14 @@
 </div>
 
 <div class="row mb-4 g-2">
-    <div class="col-md-4">
+    <div class="col-md-2">
         <div class="input-group">
             <span class="input-group-text bg-white border-end-0 text-muted"><i class="fa-solid fa-magnifying-glass"></i></span>
             <input type="text" class="form-control border-start-0 ps-0" id="search-input" placeholder="Search media...">
         </div>
     </div>
     
-    <div class="col-md-4">
+    <div class="col-md-2">
         <select class="form-select data-filter" name="attachment_type">
             <option value="">All Media Files</option>
             <option value="catalog_toys">Attached to Catalog Toys</option>
@@ -53,6 +53,15 @@
             <option value="toy_lines">Attached to Toy Lines</option>
             <option value="sources">Attached to Entertainment Sources</option>
             <option value="unattached">No Attachments (Orphans)</option>
+        </select>
+    </div>
+
+    <div class="col-md-2">
+        <select class="form-select data-filter" name="tag_id">
+            <option value="">All Tags</option>
+            <?php foreach ($tags as $tag): ?>
+                <option value="<?= $e($tag['id']) ?>"><?= $e($tag['name']) ?></option>
+            <?php endforeach; ?>
         </select>
     </div>
 </div>
@@ -94,6 +103,13 @@
                     <div class="mb-3">
                         <label class="form-label">Description</label>
                         <textarea class="form-control" name="description" rows="2" placeholder="Internal notes..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label d-block">Tags</label>
+                        <div id="tag-cloud" class="d-flex flex-wrap gap-2 border p-3 rounded bg-white">
+                            </div>
+                        <input type="hidden" name="tag_ids" id="selected-tag-ids">
+                        <div class="form-text mt-2"><i class="fa-solid fa-info-circle"></i> Click tags to assign them to this file.</div>
                     </div>
                 </div>
                 <div class="modal-footer bg-light">
@@ -152,3 +168,7 @@
         </div>
     </div>
 </div>
+<script>
+    // Overfør tags fra PHP til global JS variabel
+    const ALL_MEDIA_TAGS = <?= json_encode($tags, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
+</script>

@@ -5,13 +5,17 @@ use App\Kernel\Http\Controller;
 use App\Kernel\Http\Request;
 use App\Kernel\Core\Config;
 use App\Modules\Media\Models\MediaFile;
+use App\Modules\Media\Models\MediaTag;
 
-class MediaController extends Controller
+class MediaFileController extends Controller
 {
     public function index(Request $request): void
     {
+        $tags = MediaTag::getAll();
+
         $this->render('media_file_index', [
             'title' => 'Media Library',
+            'tags' => $tags,
             'scripts' => [
                 'assets/js/modules/media/media_files.js'
             ]
@@ -22,12 +26,11 @@ class MediaController extends Controller
     {
         $page = (int) $request->input('page', 1);
         $search = trim($request->input('q', ''));
-        
-        // 1. Grab the new filter from the request
         $attachmentType = trim($request->input('attachment_type', ''));
-        
-        // 2. Pass it to the Model
-        $data = MediaFile::getPaginated($page, 24, $search, $attachmentType);
+        $tagId = trim($request->input('tag_id', '')); // <-- NY TAG FILTER
+
+        // Send tagId med som 5. parameter
+        $data = MediaFile::getPaginated($page, 24, $search, $attachmentType, $tagId);
 
         $baseUrl = Config::get('app.url');
         $baseUrl = rtrim($baseUrl, '/') . '/';
@@ -109,7 +112,8 @@ class MediaController extends Controller
         }
 
         if (move_uploaded_file($file['tmp_name'], $uploadPath . $hashName)) {
-            MediaFile::create([
+            // GEM DATABASE-POSTEN OG GEM DET NYE ID
+            $newMediaId = MediaFile::create([
                 'filename' => $hashName,
                 'original_name' => $file['name'],
                 'filepath' => $webPath . $hashName,
@@ -118,6 +122,13 @@ class MediaController extends Controller
                 'title' => pathinfo($file['name'], PATHINFO_FILENAME),
                 'alt_text' => pathinfo($file['name'], PATHINFO_FILENAME)
             ]);
+            
+            // NYT: TILKNYT TAGS TIL DEN NYE FIL
+            $tagIdsStr = $request->input('tag_ids', '');
+            if ($tagIdsStr !== '') {
+                $tagIdsArray = array_map('intval', explode(',', $tagIdsStr));
+                MediaTag::syncForFile($newMediaId, $tagIdsArray);
+            }
             
             $this->json(['success' => true]);
         } else {
@@ -137,6 +148,11 @@ class MediaController extends Controller
             'description' => trim($request->input('description', '')),
             'alt_text' => trim($request->input('alt_text', ''))
         ]);
+
+        // NYT: Sync Tags
+        $tagIdsStr = $request->input('tag_ids', '');
+        $tagIdsArray = $tagIdsStr !== '' ? array_map('intval', explode(',', $tagIdsStr)) : [];
+        MediaTag::syncForFile($id, $tagIdsArray);
 
         $this->json(['success' => true]);
     }

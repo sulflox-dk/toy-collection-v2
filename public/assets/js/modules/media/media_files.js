@@ -45,7 +45,8 @@ document.addEventListener('DOMContentLoaded', () => {
 			'<i class="fa-solid fa-spinner fa-spin"></i> Uploading...';
 
 		try {
-			const response = await fetch(baseUrl + 'media', {
+			// FIX 1: Point to media-file route instead of media
+			const response = await fetch(baseUrl + 'media-file', {
 				method: 'POST',
 				body: formData,
 				headers: { 'X-CSRF-Token': csrfToken || '' },
@@ -75,8 +76,9 @@ document.addEventListener('DOMContentLoaded', () => {
 	// =====================================================================
 	const manager = new EntityManager('media', {
 		mode: 'html',
-		endpoint: '/media',
-		listUrl: '/media/list',
+		// FIX 2: Point to media-file route
+		endpoint: '/media-file',
+		listUrl: '/media-file/list',
 		ui: {
 			modalId: 'media-modal',
 			formId: 'media-form',
@@ -159,7 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	async function handleFiles(files) {
 		if (files.length === 0) return;
 
-		// --- NEW: Max Upload Limit Check ---
+		// --- Max Upload Limit Check ---
 		const MAX_UPLOAD_LIMIT = 20;
 		if (files.length > MAX_UPLOAD_LIMIT) {
 			alert(
@@ -169,7 +171,6 @@ document.addEventListener('DOMContentLoaded', () => {
 			if (fileInput) fileInput.value = '';
 			return; // Abort the upload process
 		}
-		// -----------------------------------
 
 		if (progressContainer) progressContainer.classList.remove('d-none');
 		let completed = 0;
@@ -184,7 +185,8 @@ document.addEventListener('DOMContentLoaded', () => {
 			formData.append('file', file);
 
 			try {
-				const response = await fetch(baseUrl + 'media', {
+				// FIX 3: Point to media-file route
+				const response = await fetch(baseUrl + 'media-file', {
 					method: 'POST',
 					body: formData,
 					headers: { 'X-CSRF-Token': csrfToken || '' },
@@ -379,4 +381,99 @@ document.addEventListener('DOMContentLoaded', () => {
 			if (realDeleteBtn) realDeleteBtn.click();
 		});
 	}
+
+	// =====================================================================
+	// 7. TAG CLOUD LOGIC
+	// =====================================================================
+	const tagCloud = document.getElementById('tag-cloud');
+	const selectedTagIdsInput = document.getElementById('selected-tag-ids');
+
+	function renderTagCloud(selectedIds = []) {
+		if (!tagCloud || typeof ALL_MEDIA_TAGS === 'undefined') return;
+
+		// Ensure selectedIds are integers
+		const activeIds = selectedIds.map((id) => parseInt(id, 10));
+
+		tagCloud.innerHTML = ALL_MEDIA_TAGS.map((tag) => {
+			const isActive = activeIds.includes(parseInt(tag.id, 10));
+
+			// FIX: Brug eksplicitte baggrunds- og tekst-farver i stedet for knap-klasser
+			const bgClass = isActive
+				? 'bg-primary text-white shadow-sm border border-primary'
+				: 'bg-light text-dark border border-secondary-subtle';
+
+			return `
+                <span class="badge ${bgClass} p-2 tag-badge" 
+                      data-id="${tag.id}" 
+                      style="cursor: pointer; user-select: none; font-weight: normal; font-size: 0.85rem; transition: all 0.2s;">
+                    ${tag.name}
+                </span>`;
+		}).join('');
+
+		selectedTagIdsInput.value = activeIds.join(',');
+	}
+
+	// Toggle tags on click
+	if (tagCloud) {
+		tagCloud.addEventListener('click', (e) => {
+			const badge = e.target.closest('.tag-badge');
+			if (!badge) return;
+
+			const tagId = parseInt(badge.dataset.id, 10);
+			let currentIds = selectedTagIdsInput.value
+				? selectedTagIdsInput.value.split(',').map((id) => parseInt(id, 10))
+				: [];
+
+			if (currentIds.includes(tagId)) {
+				currentIds = currentIds.filter((id) => id !== tagId); // Remove
+			} else {
+				currentIds.push(tagId); // Add
+			}
+
+			renderTagCloud(currentIds);
+		});
+	}
+
+	// =====================================================================
+	// UPDATE MODAL HANDLER FOR TAGS
+	// =====================================================================
+	modalEl.addEventListener('show.bs.modal', () => {
+		const uploadZone = document.getElementById('upload-zone');
+		if (uploadZone) uploadZone.classList.add('d-none');
+
+		// Fordi EntityManager udfylder formen FØR den åbner modallen,
+		// er dette den mest sikre måde at tjekke, om vi redigerer.
+		const isEdit = idInput.value && idInput.value !== '';
+
+		if (isEdit) {
+			// EDIT MODE UI
+			if (fileGroup) fileGroup.classList.add('d-none');
+			if (previewContainer) previewContainer.classList.remove('d-none');
+			if (saveBtnText) saveBtnText.textContent = 'Save Changes';
+			if (uploadIcon) uploadIcon.classList.add('d-none');
+
+			// Find knappen i griddet, der matcher dette ID, og træk tag_ids ud fra dens JSON
+			const editBtn = document.querySelector(
+				`.btn-edit[data-id="${idInput.value}"]`,
+			);
+			if (editBtn) {
+				const data = JSON.parse(editBtn.getAttribute('data-json') || '{}');
+				renderTagCloud(data.tag_ids || []);
+			}
+		} else {
+			// UPLOAD MODE UI
+			document.querySelector('.modal-title').textContent = 'Upload New File';
+			formEl.reset();
+			idInput.value = '';
+
+			if (fileGroup) fileGroup.classList.remove('d-none');
+			if (previewContainer) previewContainer.classList.add('d-none');
+			if (previewImg) previewImg.removeAttribute('src');
+			if (saveBtnText) saveBtnText.textContent = 'Upload';
+			if (uploadIcon) uploadIcon.classList.remove('d-none');
+
+			// Reset tags
+			renderTagCloud([]);
+		}
+	});
 });

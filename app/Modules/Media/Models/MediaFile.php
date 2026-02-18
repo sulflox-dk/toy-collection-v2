@@ -7,7 +7,7 @@ class MediaFile extends BaseModel
 {
     protected static string $table = 'media_files';
 
-    public static function getPaginated(int $page = 1, int $perPage = 20, string $search = '', string $attachmentType = ''): array
+    public static function getPaginated(int $page = 1, int $perPage = 20, string $search = '', string $attachmentType = '', string $tagId = ''): array
     {
         $offset = ($page - 1) * $perPage;
         $params = [];
@@ -44,24 +44,35 @@ class MediaFile extends BaseModel
             }
         }
 
-        // 3. Apply Conditions
+        // 3. NEW: Tag Filter
+        if ($tagId !== '') {
+            $where[] = "EXISTS (SELECT 1 FROM media_file_tags WHERE media_file_id = " . static::$table . ".id AND media_tag_id = ?)";
+            $params[] = (int)$tagId;
+        }
+
+        // 4. Apply Conditions
         if (!empty($where)) {
             $sql .= " WHERE " . implode(" AND ", $where);
         }
 
         $sql .= " ORDER BY created_at DESC";
 
-        // 4. Count total (using your subquery approach)
+        // 5. Count total
         $countSql = "SELECT COUNT(*) FROM ($sql) as sub";
         $total = (int) static::db()->query($countSql, $params)->fetchColumn();
         $totalPages = ceil($total / $perPage);
 
-        // 5. Fetch items (adding Limit and Offset)
+        // 6. Fetch items
         $sql .= " LIMIT ? OFFSET ?";
         $params[] = $perPage;
         $params[] = $offset;
 
         $items = static::db()->query($sql, $params)->fetchAll(\PDO::FETCH_ASSOC);
+
+        // 7. NEW: Fetch assigned Tag IDs for each file
+        foreach ($items as &$item) {
+            $item['tag_ids'] = MediaTag::getIdsByFile($item['id']);
+        }
 
         return [
             'items'      => $items,

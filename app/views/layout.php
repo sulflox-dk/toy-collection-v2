@@ -91,8 +91,8 @@ $baseUrl = rtrim(Config::get('app.url', ''), '/') . '/';
                 </a>
                 <div class="collapse" id="menu-media">
                     <ul class="sidebar-submenu btn-toggle-nav-list align-items-center rounded">
-                        <li><a href="<?= $baseUrl ?>media" class="nav-link">Media Library</a></li>
-                        <li><a href="#" class="nav-link">Media Tags</a></li>
+                        <li><a href="<?= $baseUrl ?>media-file" class="nav-link">Media Library</a></li>
+                        <li><a href="<?= $baseUrl ?>media-tag" class="nav-link">Media Tags</a></li>
                     </ul>
                 </div>
             </li>

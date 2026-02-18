@@ -12,7 +12,8 @@ use App\Modules\Meta\Controllers\PackagingTypeController;
 use App\Modules\Meta\Controllers\ConditionGradeController;
 use App\Modules\Meta\Controllers\GraderTierController;
 use App\Modules\Meta\Controllers\GradingCompanyController;
-use App\Modules\Media\Controllers\MediaController;
+use App\Modules\Media\Controllers\MediaFileController;
+use App\Modules\Media\Controllers\MediaTagController;
 
 /** @var Router $router */
 
@@ -103,8 +104,14 @@ $router->put('/grading-company/{id}',   [GradingCompanyController::class, 'updat
 $router->delete('/grading-company/{id}',[GradingCompanyController::class, 'destroy']);
 $router->get('/grading-company/migrate-on-delete-options', [GradingCompanyController::class, 'migrateOnDeleteOptions']);
 
-$router->get('/media',        [MediaController::class, 'index']);
-$router->get('/media/list',   [MediaController::class, 'list']);
-$router->post('/media',       [MediaController::class, 'store']); // Handles Upload
-$router->put('/media/{id}',   [MediaController::class, 'update']); // Handles Meta Edit
-$router->delete('/media/{id}',[MediaController::class, 'destroy']);
+$router->get('/media-file',        [MediaFileController::class, 'index']);
+$router->get('/media-file/list',   [MediaFileController::class, 'list']);
+$router->post('/media-file',       [MediaFileController::class, 'store']); // Handles Upload
+$router->put('/media-file/{id}',   [MediaFileController::class, 'update']); // Handles Meta Edit
+$router->delete('/media-file/{id}',[MediaFileController::class, 'destroy']);
+
+$router->get('/media-tag',        [MediaTagController::class, 'index']);
+$router->get('/media-tag/list',   [MediaTagController::class, 'list']);
+$router->post('/media-tag',       [MediaTagController::class, 'store']); // Handles Upload
+$router->put('/media-tag/{id}',   [MediaTagController::class, 'update']); // Handles Meta Edit
+$router->delete('/media-tag/{id}',[MediaTagController::class, 'destroy']);
