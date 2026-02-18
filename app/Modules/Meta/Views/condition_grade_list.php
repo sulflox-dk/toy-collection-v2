@@ -2,7 +2,7 @@
     'headers' => [
         'Name / Slug'  => ['width' => '25%', 'class' => 'ps-3'],
         'Abbreviation' => ['width' => '15%', 'class' => 'text-center'],
-        'Description'  => ['width' => '30%', 'class' => 'text-muted'],
+        'Description'  => ['width' => '30%', 'class' => ''],
         'Sort Order'   => ['width' => '10%', 'class' => 'text-center'],
     ],
     'items' => $grades,
