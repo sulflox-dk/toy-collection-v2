@@ -97,6 +97,12 @@ class ApiClient {
 					apiError.field = errorData.field;
 				}
 
+				// Session expired — redirect to login
+				if (response.status === 401) {
+					window.location.href = SITE_URL + 'login';
+					return;
+				}
+
 				throw apiError;
 			}
 

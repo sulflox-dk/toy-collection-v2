@@ -15,6 +15,16 @@ abstract class Controller
     }
 
     /**
+     * Disable the layout wrapper for the next render call.
+     * Useful for standalone pages like login.
+     */
+    protected function withoutLayout(): static
+    {
+        $this->template->setLayout(null);
+        return $this;
+    }
+
+    /**
      * Render a view from the calling module's Views/ directory.
      *
      * Usage inside a module controller:

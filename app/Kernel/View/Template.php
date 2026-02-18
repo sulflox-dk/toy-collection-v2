@@ -20,7 +20,7 @@ class Template
         $this->viewsPath = rtrim($viewsPath, '/');
     }
 
-    public function setLayout(string $layout): void
+    public function setLayout(?string $layout): void
     {
         $this->layout = $layout;
     }
