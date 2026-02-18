@@ -84,6 +84,17 @@ class MediaFileController extends Controller
             return;
         }
 
+        // MIME type verification (defense-in-depth beyond extension check)
+        $allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $detectedMime = finfo_file($finfo, $file['tmp_name']);
+        finfo_close($finfo);
+
+        if (!in_array($detectedMime, $allowedMimes)) {
+            $this->json(['error' => 'File content does not match an allowed type.'], 422);
+            return;
+        }
+
         // 1. Get Path from Config
         $uploadPath = Config::get('app.paths.media_uploads');
         if (!$uploadPath) {
@@ -94,8 +105,8 @@ class MediaFileController extends Controller
         // Ensure trailing slash
         $uploadPath = rtrim($uploadPath, '/') . '/';
 
-        // 2. Generate Filename
-        $hashName = md5(uniqid()) . '.' . $ext;
+        // 2. Generate Filename (cryptographically random)
+        $hashName = bin2hex(random_bytes(16)) . '.' . $ext;
         
         // 3. Create Directory if needed
         if (!is_dir($uploadPath)) {
@@ -143,10 +154,22 @@ class MediaFileController extends Controller
             return;
         }
 
+        $title = trim($request->input('title', ''));
+        $altText = trim($request->input('alt_text', ''));
+
+        if (mb_strlen($title) > 255) {
+            $this->json(['field' => 'title', 'message' => 'Title cannot exceed 255 characters'], 422);
+            return;
+        }
+        if (mb_strlen($altText) > 255) {
+            $this->json(['field' => 'alt_text', 'message' => 'Alt text cannot exceed 255 characters'], 422);
+            return;
+        }
+
         MediaFile::update($id, [
-            'title' => trim($request->input('title', '')),
+            'title' => $title,
             'description' => trim($request->input('description', '')),
-            'alt_text' => trim($request->input('alt_text', ''))
+            'alt_text' => $altText
         ]);
 
         // NYT: Sync Tags
@@ -165,11 +188,13 @@ class MediaFileController extends Controller
             return;
         }
 
-        // Delete physical file
+        // Delete physical file (with path traversal guard)
         $fullPath = ROOT_PATH . '/public/' . $file['filepath'];
-        
-        if (file_exists($fullPath)) {
-            unlink($fullPath);
+        $realPath = realpath($fullPath);
+        $uploadsDir = realpath(ROOT_PATH . '/public/uploads');
+
+        if ($realPath && $uploadsDir && str_starts_with($realPath, $uploadsDir)) {
+            unlink($realPath);
         }
 
         MediaFile::delete($id);

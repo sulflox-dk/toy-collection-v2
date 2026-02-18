@@ -129,10 +129,12 @@ class ToyLineController extends Controller
             'show_on_dashboard' => filter_var($request->input('show_on_dashboard'), FILTER_VALIDATE_BOOLEAN) ? 1 : 0
         ]);
 
-        // ... refetch logic ...
         $db = Database::getInstance();
-        $sql = "SELECT t.*, m.name as manufacturer_name, u.name as universe_name FROM meta_toy_lines t ..."; 
-        // (Full query same as before)
+        $sql = "SELECT t.*, m.name as manufacturer_name, u.name as universe_name
+                FROM meta_toy_lines t
+                LEFT JOIN meta_manufacturers m ON t.manufacturer_id = m.id
+                LEFT JOIN meta_universes u ON t.universe_id = u.id
+                WHERE t.id = ?";
         $updated = $db->query($sql, [$id])->fetch(\PDO::FETCH_ASSOC);
 
         ob_start();
@@ -192,7 +194,7 @@ class ToyLineController extends Controller
         } catch (\Exception $e) {
             $db->rollBack();
             error_log('Delete failed: ' . $e->getMessage());
-            $this->json(['error' => 'Delete failed: ' . $e->getMessage()], 500);
+            $this->json(['error' => 'Failed to delete record. Please try again.'], 500);
         }
     }
 
