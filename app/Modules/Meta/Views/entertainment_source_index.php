@@ -6,7 +6,7 @@ ob_start();
     <select class="form-select data-filter" name="type">
         <option value="">All Types</option>
         <?php foreach ($types as $type): ?>
-            <option value="<?= $type ?>"><?= $e($type) ?></option>
+            <option value="<?= $e($type) ?>"><?= $e($type) ?></option>
         <?php endforeach; ?>
     </select>
 </div>
@@ -62,7 +62,7 @@ echo $this->renderPartial('common/index_header', [
                             <label class="form-label">Type</label>
                             <select class="form-select" name="type">
                                 <?php foreach ($types as $type): ?>
-                                    <option value="<?= $type ?>"><?= $type ?></option>
+                                    <option value="<?= $e($type) ?>"><?= $e($type) ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>

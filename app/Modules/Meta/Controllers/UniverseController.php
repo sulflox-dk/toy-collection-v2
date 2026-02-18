@@ -96,9 +96,12 @@ class UniverseController extends Controller
             'show_on_dashboard' => filter_var($request->input('show_on_dashboard'), FILTER_VALIDATE_BOOLEAN) ? 1 : 0
         ]);
 
-        // ... refetch ...
         $db = Database::getInstance();
-        $sql = "SELECT u.*, COUNT(l.id) as lines_count FROM meta_universes u ...";
+        $sql = "SELECT u.*, COUNT(l.id) as lines_count
+                FROM meta_universes u
+                LEFT JOIN meta_toy_lines l ON u.id = l.universe_id
+                WHERE u.id = ?
+                GROUP BY u.id";
         $updated = $db->query($sql, [$id])->fetch(\PDO::FETCH_ASSOC);
 
         ob_start();
@@ -203,7 +206,7 @@ class UniverseController extends Controller
         } catch (\Exception $e) {
             $db->rollBack();
             error_log('Delete failed: ' . $e->getMessage());
-            $this->json(['error' => 'Delete failed: ' . $e->getMessage()], 500);
+            $this->json(['error' => 'Failed to delete record. Please try again.'], 500);
         }
     }
 

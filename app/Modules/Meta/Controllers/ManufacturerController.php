@@ -68,7 +68,7 @@ class ManufacturerController extends Controller
             return;
         }
 
-        $showOnDashboard = $request->input('show_on_dashboard') !== null ? 1 : 0;
+        $showOnDashboard = filter_var($request->input('show_on_dashboard'), FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
 
         // 2. Create
         Manufacturer::create([
@@ -115,7 +115,7 @@ class ManufacturerController extends Controller
         Manufacturer::update($id, [
             'name' => $name,
             'slug' => $slug,
-            'show_on_dashboard' => $request->input('show_on_dashboard') ? 1 : 0,
+            'show_on_dashboard' => filter_var($request->input('show_on_dashboard'), FILTER_VALIDATE_BOOLEAN) ? 1 : 0,
         ]);
 
         // 4. Prepare HTML for the row update
@@ -198,9 +198,10 @@ class ManufacturerController extends Controller
             $this->json(['success' => true]);
 
         } catch (\Exception $e) {
-            // ROLLBACK ON FAILURE ❌
+            // ROLLBACK ON FAILURE
             $db->rollBack();
-            $this->json(['error' => 'Delete failed: ' . $e->getMessage()], 500);
+            error_log('Delete failed: ' . $e->getMessage());
+            $this->json(['error' => 'Failed to delete record. Please try again.'], 500);
         }
     }
 

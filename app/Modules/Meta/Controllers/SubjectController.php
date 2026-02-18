@@ -125,11 +125,17 @@ class SubjectController extends Controller
             return;
         }
 
+        $universeId = (int) $request->input('universe_id');
+        if ($universeId <= 0) {
+            $this->json(['field' => 'universe_id', 'message' => 'Please select a universe'], 422);
+            return;
+        }
+
         Subject::update($id, [
             'name' => $name,
             'slug' => $slug,
             'type' => $type,
-            'universe_id' => (int) $request->input('universe_id'),
+            'universe_id' => $universeId,
             'description' => trim($request->input('description', ''))
         ]);
 
@@ -184,8 +190,6 @@ class SubjectController extends Controller
             if ($itemCount > 0 && $migrateTo > 0) {
                 CatalogToyItem::migrateSubject($id, $migrateTo);
             }
-
-            Subject::delete($id);
 
             Subject::delete($id);
             $db->commit();

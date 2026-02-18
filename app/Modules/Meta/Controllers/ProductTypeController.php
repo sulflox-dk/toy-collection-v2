@@ -139,8 +139,6 @@ class ProductTypeController extends Controller
             }
 
             ProductType::delete($id);
-
-            ProductType::delete($id);
             $db->commit();
             $this->json(['success' => true]);
         } catch (\Exception $e) {

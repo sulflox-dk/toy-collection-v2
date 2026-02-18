@@ -196,8 +196,6 @@ class EntertainmentSourceController extends Controller
 
             // 5. Delete
             EntertainmentSource::delete($id);
-
-            EntertainmentSource::delete($id);
             $db->commit();
             $this->json(['success' => true]);
         } catch (\Exception $e) {

@@ -69,18 +69,23 @@ class MediaTag extends BaseModel
      */
     public static function syncForFile(int $mediaFileId, array $tagIds): void
     {
-        // Start med at rydde de gamle tags for filen
-        static::db()->query("DELETE FROM media_file_tags WHERE media_file_id = ?", [$mediaFileId]);
-        
-        // Hvis der ikke er valgt nogen nye tags, stopper vi bare her
-        if (empty($tagIds)) {
-            return;
-        }
+        $db = static::db();
+        $db->beginTransaction();
 
-        // Ellers indsætter vi de nye tags ét ad gangen
-        $sql = "INSERT INTO media_file_tags (media_file_id, media_tag_id) VALUES (?, ?)";
-        foreach ($tagIds as $tagId) {
-            static::db()->query($sql, [$mediaFileId, (int)$tagId]);
+        try {
+            $db->query("DELETE FROM media_file_tags WHERE media_file_id = ?", [$mediaFileId]);
+
+            if (!empty($tagIds)) {
+                $sql = "INSERT INTO media_file_tags (media_file_id, media_tag_id) VALUES (?, ?)";
+                foreach ($tagIds as $tagId) {
+                    $db->query($sql, [$mediaFileId, (int)$tagId]);
+                }
+            }
+
+            $db->commit();
+        } catch (\Exception $e) {
+            $db->rollBack();
+            throw $e;
         }
     }
 

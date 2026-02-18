@@ -114,7 +114,12 @@ class MediaTagController extends Controller
 
     public function destroy(Request $request, int $id): void
     {
-        // Pga. ON DELETE CASCADE i databasen, vil alle links automatisk blive fjernet.
+        if (!MediaTag::find($id)) {
+            $this->json(['error' => 'Tag not found'], 404);
+            return;
+        }
+
+        // ON DELETE CASCADE will remove all links automatically
         MediaTag::delete($id);
         $this->json(['success' => true]);
     }

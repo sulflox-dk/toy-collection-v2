@@ -388,6 +388,12 @@ document.addEventListener('DOMContentLoaded', () => {
 	const tagCloud = document.getElementById('tag-cloud');
 	const selectedTagIdsInput = document.getElementById('selected-tag-ids');
 
+	function escapeHtml(str) {
+		const div = document.createElement('div');
+		div.textContent = str;
+		return div.innerHTML;
+	}
+
 	function renderTagCloud(selectedIds = []) {
 		if (!tagCloud || typeof ALL_MEDIA_TAGS === 'undefined') return;
 
@@ -397,16 +403,15 @@ document.addEventListener('DOMContentLoaded', () => {
 		tagCloud.innerHTML = ALL_MEDIA_TAGS.map((tag) => {
 			const isActive = activeIds.includes(parseInt(tag.id, 10));
 
-			// FIX: Brug eksplicitte baggrunds- og tekst-farver i stedet for knap-klasser
 			const bgClass = isActive
 				? 'bg-primary text-white shadow-sm border border-primary'
 				: 'bg-light text-dark border border-secondary-subtle';
 
 			return `
-                <span class="badge ${bgClass} p-2 tag-badge" 
-                      data-id="${tag.id}" 
+                <span class="badge ${bgClass} p-2 tag-badge"
+                      data-id="${parseInt(tag.id, 10)}"
                       style="cursor: pointer; user-select: none; font-weight: normal; font-size: 0.85rem; transition: all 0.2s;">
-                    ${tag.name}
+                    ${escapeHtml(tag.name)}
                 </span>`;
 		}).join('');
 
