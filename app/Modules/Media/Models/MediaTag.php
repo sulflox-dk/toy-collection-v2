@@ -97,4 +97,32 @@ class MediaTag extends BaseModel
         $sql = "SELECT * FROM " . static::$table . " ORDER BY name ASC";
         return static::db()->query($sql)->fetchAll(\PDO::FETCH_ASSOC);
     }
+
+    /**
+     * Tæller hvor mange filer der er tilknyttet et bestemt tag
+     */
+    public static function countFiles(int $tagId): int
+    {
+        $sql = "SELECT COUNT(*) FROM media_file_tags WHERE media_tag_id = ?";
+        return (int) static::db()->query($sql, [$tagId])->fetchColumn();
+    }
+
+    /**
+     * Migrerer filer fra et tag til et andet.
+     * Håndterer potentielle dubletter i pivot-tabellen vha. INSERT IGNORE.
+     */
+    public static function migrateTag(int $oldId, int $newId): void
+    {
+        $db = static::db();
+        
+        // 1. Opret nye links til det nye tag for filer, der havde det gamle tag. 
+        // Brug IGNORE, så vi ikke får en fejl, hvis filen allerede har det nye tag.
+        $sqlInsert = "INSERT IGNORE INTO media_file_tags (media_file_id, media_tag_id)
+                      SELECT media_file_id, ? FROM media_file_tags WHERE media_tag_id = ?";
+        $db->query($sqlInsert, [$newId, $oldId]);
+        
+        // 2. Slet de gamle links
+        $sqlDelete = "DELETE FROM media_file_tags WHERE media_tag_id = ?";
+        $db->query($sqlDelete, [$oldId]);
+    }
 }

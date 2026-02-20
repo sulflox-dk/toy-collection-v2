@@ -119,8 +119,73 @@ class MediaTagController extends Controller
             return;
         }
 
-        // ON DELETE CASCADE will remove all links automatically
-        MediaTag::delete($id);
-        $this->json(['success' => true]);
+        // 1. Check for dependencies (Files linked to this tag)
+        $fileCount = MediaTag::countFiles($id);
+        
+        // 2. Validate Migration Request
+        $migrateTo = (int) $request->input('migrate_to', 0);
+
+        if ($migrateTo > 0) {
+            if ($migrateTo === $id) {
+                $this->json(['error' => 'Cannot migrate items to the tag being deleted.'], 400);
+                return;
+            }
+            $target = MediaTag::find($migrateTo);
+            if (!$target) {
+                $this->json(['error' => 'The selected tag does not exist.'], 400);
+                return;
+            }
+        }
+
+        // 3. Handle Migration Requirement (409 Conflict)
+        if ($fileCount > 0 && $migrateTo === 0) {
+            $this->json([
+                'requires_migration' => true,
+                'message' => "This tag is linked to {$fileCount} media file(s). Please reassign them to another tag before deleting.",
+                'options_url' => "media-tag/migrate-on-delete-options?exclude={$id}"
+            ], 409);
+            return;
+        }
+
+        $db = Database::getInstance();
+
+        try {
+            $db->beginTransaction();
+
+            // 4. Migrate items if requested
+            if ($fileCount > 0 && $migrateTo > 0) {
+                MediaTag::migrateTag($id, $migrateTo);
+            }
+
+            // 5. Delete tag (Any remaining pivot table links will be handled by ON DELETE CASCADE if set up, or the cleanup in migrateTag)
+            MediaTag::delete($id);
+
+            $db->commit();
+            $this->json(['success' => true]);
+
+        } catch (\Exception $e) {
+            $db->rollBack();
+            error_log('Delete failed: ' . $e->getMessage());
+            $this->json(['error' => 'Failed to delete record. Please try again.'], 500);
+        }
+    }
+
+    public function migrateOnDeleteOptions(Request $request): void
+    {
+        $exclude = (int) $request->input('exclude', 0);
+        $db = Database::getInstance();
+        
+        $sql = "SELECT id, name FROM media_tags";
+        $params = [];
+        
+        if ($exclude > 0) {
+            $sql .= " WHERE id != ?";
+            $params[] = $exclude;
+        }
+        
+        $sql .= " ORDER BY name ASC";
+        
+        $options = $db->query($sql, $params)->fetchAll(\PDO::FETCH_ASSOC);
+        $this->json($options);
     }
 }

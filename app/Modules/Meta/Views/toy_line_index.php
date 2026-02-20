@@ -2,7 +2,7 @@
 // 1. Build the HTML for your custom filters
 ob_start(); 
 ?>
-<div class="col-md-2 mb-2 mb-md-0">
+<div class="col-md-3 mb-2 mb-md-0">
     <select class="form-select data-filter" name="manufacturer_id">
         <option value="">All Manufacturers</option>
         <?php foreach ($manufacturers as $m): ?>
@@ -10,7 +10,7 @@ ob_start();
         <?php endforeach; ?>
     </select>
 </div>
-<div class="col-md-2 mb-2 mb-md-0">
+<div class="col-md-3 mb-2 mb-md-0">
     <select class="form-select data-filter" name="universe_id">
         <option value="">All Universes</option>
         <?php foreach ($universes as $u): ?>
@@ -18,7 +18,7 @@ ob_start();
         <?php endforeach; ?>
     </select>
 </div>
-<div class="col-md-2 mb-2 mb-md-0">
+<div class="col-md-3 mb-2 mb-md-0">
     <select class="form-select data-filter" name="visibility">
         <option value="">All Status</option>
         <option value="1">Visible</option>

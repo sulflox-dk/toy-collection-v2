@@ -2,7 +2,7 @@
 // 1. Build Custom Filters (Visibility Only)
 ob_start(); 
 ?>
-<div class="col-md-2 mb-2 mb-md-0">
+<div class="col-md-3 mb-2 mb-md-0">
     <select class="form-select data-filter" name="visibility">
         <option value="">All Visibilities</option>
         <option value="1">Visible on Dashboard</option>

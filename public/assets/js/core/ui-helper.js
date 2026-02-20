@@ -565,3 +565,60 @@ class UiHelper {
 
 // Make globally available
 window.UiHelper = UiHelper;
+
+/**
+ * Generic View Mode Switcher (List vs Grid/Cards)
+ */
+window.setViewMode = function (mode, triggerChange = true) {
+	const btnList = document.getElementById('btn-view-list');
+	const btnCards = document.getElementById('btn-view-cards');
+	const input = document.getElementById('view-mode-input');
+
+	if (btnList) btnList.classList.toggle('active', mode === 'list');
+	if (btnCards) btnCards.classList.toggle('active', mode === 'cards');
+
+	if (input) {
+		input.value = mode;
+		// Only trigger the change event (which triggers AJAX) if requested
+		if (triggerChange) {
+			input.dispatchEvent(new Event('change'));
+		}
+	}
+};
+
+/**
+ * Generic Cookie Reader
+ */
+window.getCookie = function (name) {
+	const value = `; ${document.cookie}`;
+	const parts = value.split(`; ${name}=`);
+	if (parts.length === 2) return parts.pop().split(';').shift();
+	return null;
+};
+
+/**
+ * Generic View Mode Switcher (List vs Grid/Cards)
+ */
+window.setViewMode = function (mode, triggerChange = true) {
+	const btnList = document.getElementById('btn-view-list');
+	const btnCards = document.getElementById('btn-view-cards');
+	const input = document.getElementById('view-mode-input');
+
+	if (btnList) btnList.classList.toggle('active', mode === 'list');
+	if (btnCards) btnCards.classList.toggle('active', mode === 'cards');
+
+	if (input) {
+		input.value = mode;
+
+		// Save the preference to a cookie specific to this page's entity
+		const entityKey = input.getAttribute('data-entity');
+		if (entityKey) {
+			document.cookie = `${entityKey}_view=${mode}; path=/; max-age=31536000`; // 1 year
+		}
+
+		// Only trigger the change event (which triggers AJAX) if requested
+		if (triggerChange) {
+			input.dispatchEvent(new Event('change'));
+		}
+	}
+};

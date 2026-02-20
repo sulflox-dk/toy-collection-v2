@@ -16,7 +16,7 @@
     </div>
 </div>
 
-<div id="upload-zone" class="card mb-4 d-none border-dashed shadow-sm">
+<div id="upload-zone" class="card mb-4 d-none border-dashed">
     <div class="card-body text-center p-5">
         <div class="mb-3">
             <i class="fa-solid fa-cloud-arrow-up fa-3x text-primary opacity-50"></i>
@@ -69,7 +69,7 @@
 <div id="media-grid"></div>
 
 <div class="modal fade" id="media-modal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Media Details</h5>
@@ -81,7 +81,7 @@
                     <input type="hidden" name="id" id="media-id">
                     
                     <div class="text-center mb-3 d-none" id="preview-container">
-                        <img id="preview-image" src="" class="img-fluid rounded border shadow-sm" style="max-height: 200px;">
+                        <img id="preview-image" src="" class="img-fluid rounded border shadow-sm" style="max-height: 260px;">
                     </div>
 
                     <div class="mb-3" id="file-input-group">
@@ -106,7 +106,7 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label d-block">Tags</label>
-                        <div id="tag-cloud" class="d-flex flex-wrap gap-2 border p-3 rounded bg-white">
+                        <div id="tag-cloud" class="d-flex flex-wrap gap-2 border p-2 rounded bg-white">
                             </div>
                         <input type="hidden" name="tag_ids" id="selected-tag-ids">
                         <div class="form-text mt-2"><i class="fa-solid fa-info-circle"></i> Click tags to assign them to this file.</div>
@@ -161,7 +161,7 @@
                 <button class="btn btn-outline-light me-3 px-4 rounded-pill" id="lightbox-btn-edit">
                     <i class="fa-solid fa-pencil me-1"></i> Edit
                 </button>
-                <button class="btn btn-outline-danger px-4 rounded-pill" id="lightbox-btn-delete">
+                <button class="btn btn-outline-light px-4 rounded-pill" id="lightbox-btn-delete">
                     <i class="fa-solid fa-trash-can me-1"></i> Delete
                 </button>
             </div>

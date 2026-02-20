@@ -1,6 +1,7 @@
 <?php
 namespace App\Modules\Media\Controllers;
 
+use App\Kernel\Database\Database;
 use App\Kernel\Http\Controller;
 use App\Kernel\Http\Request;
 use App\Kernel\Core\Config;
@@ -88,7 +89,6 @@ class MediaFileController extends Controller
         $allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
         $detectedMime = finfo_file($finfo, $file['tmp_name']);
-        finfo_close($finfo);
 
         if (!in_array($detectedMime, $allowedMimes)) {
             $this->json(['error' => 'File content does not match an allowed type.'], 422);
@@ -141,6 +141,15 @@ class MediaFileController extends Controller
                 MediaTag::syncForFile($newMediaId, $tagIdsArray);
             }
             
+            // --- NYT: AUTOMATIC ENTITY LINKING ---
+            $entityType = trim($request->input('entity_type', ''));
+            $entityId = (int)$request->input('entity_id', 0);
+            
+            if ($entityType !== '' && $entityId > 0) {
+                MediaFile::linkToEntity($newMediaId, $entityType, $entityId);
+            }
+            // -------------------------------------
+            
             $this->json(['success' => true]);
         } else {
             $this->json(['error' => 'Failed to move uploaded file.'], 500);
@@ -188,17 +197,133 @@ class MediaFileController extends Controller
             return;
         }
 
-        // Delete physical file (with path traversal guard)
-        $fullPath = ROOT_PATH . '/public/' . $file['filepath'];
-        $realPath = realpath($fullPath);
-        $uploadsDir = realpath(ROOT_PATH . '/public/uploads');
+        // 1. Check for dependencies (Is this file attached to any Universes, Toys, etc.?)
+        $linkCount = MediaFile::getUsageCount($id);
+        
+        // 2. Validate Migration Request
+        $migrateTo = (int) $request->input('migrate_to', 0);
 
-        if ($realPath && $uploadsDir && str_starts_with($realPath, $uploadsDir)) {
-            unlink($realPath);
+        if ($migrateTo > 0) {
+            if ($migrateTo === $id) {
+                $this->json(['error' => 'Cannot migrate links to the file being deleted.'], 400);
+                return;
+            }
+            $target = MediaFile::find($migrateTo);
+            if (!$target) {
+                $this->json(['error' => 'The selected target file does not exist.'], 400);
+                return;
+            }
         }
 
-        MediaFile::delete($id);
+        // 3. Handle Migration Requirement (409 Conflict)
+        if ($linkCount > 0 && $migrateTo === 0) {
+            $this->json([
+                'requires_migration' => true,
+                'message' => "This file is attached to {$linkCount} item(s). Please replace it with another file before deleting.",
+                'options_url' => "media-file/migrate-on-delete-options?exclude={$id}"
+            ], 409);
+            return;
+        }
 
+        $db = Database::getInstance();
+
+        try {
+            $db->beginTransaction();
+
+            // 4. Migrate items if requested
+            if ($linkCount > 0 && $migrateTo > 0) {
+                MediaFile::migrateLinks($id, $migrateTo);
+            }
+
+            // 5. Delete physical file (with path traversal guard)
+            $fullPath = ROOT_PATH . '/public/' . $file['filepath'];
+            $realPath = realpath($fullPath);
+            $uploadsDir = realpath(ROOT_PATH . '/public/uploads');
+
+            if ($realPath && $uploadsDir && str_starts_with($realPath, $uploadsDir)) {
+                unlink($realPath);
+            }
+
+            // 6. Delete DB record (ON DELETE CASCADE will handle media_file_tags)
+            MediaFile::delete($id);
+
+            $db->commit();
+            $this->json(['success' => true]);
+
+        } catch (\Exception $e) {
+            $db->rollBack();
+            error_log('Delete failed: ' . $e->getMessage());
+            $this->json(['error' => 'Failed to delete record. Please try again.'], 500);
+        }
+    }
+
+    public function migrateOnDeleteOptions(Request $request): void
+    {
+        $exclude = (int) $request->input('exclude', 0);
+        $db = Database::getInstance();
+        
+        // We concatenate the Title and Filename so the dropdown makes it easy to identify the target file
+        $sql = "SELECT id, CONCAT(COALESCE(title, 'Untitled'), ' (', filename, ')') as name FROM media_files";
+        $params = [];
+        
+        if ($exclude > 0) {
+            $sql .= " WHERE id != ?";
+            $params[] = $exclude;
+        }
+        
+        $sql .= " ORDER BY title ASC, filename ASC";
+        
+        $options = $db->query($sql, $params)->fetchAll(\PDO::FETCH_ASSOC);
+        $this->json($options);
+    }
+
+    public function searchJson(Request $request): void
+    {
+        $q = trim($request->input('q', ''));
+        if (mb_strlen($q) < 2) {
+            $this->json([]);
+            return;
+        }
+        
+        $this->json(MediaFile::searchSimple($q));
+    }
+
+    public function link(Request $request): void
+    {
+        $mediaFileId = (int)$request->input('media_file_id');
+        $entityType = trim($request->input('entity_type'));
+        $entityId = (int)$request->input('entity_id');
+
+        if (!$mediaFileId || !$entityType || !$entityId) {
+            $this->json(['error' => 'Missing data'], 400);
+            return;
+        }
+
+        MediaFile::linkToEntity($mediaFileId, $entityType, $entityId);
+        $this->json(['success' => true]);
+    }
+
+    public function getThumbnails(Request $request): void
+    {
+        $type = trim($request->input('type'));
+        $id = (int)$request->input('id');
+
+        if (!$type || !$id) {
+            $this->json([]);
+            return;
+        }
+
+        $this->json(MediaFile::getForEntity($type, $id));
+    }
+
+    public function unlink(Request $request): void
+    {
+        $linkId = (int)$request->input('link_id');
+        if ($linkId) {
+            $db = Database::getInstance();
+            // This deletes the link, NOT the physical media file
+            $db->query("DELETE FROM media_links WHERE id = ?", [$linkId]);
+        }
         $this->json(['success' => true]);
     }
 }

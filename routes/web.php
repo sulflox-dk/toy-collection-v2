@@ -16,6 +16,7 @@ use App\Modules\Meta\Controllers\GradingCompanyController;
 use App\Modules\Media\Controllers\MediaFileController;
 use App\Modules\Auth\Controllers\UserController;
 use App\Modules\Media\Controllers\MediaTagController;
+use \App\Modules\Catalog\Controllers\CatalogToyController;
 
 /** @var Router $router */
 
@@ -24,6 +25,14 @@ $router->guest('/login');
 $router->get('/login',  [LoginController::class, 'showLoginForm']);
 $router->post('/login', [LoginController::class, 'login']);
 $router->post('/logout', [LoginController::class, 'logout']);
+
+// ── Admin: User Management ──────────────────────────────
+$router->admin('/user');
+$router->get('/user',           [UserController::class, 'index']);
+$router->get('/user/list',      [UserController::class, 'list']);
+$router->post('/user',          [UserController::class, 'store']);
+$router->put('/user/{id}',      [UserController::class, 'update']);
+$router->delete('/user/{id}',   [UserController::class, 'destroy']);
 
 // ── Dashboard ───────────────────────────────────────────
 $router->get('/',                   [ManufacturerController::class, 'index']);
@@ -113,22 +122,32 @@ $router->put('/grading-company/{id}',   [GradingCompanyController::class, 'updat
 $router->delete('/grading-company/{id}',[GradingCompanyController::class, 'destroy']);
 $router->get('/grading-company/migrate-on-delete-options', [GradingCompanyController::class, 'migrateOnDeleteOptions']);
 
-$router->get('/media-file',        [MediaFileController::class, 'index']);
-$router->get('/media-file/list',   [MediaFileController::class, 'list']);
-$router->post('/media-file',       [MediaFileController::class, 'store']); // Handles Upload
-$router->put('/media-file/{id}',   [MediaFileController::class, 'update']); // Handles Meta Edit
-$router->delete('/media-file/{id}',[MediaFileController::class, 'destroy']);
+$router->get('/media-file',        [\App\Modules\Media\Controllers\MediaFileController::class, 'index']);
+$router->get('/media-file/list',   [\App\Modules\Media\Controllers\MediaFileController::class, 'list']);
+$router->post('/media-file',       [\App\Modules\Media\Controllers\MediaFileController::class, 'store']); // Handles Uploads globally
+$router->put('/media-file/{id}',   [\App\Modules\Media\Controllers\MediaFileController::class, 'update']);
+$router->delete('/media-file/{id}',[\App\Modules\Media\Controllers\MediaFileController::class, 'destroy']);
+$router->get('/media-file/migrate-on-delete-options', [\App\Modules\Media\Controllers\MediaFileController::class, 'migrateOnDeleteOptions']);
 
-$router->get('/media-tag',        [MediaTagController::class, 'index']);
-$router->get('/media-tag/list',   [MediaTagController::class, 'list']);
-$router->post('/media-tag',       [MediaTagController::class, 'store']); // Handles Upload
-$router->put('/media-tag/{id}',   [MediaTagController::class, 'update']); // Handles Meta Edit
-$router->delete('/media-tag/{id}',[MediaTagController::class, 'destroy']);
+$router->get('/media-file/search-json', [\App\Modules\Media\Controllers\MediaFileController::class, 'searchJson']);
+$router->post('/media-file/link',       [\App\Modules\Media\Controllers\MediaFileController::class, 'link']);
+$router->post('/media-file/unlink', [\App\Modules\Media\Controllers\MediaFileController::class, 'unlink']);
+$router->get('/media-file/thumbnails',  [\App\Modules\Media\Controllers\MediaFileController::class, 'getThumbnails']);
 
-// ── Admin: User Management ──────────────────────────────
-$router->admin('/user');
-$router->get('/user',           [UserController::class, 'index']);
-$router->get('/user/list',      [UserController::class, 'list']);
-$router->post('/user',          [UserController::class, 'store']);
-$router->put('/user/{id}',      [UserController::class, 'update']);
-$router->delete('/user/{id}',   [UserController::class, 'destroy']);
+$router->get('/media-tag',        [\App\Modules\Media\Controllers\MediaTagController::class, 'index']);
+$router->get('/media-tag/list',   [\App\Modules\Media\Controllers\MediaTagController::class, 'list']);
+$router->post('/media-tag',       [\App\Modules\Media\Controllers\MediaTagController::class, 'store']);
+$router->put('/media-tag/{id}',   [\App\Modules\Media\Controllers\MediaTagController::class, 'update']);
+$router->delete('/media-tag/{id}',[\App\Modules\Media\Controllers\MediaTagController::class, 'destroy']);
+$router->get('/media-tag/migrate-on-delete-options', [\App\Modules\Media\Controllers\MediaTagController::class, 'migrateOnDeleteOptions']);
+
+$router->get('/catalog-toy', [CatalogToyController::class, 'index']);
+$router->get('/catalog-toy/list', [CatalogToyController::class, 'list']);
+$router->get('/catalog-toy/create-step-1', [CatalogToyController::class, 'createStep1']);
+$router->get('/catalog-toy/create-step-2', [CatalogToyController::class, 'createStep2']);
+$router->post('/catalog-toy/store', [CatalogToyController::class, 'store']);
+$router->get('/catalog-toy/create-step-3', [CatalogToyController::class, 'createStep3']);
+
+
+
+

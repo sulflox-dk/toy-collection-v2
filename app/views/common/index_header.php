@@ -19,27 +19,56 @@ $showVisibility = $showVisibility ?? true; // <--- Toggle Standard Visibility
     </button>
 </div>
 
-<div class="row mb-3 gx-2 align-items-center">
+<div class="row mb-3 gx-2">
     
-    <?php if($showSearch): ?>
-    <div class="col-md-2 mb-2 mb-md-0">
-        <div class="input-group">
-            <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-search text-muted"></i></span>
-            <input type="text" class="form-control border-start-0 ps-1" id="search-input" placeholder="<?= $e($searchPlaceholder) ?>">
+    <div class="col-md-2">
+        <?php if($showSearch): ?>
+        <div class="col-md-auto mb-2 mb-md-0">
+            <div class="input-group">
+                <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-search text-muted"></i></span>
+                <input type="text" class="form-control border-start-0 ps-1" id="search-input" placeholder="<?= $e($searchPlaceholder) ?>">
+            </div>
+        </div>
+        <?php endif; ?>
+    </div>
+
+    <div class="col-md-9">
+        <div class="row mb-3 gx-2 align-items-center row-gap-2">
+            <?= $extraFilters ?>
         </div>
     </div>
-    <?php endif; ?>
 
-    <?= $extraFilters ?>
+    <div class="col-md-1">
+        
+        <div class="row mb-3 gx-2 align-items-center row-gap-2">
+            
+            <div class="col-md-auto ms-auto">
+                <button class="btn btn-light border" id="btn-reset-filters" title="Reset Filters">
+                    <i class="fa-solid fa-rotate-left text-muted"></i>
+                </button>
+            </div>
 
-    <div class="col-md-auto ms-auto">
-        <button class="btn btn-light border" id="btn-reset-filters" title="Reset Filters">
-            <i class="fa-solid fa-rotate-left text-muted"></i>
-        </button>
+            <?php if(isset($showViewMode) && $showViewMode): ?>
+            <div class="col-md-auto ms-auto d-flex align-items-center">
+                <input type="hidden" class="data-filter" name="view" id="view-mode-input" value="list" data-entity="<?= $e($entityKey) ?>">
+                <div class="btn-group shadow-sm">
+                    <button type="button" class="btn btn-light border active" id="btn-view-list" onclick="setViewMode('list')" title="List View">
+                        <i class="fa-solid fa-list text-muted"></i>
+                    </button>
+                    <button type="button" class="btn btn-light border" id="btn-view-cards" onclick="setViewMode('cards')" title="Grid View">
+                        <i class="fa-solid fa-th text-muted"></i>
+                    </button>
+                </div>
+            </div>
+            <?php endif; ?>
+
+        </div>
+
     </div>
+
 </div>
 
-<div class="card shadow-sm border-0">
+<div class="card border-0">
     <div class="card-body p-0">
         <div id="<?= $e($entityKey) ?>-grid"></div>
     </div>

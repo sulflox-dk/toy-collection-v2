@@ -39,7 +39,7 @@
                                 <i class="fa-solid fa-pencil"></i>
                             </button>
                             
-                            <button class="btn btn-outline-danger btn-delete" 
+                            <button class="btn btn-outline-secondary btn-delete" 
                                     data-id="<?= $e($f['id']) ?>">
                                 <i class="fa-solid fa-trash-can"></i>
                             </button>

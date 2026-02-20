@@ -57,7 +57,7 @@ $baseUrl = rtrim(Config::get('app.url', ''), '/') . '/';
                 </a>
                 <div class="collapse" id="menu-catalog">
                     <ul class="sidebar-submenu btn-toggle-nav-list align-items-center rounded">
-                        <li><a href="#" class="nav-link">Master Toys</a></li>
+                        <li><a href="<?= $baseUrl ?>catalog-toy" class="nav-link">Catalog Toys</a></li>
                     </ul>
                 </div>
             </li>

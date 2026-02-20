@@ -12084,4 +12084,74 @@ textarea.form-control-lg {
 .border-dashed.border-primary {
   border-color: #0d6efd !important;
   background-color: #f8fbff;
+}
+
+/* ==========================================================================
+   Entity Grid / List Images
+   ========================================================================== */
+.entity-card-img-wrap {
+  height: 240px;
+  overflow: hidden;
+  border-top-left-radius: var(--bs-border-radius);
+  border-top-right-radius: var(--bs-border-radius);
+}
+.entity-card-img-wrap img {
+  max-height: 100%;
+  max-width: 100%;
+  -o-object-fit: contain;
+     object-fit: contain;
+}
+
+.entity-row-thumb {
+  width: 45px;
+  height: 45px;
+  -o-object-fit: cover;
+     object-fit: cover;
+}
+
+.entity-row-thumb-placeholder {
+  width: 45px;
+  height: 45px;
+}
+
+/* ==========================================================================
+   Wizard Modal (Max 1100px)
+   ========================================================================== */
+.modal-dialog-vw-85 {
+  width: 85vw;
+  max-width: 1100px; /* Cap the width here! */
+  margin: 1.75rem auto;
+}
+.modal-dialog-vw-85 .modal-content {
+  min-height: 85vh;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+.modal-dialog-vw-85 .modal-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  background-color: #f8f9fa;
+}
+
+/* Hover effects for Universe Selection Cards */
+.universe-select-card {
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+.universe-select-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+  border-color: var(--bs-primary);
+}
+
+/* ==========================================================================
+   Custom Dropdown Component
+   ========================================================================== */
+.subject-result-item {
+  transition: background-color 0.15s ease-in-out;
+}
+.subject-result-item:hover {
+  background-color: var(--bs-light) !important;
 }/*# sourceMappingURL=app.css.map */
