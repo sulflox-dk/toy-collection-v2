@@ -148,7 +148,5 @@ $router->get('/catalog-toy/create-step-1', [CatalogToyController::class, 'create
 $router->get('/catalog-toy/create-step-2', [CatalogToyController::class, 'createStep2']);
 $router->post('/catalog-toy/store', [CatalogToyController::class, 'store']);
 $router->get('/catalog-toy/create-step-3', [CatalogToyController::class, 'createStep3']);
-
-
-
+$router->delete('/catalog-toy/{id}', [CatalogToyController::class, 'destroy']);
 

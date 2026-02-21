@@ -293,7 +293,18 @@ const CatalogWizard = {
 			const div = document.createElement('div');
 			div.className = 'p-2 border-bottom subject-result-item bg-white';
 			div.style.cursor = 'pointer';
-			div.innerHTML = `<div class="fw-bold small text-dark">${sub.name}</div><div class="text-muted" style="font-size:0.7rem;">${sub.type}</div>`;
+
+			const nameEl = document.createElement('div');
+			nameEl.className = 'fw-bold small text-dark';
+			nameEl.textContent = sub.name;
+
+			const typeEl = document.createElement('div');
+			typeEl.className = 'text-muted';
+			typeEl.style.fontSize = '0.7rem';
+			typeEl.textContent = sub.type;
+
+			div.appendChild(nameEl);
+			div.appendChild(typeEl);
 			div.onclick = () => this.selectSubject(wrapper, sub);
 			resultsContainer.appendChild(div);
 		});
@@ -575,22 +586,39 @@ const CatalogWizard = {
 				return;
 			}
 
-			let html = '<div class="row g-2">';
+			const container = document.createElement('div');
+			container.className = 'row g-2';
 			data.forEach((file) => {
 				const title = file.title || file.filename;
-				html += `
-                <div class="col-4 col-md-3">
-                    <div class="card h-100 border shadow-sm" style="cursor: pointer; transition: transform 0.1s;" 
-                         onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'"
-                         onclick="CatalogWizard.linkExistingMedia(${file.id})">
-                        <img src="${SITE_URL}${file.filepath}" class="card-img-top" style="height: 100px; object-fit: contain; padding: 5px;" loading="lazy">
-                        <div class="card-body p-1 text-center text-truncate small text-muted bg-light" style="font-size: 0.7rem;" title="${title}">
-                            ${title}
-                        </div>
-                    </div>
-                </div>`;
+				const col = document.createElement('div');
+				col.className = 'col-4 col-md-3';
+
+				const card = document.createElement('div');
+				card.className = 'card h-100 border shadow-sm';
+				card.style.cssText = 'cursor: pointer; transition: transform 0.1s;';
+				card.addEventListener('mouseover', () => card.style.transform = 'scale(1.05)');
+				card.addEventListener('mouseout', () => card.style.transform = 'scale(1)');
+				card.addEventListener('click', () => CatalogWizard.linkExistingMedia(file.id));
+
+				const img = document.createElement('img');
+				img.src = SITE_URL + file.filepath;
+				img.className = 'card-img-top';
+				img.style.cssText = 'height: 100px; object-fit: contain; padding: 5px;';
+				img.loading = 'lazy';
+
+				const body = document.createElement('div');
+				body.className = 'card-body p-1 text-center text-truncate small text-muted bg-light';
+				body.style.fontSize = '0.7rem';
+				body.title = title;
+				body.textContent = title;
+
+				card.appendChild(img);
+				card.appendChild(body);
+				col.appendChild(card);
+				container.appendChild(col);
 			});
-			html += '</div>';
+			resultsContainer.innerHTML = '';
+			resultsContainer.appendChild(container);
 			resultsContainer.innerHTML = html;
 		} catch (error) {
 			resultsContainer.innerHTML =

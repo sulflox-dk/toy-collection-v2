@@ -282,4 +282,59 @@ class CatalogToyController extends Controller
             'availableTags' => $availableTags // <-- Pass them to the view
         ]);
     }
+
+    /**
+     * Delete a catalog toy and its items.
+     */
+    public function destroy(Request $request, int $id): void
+    {
+        $db = Database::getInstance();
+
+        $toy = $db->query("SELECT id FROM catalog_toys WHERE id = ?", [$id])->fetch(\PDO::FETCH_ASSOC);
+        if (!$toy) {
+            $this->json(['error' => 'Catalog toy not found'], 404);
+            return;
+        }
+
+        // Check if any collection entries reference this catalog toy
+        $collectionCount = (int) $db->query(
+            "SELECT COUNT(*) FROM collection_toys WHERE catalog_toy_id = ? AND deleted_at IS NULL",
+            [$id]
+        )->fetchColumn();
+
+        if ($collectionCount > 0) {
+            $this->json([
+                'error' => "Cannot delete: this toy is referenced by {$collectionCount} collection item(s). Remove them first."
+            ], 409);
+            return;
+        }
+
+        try {
+            $db->beginTransaction();
+
+            // Remove media links for the toy and its items
+            $itemIds = $db->query("SELECT id FROM catalog_toy_items WHERE catalog_toy_id = ?", [$id])
+                ->fetchAll(\PDO::FETCH_COLUMN);
+
+            $db->query("DELETE FROM media_links WHERE entity_type = 'catalog_toys' AND entity_id = ?", [$id]);
+
+            if (!empty($itemIds)) {
+                $placeholders = implode(',', array_fill(0, count($itemIds), '?'));
+                $db->query(
+                    "DELETE FROM media_links WHERE entity_type = 'catalog_toy_items' AND entity_id IN ($placeholders)",
+                    $itemIds
+                );
+            }
+
+            // Delete items then toy (items have ON DELETE CASCADE, but explicit is clearer)
+            $db->query("DELETE FROM catalog_toy_items WHERE catalog_toy_id = ?", [$id]);
+            $db->query("DELETE FROM catalog_toys WHERE id = ?", [$id]);
+
+            $db->commit();
+            $this->json(['success' => true]);
+        } catch (\PDOException $e) {
+            $db->rollBack();
+            $this->json(['error' => 'Failed to delete catalog toy. ' . $e->getMessage()], 500);
+        }
+    }
 }
