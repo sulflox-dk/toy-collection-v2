@@ -122,25 +122,25 @@ $router->put('/grading-company/{id}',   [GradingCompanyController::class, 'updat
 $router->delete('/grading-company/{id}',[GradingCompanyController::class, 'destroy']);
 $router->get('/grading-company/migrate-on-delete-options', [GradingCompanyController::class, 'migrateOnDeleteOptions']);
 
-$router->get('/media-file',        [\App\Modules\Media\Controllers\MediaFileController::class, 'index']);
-$router->get('/media-file/list',   [\App\Modules\Media\Controllers\MediaFileController::class, 'list']);
-$router->post('/media-file',       [\App\Modules\Media\Controllers\MediaFileController::class, 'store']); // Handles Uploads globally
-$router->put('/media-file/{id}',   [\App\Modules\Media\Controllers\MediaFileController::class, 'update']);
-$router->post('/media-file/{id}',  [\App\Modules\Media\Controllers\MediaFileController::class, 'update']);
-$router->delete('/media-file/{id}',[\App\Modules\Media\Controllers\MediaFileController::class, 'destroy']);
-$router->get('/media-file/migrate-on-delete-options', [\App\Modules\Media\Controllers\MediaFileController::class, 'migrateOnDeleteOptions']);
+$router->get('/media-file',        [MediaFileController::class, 'index']);
+$router->get('/media-file/list',   [MediaFileController::class, 'list']);
+$router->post('/media-file',       [MediaFileController::class, 'store']); // Handles Uploads globally
+$router->put('/media-file/{id}',   [MediaFileController::class, 'update']);
+$router->post('/media-file/{id}',  [MediaFileController::class, 'update']);
+$router->delete('/media-file/{id}',[MediaFileController::class, 'destroy']);
+$router->get('/media-file/migrate-on-delete-options', [MediaFileController::class, 'migrateOnDeleteOptions']);
 
-$router->get('/media-file/search-json', [\App\Modules\Media\Controllers\MediaFileController::class, 'searchJson']);
-$router->post('/media-file/link',       [\App\Modules\Media\Controllers\MediaFileController::class, 'link']);
-$router->post('/media-file/unlink', [\App\Modules\Media\Controllers\MediaFileController::class, 'unlink']);
-$router->get('/media-file/thumbnails',  [\App\Modules\Media\Controllers\MediaFileController::class, 'getThumbnails']);
+$router->get('/media-file/search-json', [MediaFileController::class, 'searchJson']);
+$router->post('/media-file/link',       [MediaFileController::class, 'link']);
+$router->post('/media-file/unlink', [MediaFileController::class, 'unlink']);
+$router->get('/media-file/thumbnails',  [MediaFileController::class, 'getThumbnails']);
 
-$router->get('/media-tag',        [\App\Modules\Media\Controllers\MediaTagController::class, 'index']);
-$router->get('/media-tag/list',   [\App\Modules\Media\Controllers\MediaTagController::class, 'list']);
-$router->post('/media-tag',       [\App\Modules\Media\Controllers\MediaTagController::class, 'store']);
-$router->put('/media-tag/{id}',   [\App\Modules\Media\Controllers\MediaTagController::class, 'update']);
-$router->delete('/media-tag/{id}',[\App\Modules\Media\Controllers\MediaTagController::class, 'destroy']);
-$router->get('/media-tag/migrate-on-delete-options', [\App\Modules\Media\Controllers\MediaTagController::class, 'migrateOnDeleteOptions']);
+$router->get('/media-tag',        [MediaTagController::class, 'index']);
+$router->get('/media-tag/list',   [MediaTagController::class, 'list']);
+$router->post('/media-tag',       [MediaTagController::class, 'store']);
+$router->put('/media-tag/{id}',   [MediaTagController::class, 'update']);
+$router->delete('/media-tag/{id}',[MediaTagController::class, 'destroy']);
+$router->get('/media-tag/migrate-on-delete-options', [MediaTagController::class, 'migrateOnDeleteOptions']);
 
 $router->get('/catalog-toy', [CatalogToyController::class, 'index']);
 $router->get('/catalog-toy/list', [CatalogToyController::class, 'list']);
