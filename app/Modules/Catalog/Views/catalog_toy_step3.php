@@ -26,7 +26,7 @@ $tagsJson = json_encode($availableTags ?? [], JSON_HEX_APOS | JSON_HEX_QUOT);
                         <span class="text-muted small">Primary Entry</span>
                     </div>
                     <div>
-                        <button class="btn btn-outline-dark btn-sm" onclick="CatalogWizard.openMediaPicker('catalog_toys', <?= $toy['id'] ?>)">
+                        <button class="btn btn-outline-dark btn-sm" onclick="MediaPicker.open('catalog_toys', <?= $toy['id'] ?>)">
                             <i class="fa-solid fa-plus me-1"></i> Add Photo
                         </button>
                     </div>
@@ -60,7 +60,7 @@ $tagsJson = json_encode($availableTags ?? [], JSON_HEX_APOS | JSON_HEX_QUOT);
                                     <?php endif; ?>
                                 </div>
                                 <div>
-                                    <button class="btn btn-outline-secondary btn-sm" onclick="CatalogWizard.openMediaPicker('catalog_toy_items', <?= $item['id'] ?>)">
+                                    <button class="btn btn-outline-secondary btn-sm" onclick="MediaPicker.open('catalog_toy_items', <?= $item['id'] ?>)">
                                         <i class="fa-solid fa-plus me-1"></i> Add Photo
                                     </button>
                                 </div>
@@ -89,7 +89,7 @@ $tagsJson = json_encode($availableTags ?? [], JSON_HEX_APOS | JSON_HEX_QUOT);
 <div id="mediaPickerOverlay" class="position-absolute top-0 start-0 w-100 h-100 bg-white d-none flex-column" style="z-index: 1060;">
     <div class="modal-header bg-dark text-white border-0 flex-shrink-0">
         <h5 class="modal-title"><i class="fa-solid fa-image me-2"></i>Select Media</h5>
-        <button type="button" class="btn-close btn-close-white" onclick="CatalogWizard.closeMediaPicker()"></button>
+        <button type="button" class="btn-close btn-close-white" onclick="MediaPicker.close()"></button>
     </div>
     
     <div class="p-3 border-bottom bg-light flex-shrink-0">
@@ -112,7 +112,7 @@ $tagsJson = json_encode($availableTags ?? [], JSON_HEX_APOS | JSON_HEX_QUOT);
                 <p class="text-muted mb-3">or</p>
                 <label class="btn btn-primary">
                     Browse Files
-                    <input type="file" class="d-none" id="mediaUploadInput" accept="image/*" multiple onchange="CatalogWizard.handleFileUpload(this)">
+                    <input type="file" class="d-none" id="mediaUploadInput" accept="image/*" multiple onchange="MediaPicker.handleFileUpload(this)">
                 </label>
             </div>
         </div>
@@ -120,7 +120,7 @@ $tagsJson = json_encode($availableTags ?? [], JSON_HEX_APOS | JSON_HEX_QUOT);
         <div class="tab-pane fade h-100 d-flex flex-column" id="tab-library">
             <div class="input-group mb-3">
                 <span class="input-group-text bg-white"><i class="fa-solid fa-search text-muted"></i></span>
-                <input type="text" class="form-control" id="mediaSearchInput" placeholder="Search existing images by filename or tags..." onkeyup="CatalogWizard.searchLibrary(this.value)">
+                <input type="text" class="form-control" id="mediaSearchInput" placeholder="Search existing images by filename or tags..." onkeyup="MediaPicker.searchLibrary(this.value)">
             </div>
             
             <div class="flex-grow-1 border rounded bg-white p-3 overflow-auto" id="mediaSearchResults">
