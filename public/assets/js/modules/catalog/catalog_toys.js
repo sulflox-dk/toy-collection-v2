@@ -619,7 +619,6 @@ const CatalogWizard = {
 			});
 			resultsContainer.innerHTML = '';
 			resultsContainer.appendChild(container);
-			resultsContainer.innerHTML = html;
 		} catch (error) {
 			resultsContainer.innerHTML =
 				'<div class="text-danger mt-5 text-center">Search failed to load.</div>';
