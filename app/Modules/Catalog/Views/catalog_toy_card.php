@@ -62,10 +62,21 @@
                 </div>
 
                 <div class="btn-group">
-                    <button class="btn btn-sm btn-outline-secondary btn-edit" data-id="<?= $e($t['id']) ?>" title="Edit">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" 
+                            onclick="CatalogWizard.editToy(<?= $e($t['id']) ?>, <?= $e($t['universe_id']) ?>)" 
+                            title="Edit Catalog Data">
                         <i class="fa-solid fa-pencil"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-secondary btn-delete" data-id="<?= $e($t['id']) ?>" title="Delete">
+                    
+                    <button type="button" class="btn btn-sm btn-outline-secondary" 
+                            onclick="CatalogWizard.editPhotos(<?= $e($t['id']) ?>)" 
+                            title="Manage Photos">
+                        <i class="fa-solid fa-camera"></i>
+                    </button>
+
+                    <button type="button" class="btn btn-sm btn-outline-secondary btn-delete" 
+                            data-id="<?= $e($t['id']) ?>" 
+                            title="Delete">
                         <i class="fa-solid fa-trash-alt"></i>
                     </button>
                 </div>

@@ -126,6 +126,7 @@ $router->get('/media-file',        [\App\Modules\Media\Controllers\MediaFileCont
 $router->get('/media-file/list',   [\App\Modules\Media\Controllers\MediaFileController::class, 'list']);
 $router->post('/media-file',       [\App\Modules\Media\Controllers\MediaFileController::class, 'store']); // Handles Uploads globally
 $router->put('/media-file/{id}',   [\App\Modules\Media\Controllers\MediaFileController::class, 'update']);
+$router->post('/media-file/{id}',  [\App\Modules\Media\Controllers\MediaFileController::class, 'update']);
 $router->delete('/media-file/{id}',[\App\Modules\Media\Controllers\MediaFileController::class, 'destroy']);
 $router->get('/media-file/migrate-on-delete-options', [\App\Modules\Media\Controllers\MediaFileController::class, 'migrateOnDeleteOptions']);
 

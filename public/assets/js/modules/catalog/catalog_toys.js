@@ -19,6 +19,16 @@ const CatalogWizard = {
 		}
 	},
 
+	editToy(toyId, universeId) {
+		this.modal.show();
+		this.goToStep2(universeId, toyId);
+	},
+
+	editPhotos(toyId) {
+		this.modal.show();
+		this.goToStep3(toyId);
+	},
+
 	async loadStep1() {
 		this.contentContainer.innerHTML =
 			'<div class="p-5 text-center"><i class="fa-solid fa-spinner fa-spin fa-3x text-muted"></i></div>';
@@ -34,14 +44,16 @@ const CatalogWizard = {
 		}
 	},
 
-	async goToStep2(universeId) {
+	async goToStep2(universeId, toyId = null) {
 		this.contentContainer.innerHTML =
 			'<div class="p-5 text-center"><i class="fa-solid fa-spinner fa-spin fa-3x text-muted"></i></div>';
 
 		try {
-			const response = await fetch(
-				`${SITE_URL}catalog-toy/create-step-2?universe_id=${universeId}`,
-			);
+			// Append the ID to the URL if we are editing
+			let url = `${SITE_URL}catalog-toy/create-step-2?universe_id=${universeId}`;
+			if (toyId) url += `&id=${toyId}`;
+
+			const response = await fetch(url);
 			if (!response.ok) throw new Error('Network response was not ok');
 			this.contentContainer.innerHTML = await response.text();
 
@@ -191,7 +203,7 @@ const CatalogWizard = {
 	},
 
 	initItemsManager() {
-		this.itemCount = 0;
+		this.itemCount = document.querySelectorAll('.item-row').length;
 		this.updateItemCountBadge();
 	},
 
@@ -321,8 +333,21 @@ const CatalogWizard = {
 			const result = await response.json();
 
 			if (result.success) {
-				console.log('Saved successfully with ID:', result.id);
-				this.goToStep3(result.id);
+				// --- BUG 1 FIX ---
+				// Check if the form has an ID (meaning it's an Edit)
+				const isEdit = formData.has('id') && formData.get('id') !== '';
+
+				if (isEdit) {
+					// We are editing: close modal and refresh grid
+					this.modal.hide();
+					if (window.catalogToyManager) {
+						window.catalogToyManager.loadList();
+					}
+				} else {
+					// We are creating: proceed to Step 3
+					this.goToStep3(result.id);
+				}
+				// -----------------
 			} else {
 				alert('Error saving toy: ' + result.message);
 				submitBtn.innerHTML = originalBtnHtml;
@@ -735,11 +760,14 @@ const CatalogWizard = {
 
 		const indicator = rowElement.querySelector('.save-indicator');
 
-		const params = new URLSearchParams();
-		params.append('title', title);
-		params.append('alt_text', alt);
-		params.append('description', desc);
-		params.append('tag_ids', selectedTags);
+		// --- BUG 2 FIX ---
+		// Use FormData instead of URLSearchParams to securely package the data
+		const formData = new FormData();
+		formData.append('_method', 'PUT'); // Framework standard for spoofing PUT
+		formData.append('title', title);
+		formData.append('alt_text', alt);
+		formData.append('description', desc);
+		formData.append('tag_ids', selectedTags);
 
 		const csrfToken =
 			document
@@ -747,14 +775,11 @@ const CatalogWizard = {
 				?.getAttribute('content') || '';
 
 		try {
-			// Using the PUT endpoint from MediaFileController
+			// Send as POST so PHP natively populates the $_POST array!
 			const response = await fetch(`${SITE_URL}media-file/${mediaId}`, {
-				method: 'PUT',
-				headers: {
-					'X-CSRF-TOKEN': csrfToken,
-					'Content-Type': 'application/x-www-form-urlencoded',
-				},
-				body: params,
+				method: 'POST',
+				headers: { 'X-CSRF-TOKEN': csrfToken },
+				body: formData,
 			});
 
 			if (response.ok && indicator) {

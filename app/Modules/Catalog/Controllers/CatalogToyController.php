@@ -98,7 +98,31 @@ class CatalogToyController extends Controller
     public function createStep2(Request $request): void
     {
         $universeId = (int) $request->input('universe_id', 0);
+        $id = (int) $request->input('id', 0);
         $db = Database::getInstance();
+
+        // --- NEW: Fetch existing data if editing ---
+        $toy = null;
+        $items = [];
+        $isEdit = false;
+
+        if ($id > 0) {
+            $toy = $db->query("SELECT * FROM catalog_toys WHERE id = ?", [$id])->fetch(\PDO::FETCH_ASSOC);
+            if ($toy) {
+                $isEdit = true;
+                $universeId = $toy['universe_id']; // Override with the saved universe
+
+                // Fetch existing items
+                $items = $db->query("
+                    SELECT i.*, s.name as subject_name, s.type as subject_type 
+                    FROM catalog_toy_items i
+                    LEFT JOIN meta_subjects s ON i.subject_id = s.id
+                    WHERE i.catalog_toy_id = ? 
+                    ORDER BY i.id ASC
+                ", [$id])->fetchAll(\PDO::FETCH_ASSOC);
+            }
+        }
+        // -------------------------------------------
 
         // 1. Fetch Lookups
         $universes = $db->query("SELECT id, name FROM meta_universes ORDER BY name ASC")->fetchAll(\PDO::FETCH_ASSOC);
@@ -118,7 +142,9 @@ class CatalogToyController extends Controller
             'productTypes' => $productTypes,
             'entertainmentSources' => $entertainmentSources,
             'subjects' => $subjects,
-            'toy' => null
+            'toy' => $toy,
+            'items' => $items,
+            'isEdit' => $isEdit
         ]);
     }
 
