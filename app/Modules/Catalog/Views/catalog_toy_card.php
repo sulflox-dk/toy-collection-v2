@@ -52,11 +52,11 @@
 
             <div class="mt-auto pt-3 border-top d-flex justify-content-between align-items-center">
                 <div class="d-flex">
-                <div clasS="me-3">
+                <div class="me-3">
                 <?php if ($t['collection_count'] > 0): ?>
-                    <span class="badge text-bg-light border  border-secondary">Owned (<?= $t['collection_count'] ?>)</span>
+                    <span class="badge text-bg-light border border-secondary">Owned (<?= $t['collection_count'] ?>)</span>
                 <?php else: ?>
-                    <span class="badge text-bg-light border  border-secondary-subtle text-muted">Missing</span>
+                    <span class="badge text-bg-light border border-secondary-subtle text-muted">Missing</span>
                 <?php endif; ?>
                 </div>
                 </div>

@@ -10,6 +10,15 @@ use App\Modules\Media\Models\MediaTag;
 
 class MediaFileController extends Controller
 {
+    private const ALLOWED_ENTITY_TYPES = [
+        'catalog_toys',
+        'catalog_toy_items',
+        'collection_toys',
+        'universes',
+        'manufacturers',
+        'toy_lines',
+        'sources',
+    ];
     public function index(Request $request): void
     {
         $tags = MediaTag::getAll();
@@ -144,8 +153,8 @@ class MediaFileController extends Controller
             // --- NYT: AUTOMATIC ENTITY LINKING ---
             $entityType = trim($request->input('entity_type', ''));
             $entityId = (int)$request->input('entity_id', 0);
-            
-            if ($entityType !== '' && $entityId > 0) {
+
+            if ($entityType !== '' && $entityId > 0 && in_array($entityType, self::ALLOWED_ENTITY_TYPES, true)) {
                 MediaFile::linkToEntity($newMediaId, $entityType, $entityId);
             }
             // -------------------------------------
@@ -296,6 +305,11 @@ class MediaFileController extends Controller
 
         if (!$mediaFileId || !$entityType || !$entityId) {
             $this->json(['error' => 'Missing data'], 400);
+            return;
+        }
+
+        if (!in_array($entityType, self::ALLOWED_ENTITY_TYPES, true)) {
+            $this->json(['error' => 'Invalid entity type'], 400);
             return;
         }
 

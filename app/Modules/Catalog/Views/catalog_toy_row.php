@@ -34,9 +34,9 @@
     </td>
     <td class="text-center">
         <?php if ($t['collection_count'] > 0): ?>
-            <span class="badge text-bg-light border  border-secondary">Owned (<?= $t['collection_count'] ?>)</span>
+            <span class="badge text-bg-light border border-secondary">Owned (<?= $t['collection_count'] ?>)</span>
         <?php else: ?>
-            <span class="badge text-bg-light border  border-secondary-subtle text-muted">Missing</span>
+            <span class="badge text-bg-light border border-secondary-subtle text-muted">Missing</span>
         <?php endif; ?>
     </td>
     <td class="text-end pe-3">

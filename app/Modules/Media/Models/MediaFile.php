@@ -115,11 +115,11 @@ class MediaFile extends BaseModel
     public static function searchSimple(string $query, int $limit = 30): array
     {
         $q = '%' . $query . '%';
-        $sql = "SELECT id, filename, filepath, title FROM " . static::$table . " 
-                WHERE filename LIKE ? OR title LIKE ? 
-                ORDER BY created_at DESC LIMIT " . (int)$limit;
-        
-        return static::db()->query($sql, [$q, $q])->fetchAll(\PDO::FETCH_ASSOC);
+        $sql = "SELECT id, filename, filepath, title FROM " . static::$table . "
+                WHERE filename LIKE ? OR title LIKE ?
+                ORDER BY created_at DESC LIMIT ?";
+
+        return static::db()->query($sql, [$q, $q, $limit])->fetchAll(\PDO::FETCH_ASSOC);
     }
 
     /**
