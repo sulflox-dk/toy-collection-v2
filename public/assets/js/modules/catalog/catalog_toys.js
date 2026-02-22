@@ -76,6 +76,27 @@ const CatalogWizard = {
 			subjects: JSON.parse(form.dataset.subjects || '[]'),
 		};
 
+		// Register the subject selector with SearchableDropdown
+		SearchableDropdown.register('subjects', {
+			getItems: () => {
+				const univId =
+					parseInt(
+						document.getElementById('catalog_universe_id').value,
+					) || 0;
+				return this.meta.subjects.filter(
+					(s) => s.universe_id == univId,
+				);
+			},
+			searchFields: ['name', 'type'],
+			displayName: 'name',
+			displayMeta: 'type',
+			valueField: 'id',
+			inputSelector: '.item-subject-id',
+			rowSelector: '.item-row',
+			placeholder: 'Select Subject...',
+			emptyText: 'No subjects found.',
+		});
+
 		const uniSelect = document.getElementById('catalog_universe_id');
 		const manSelect = document.getElementById('catalog_manufacturer_id');
 
@@ -181,23 +202,7 @@ const CatalogWizard = {
 
 	// --- ITEM & SUBJECT LOGIC ---
 	updateItemSubjects() {
-		const univId =
-			parseInt(document.getElementById('catalog_universe_id').value) || 0;
-		const validSubjects = this.meta.subjects.filter(
-			(s) => s.universe_id == univId,
-		);
-		const validSubjectIds = new Set(validSubjects.map((s) => parseInt(s.id)));
-
-		// If the universe changes, clear out any selected subjects that are no longer valid
-		document.querySelectorAll('.item-row').forEach((row) => {
-			const input = row.querySelector('.item-subject-id');
-			if (input.value && !validSubjectIds.has(parseInt(input.value))) {
-				input.value = '';
-				row.querySelector('.subject-name').textContent =
-					'Select Subject...';
-				row.querySelector('.subject-meta').style.display = 'none';
-			}
-		});
+		SearchableDropdown.validateSelections('subjects');
 	},
 
 	initItemsManager() {
@@ -237,85 +242,6 @@ const CatalogWizard = {
 		if (badge) {
 			badge.textContent = `${count} item${count === 1 ? '' : 's'}`;
 		}
-	},
-
-	toggleSubjectSearch(element) {
-		const wrapper = element.closest('.subject-selector-wrapper');
-		const dropdown = wrapper.querySelector('.subject-search-dropdown');
-		const input = dropdown.querySelector('.search-input');
-
-		// Close all other open dropdowns first
-		document.querySelectorAll('.subject-search-dropdown').forEach((dd) => {
-			if (dd !== dropdown) dd.classList.add('d-none');
-		});
-
-		dropdown.classList.toggle('d-none');
-		if (!dropdown.classList.contains('d-none')) {
-			input.value = ''; // Clear previous search
-			input.focus();
-			this.renderSubjectResults(wrapper); // Render all valid subjects initially
-		}
-	},
-
-	filterSubjects(inputEl) {
-		const wrapper = inputEl.closest('.subject-selector-wrapper');
-		this.renderSubjectResults(wrapper, inputEl.value.toLowerCase());
-	},
-
-	renderSubjectResults(wrapper, query = '') {
-		const resultsContainer = wrapper.querySelector('.results-list');
-		const univId =
-			parseInt(document.getElementById('catalog_universe_id').value) || 0;
-
-		let validSubjects = this.meta.subjects.filter(
-			(s) => s.universe_id == univId,
-		);
-
-		if (query) {
-			validSubjects = validSubjects.filter(
-				(s) =>
-					s.name.toLowerCase().includes(query) ||
-					s.type.toLowerCase().includes(query),
-			);
-		}
-
-		resultsContainer.innerHTML = '';
-
-		if (validSubjects.length === 0) {
-			resultsContainer.innerHTML =
-				'<div class="p-3 text-muted small text-center">No subjects found.</div>';
-			return;
-		}
-
-		validSubjects.forEach((sub) => {
-			const div = document.createElement('div');
-			div.className = 'p-2 border-bottom subject-result-item bg-white';
-			div.style.cursor = 'pointer';
-
-			const nameEl = document.createElement('div');
-			nameEl.className = 'fw-bold small text-dark';
-			nameEl.textContent = sub.name;
-
-			const typeEl = document.createElement('div');
-			typeEl.className = 'text-muted';
-			typeEl.style.fontSize = '0.7rem';
-			typeEl.textContent = sub.type;
-
-			div.appendChild(nameEl);
-			div.appendChild(typeEl);
-			div.onclick = () => this.selectSubject(wrapper, sub);
-			resultsContainer.appendChild(div);
-		});
-	},
-
-	selectSubject(wrapper, sub) {
-		const row = wrapper.closest('.item-row');
-		row.querySelector('.item-subject-id').value = sub.id;
-		wrapper.querySelector('.subject-name').textContent = sub.name;
-		const meta = wrapper.querySelector('.subject-meta');
-		meta.textContent = sub.type;
-		meta.style.display = 'block';
-		wrapper.querySelector('.subject-search-dropdown').classList.add('d-none');
 	},
 
 	// --- FORM SUBMISSION ---
@@ -421,12 +347,4 @@ document.addEventListener('DOMContentLoaded', () => {
 	}
 
 	CatalogWizard.init();
-});
-
-document.addEventListener('click', (e) => {
-	if (!e.target.closest('.subject-selector-wrapper')) {
-		document
-			.querySelectorAll('.subject-search-dropdown')
-			.forEach((dd) => dd.classList.add('d-none'));
-	}
 });
