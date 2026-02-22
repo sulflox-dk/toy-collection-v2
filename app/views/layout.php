@@ -238,6 +238,7 @@ $baseUrl = rtrim(Config::get('app.url', ''), '/') . '/';
     <script src="<?= $e($baseUrl) ?>assets/js/core/ui-helper.js?v=<?= \App\Kernel\Core\Config::get('app.version', '1.0.0') ?>"></script>
     <script src="<?= $e($baseUrl) ?>assets/js/core/validation.js?v=<?= \App\Kernel\Core\Config::get('app.version', '1.0.0') ?>"></script>
     <script src="<?= $e($baseUrl) ?>assets/js/core/entity-manager.js?v=<?= \App\Kernel\Core\Config::get('app.version', '1.0.0') ?>"></script>
+    <script src="<?= $e($baseUrl) ?>assets/js/core/searchable-dropdown.js?v=<?= \App\Kernel\Core\Config::get('app.version', '1.0.0') ?>"></script>
     <script src="<?= $e($baseUrl) ?>assets/js/core/media-picker.js?v=<?= \App\Kernel\Core\Config::get('app.version', '1.0.0') ?>"></script>
     <script src="<?= $e($baseUrl) ?>assets/js/core/layout.js?v=<?= \App\Kernel\Core\Config::get('app.version', '1.0.0') ?>"></script>
 

@@ -12147,11 +12147,11 @@ textarea.form-control-lg {
 }
 
 /* ==========================================================================
-   Custom Dropdown Component
+   Searchable Dropdown Component
    ========================================================================== */
-.subject-result-item {
+.sd-result-item {
   transition: background-color 0.15s ease-in-out;
 }
-.subject-result-item:hover {
+.sd-result-item:hover {
   background-color: var(--bs-light) !important;
 }/*# sourceMappingURL=app.css.map */

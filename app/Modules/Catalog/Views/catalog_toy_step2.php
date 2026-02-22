@@ -122,28 +122,28 @@ $jsonSubjects = json_encode($subjects ?? [], JSON_HEX_APOS | JSON_HEX_QUOT);
                                         <input type="hidden" name="items[<?= $index ?>][id]" class="item-id-input" value="<?= $item['id'] ?>">
                                         <input type="hidden" name="items[<?= $index ?>][subject_id]" class="item-subject-id" value="<?= $item['subject_id'] ?>" required>
                                         
-                                        <div class="subject-selector-wrapper position-relative">
-                                            <div class="d-flex align-items-center border rounded px-2 py-1 bg-white shadow-sm" 
-                                                 onclick="CatalogWizard.toggleSubjectSearch(this)"
+                                        <div class="sd-wrapper position-relative" data-sd="subjects">
+                                            <div class="d-flex align-items-center border rounded px-2 py-1 bg-white shadow-sm"
+                                                 onclick="SearchableDropdown.toggle(this)"
                                                  style="cursor: pointer; min-height: 38px;">
                                                 <div class="me-2 text-muted d-flex align-items-center justify-content-center">
                                                     <i class="fa-solid fa-cube fs-5"></i>
                                                 </div>
                                                 <div class="flex-grow-1 lh-1">
-                                                    <div class="subject-name fw-medium small text-truncate"><?= htmlspecialchars($item['subject_name'] ?? 'Select Subject...') ?></div>
-                                                    <div class="subject-meta text-muted" style="font-size: 0.7rem; display: <?= !empty($item['subject_type']) ? 'block' : 'none' ?>;"><?= htmlspecialchars($item['subject_type'] ?? '') ?></div>
+                                                    <div class="sd-display-name fw-medium small text-truncate"><?= htmlspecialchars($item['subject_name'] ?? 'Select Subject...') ?></div>
+                                                    <div class="sd-display-meta text-muted" style="font-size: 0.7rem; display: <?= !empty($item['subject_type']) ? 'block' : 'none' ?>;"><?= htmlspecialchars($item['subject_type'] ?? '') ?></div>
                                                 </div>
                                                 <i class="fa-solid fa-chevron-down text-muted small ms-2"></i>
                                             </div>
-                                            
-                                            <div class="subject-search-dropdown position-absolute w-100 bg-white border rounded shadow-lg mt-1 d-none" style="z-index: 1050; top: 100%;">
+
+                                            <div class="sd-dropdown position-absolute w-100 bg-white border rounded shadow-lg mt-1 d-none" style="z-index: 1050; top: 100%;">
                                                 <div class="p-2 border-bottom bg-light">
-                                                    <input type="text" class="form-control form-control-sm search-input" 
-                                                           placeholder="Type to search..." 
-                                                           onkeyup="CatalogWizard.filterSubjects(this)"
+                                                    <input type="text" class="form-control form-control-sm sd-search"
+                                                           placeholder="Type to search..."
+                                                           onkeyup="SearchableDropdown.filter(this)"
                                                            autocomplete="off">
                                                 </div>
-                                                <div class="results-list overflow-auto" style="max-height: 250px;"></div>
+                                                <div class="sd-results overflow-auto" style="max-height: 250px;"></div>
                                             </div>
                                         </div>
                                     </div>
@@ -188,28 +188,28 @@ $jsonSubjects = json_encode($subjects ?? [], JSON_HEX_APOS | JSON_HEX_QUOT);
                     <input type="hidden" name="items[{INDEX}][id]" class="item-id-input">
                     <input type="hidden" name="items[{INDEX}][subject_id]" class="item-subject-id" required>
                     
-                    <div class="subject-selector-wrapper position-relative">
-                        <div class="d-flex align-items-center border rounded px-2 py-1 bg-white shadow-sm" 
-                             onclick="CatalogWizard.toggleSubjectSearch(this)"
+                    <div class="sd-wrapper position-relative" data-sd="subjects">
+                        <div class="d-flex align-items-center border rounded px-2 py-1 bg-white shadow-sm"
+                             onclick="SearchableDropdown.toggle(this)"
                              style="cursor: pointer; min-height: 38px;">
                             <div class="me-2 text-muted d-flex align-items-center justify-content-center">
                                 <i class="fa-solid fa-cube fs-5"></i>
                             </div>
                             <div class="flex-grow-1 lh-1">
-                                <div class="subject-name fw-medium small text-truncate">Select Subject...</div>
-                                <div class="subject-meta text-muted" style="font-size: 0.7rem; display: none;"></div>
+                                <div class="sd-display-name fw-medium small text-truncate">Select Subject...</div>
+                                <div class="sd-display-meta text-muted" style="font-size: 0.7rem; display: none;"></div>
                             </div>
                             <i class="fa-solid fa-chevron-down text-muted small ms-2"></i>
                         </div>
-                        
-                        <div class="subject-search-dropdown position-absolute w-100 bg-white border rounded shadow-lg mt-1 d-none" style="z-index: 1050; top: 100%;">
+
+                        <div class="sd-dropdown position-absolute w-100 bg-white border rounded shadow-lg mt-1 d-none" style="z-index: 1050; top: 100%;">
                             <div class="p-2 border-bottom bg-light">
-                                <input type="text" class="form-control form-control-sm search-input" 
-                                       placeholder="Type to search..." 
-                                       onkeyup="CatalogWizard.filterSubjects(this)"
+                                <input type="text" class="form-control form-control-sm sd-search"
+                                       placeholder="Type to search..."
+                                       onkeyup="SearchableDropdown.filter(this)"
                                        autocomplete="off">
                             </div>
-                            <div class="results-list overflow-auto" style="max-height: 250px;"></div>
+                            <div class="sd-results overflow-auto" style="max-height: 250px;"></div>
                         </div>
                     </div>
                 </div>
