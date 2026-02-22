@@ -17,6 +17,8 @@ use App\Modules\Media\Controllers\MediaFileController;
 use App\Modules\Auth\Controllers\UserController;
 use App\Modules\Media\Controllers\MediaTagController;
 use \App\Modules\Catalog\Controllers\CatalogToyController;
+Use \App\Modules\Collection\Controllers\CollectionStorageUnitController;
+
 
 /** @var Router $router */
 
@@ -150,3 +152,9 @@ $router->post('/catalog-toy/store', [CatalogToyController::class, 'store']);
 $router->get('/catalog-toy/create-step-3', [CatalogToyController::class, 'createStep3']);
 $router->delete('/catalog-toy/{id}', [CatalogToyController::class, 'destroy']);
 
+$router->get('/storage-unit', [CollectionStorageUnitController::class, 'index']);
+$router->get('/storage-unit/list', [CollectionStorageUnitController::class, 'list']);
+$router->post('/storage-unit', [CollectionStorageUnitController::class, 'store']);
+$router->put('/storage-unit/{id}', [CollectionStorageUnitController::class, 'update']);
+$router->delete('/storage-unit/{id}', [CollectionStorageUnitController::class, 'destroy']);
+$router->get('/storage-unit/migrate-on-delete-options', [CollectionStorageUnitController::class, 'migrateOnDeleteOptions']);
