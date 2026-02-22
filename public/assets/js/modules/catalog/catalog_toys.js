@@ -27,40 +27,38 @@ const CatalogWizard = {
 		this.goToStep3(toyId);
 	},
 
-	async loadStep1() {
-		this.contentContainer.innerHTML =
-			'<div class="p-5 text-center"><i class="fa-solid fa-spinner fa-spin fa-3x text-muted"></i></div>';
-		this.modal.show();
-
-		try {
-			const response = await fetch(SITE_URL + 'catalog-toy/create-step-1');
-			if (!response.ok) throw new Error('Network response was not ok');
-			this.contentContainer.innerHTML = await response.text();
-		} catch (error) {
-			this.contentContainer.innerHTML =
-				'<div class="p-4 text-danger">Failed to load universes.</div>';
-		}
-	},
-
-	async goToStep2(universeId, toyId = null) {
+	async loadPartial(url, errorMessage, onLoaded) {
 		this.contentContainer.innerHTML =
 			'<div class="p-5 text-center"><i class="fa-solid fa-spinner fa-spin fa-3x text-muted"></i></div>';
 
 		try {
-			// Append the ID to the URL if we are editing
-			let url = `${SITE_URL}catalog-toy/create-step-2?universe_id=${universeId}`;
-			if (toyId) url += `&id=${toyId}`;
-
 			const response = await fetch(url);
 			if (!response.ok) throw new Error('Network response was not ok');
 			this.contentContainer.innerHTML = await response.text();
+			if (onLoaded) onLoaded();
+		} catch (error) {
+			console.error(errorMessage, error);
+			this.contentContainer.innerHTML =
+				`<div class="p-4 text-danger">${errorMessage}</div>`;
+		}
+	},
 
+	async loadStep1() {
+		this.modal.show();
+		await this.loadPartial(
+			SITE_URL + 'catalog-toy/create-step-1',
+			'Failed to load universes.',
+		);
+	},
+
+	async goToStep2(universeId, toyId = null) {
+		let url = `${SITE_URL}catalog-toy/create-step-2?universe_id=${universeId}`;
+		if (toyId) url += `&id=${toyId}`;
+
+		await this.loadPartial(url, 'Failed to load form.', () => {
 			this.initCascadingDropdowns();
 			this.initItemsManager();
-		} catch (error) {
-			this.contentContainer.innerHTML =
-				'<div class="p-4 text-danger">Failed to load form.</div>';
-		}
+		});
 	},
 
 	// --- CASCADING DROPDOWN LOGIC ---
@@ -297,32 +295,25 @@ const CatalogWizard = {
 	},
 
 	async goToStep3(toyId) {
-		this.contentContainer.innerHTML =
-			'<div class="p-5 text-center"><i class="fa-solid fa-spinner fa-spin fa-3x text-muted mb-3"></i><h5>Preparing Image Manager...</h5></div>';
+		await this.loadPartial(
+			`${SITE_URL}catalog-toy/create-step-3?id=${toyId}`,
+			'Failed to load Image Manager.',
+			() => {
+				MediaPicker.refreshThumbnails('catalog_toys', toyId);
 
-		try {
-			const response = await fetch(
-				`${SITE_URL}catalog-toy/create-step-3?id=${toyId}`,
-			);
-			if (!response.ok) throw new Error('Network response was not ok');
+				document
+					.querySelectorAll('[id^="preview-catalog_toy_items-"]')
+					.forEach((container) => {
+						const itemId = container.id.split('-').pop();
+						MediaPicker.refreshThumbnails(
+							'catalog_toy_items',
+							itemId,
+						);
+					});
 
-			this.contentContainer.innerHTML = await response.text();
-
-			MediaPicker.refreshThumbnails('catalog_toys', toyId);
-
-			document
-				.querySelectorAll('[id^="preview-catalog_toy_items-"]')
-				.forEach((container) => {
-					const itemId = container.id.split('-').pop();
-					MediaPicker.refreshThumbnails('catalog_toy_items', itemId);
-				});
-
-			MediaPicker.initDragAndDrop();
-		} catch (error) {
-			console.error('Failed to load Step 3', error);
-			this.contentContainer.innerHTML =
-				'<div class="p-4 text-danger">Failed to load Image Manager.</div>';
-		}
+				MediaPicker.initDragAndDrop();
+			},
+		);
 	},
 };
 
