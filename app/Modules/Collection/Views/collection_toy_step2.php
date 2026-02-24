@@ -220,8 +220,9 @@ foreach ($collectionItems as $ci) {
                 <?php foreach($catalogItems as $idx => $catItem): ?>
                     <?php
                         $ci = $itemMap[$catItem['id']] ?? null;
-                        $isPresent = $ci ? (bool)$ci['is_present'] : !$isEdit; // Default to present for new entries
+                        $isPresent = $ci ? (bool)$ci['is_present'] : !$isEdit;
                         $isRepro = $ci ? (bool)$ci['is_repro'] : false;
+                        $hasItemOverrides = $ci && ($ci['acquisition_status_id'] || $ci['packaging_type_id'] || $ci['storage_unit_id'] || $ci['condition_notes']);
                     ?>
                     <div class="card shadow-sm border-0 collection-item-row">
                         <div class="card-body p-3">
@@ -258,6 +259,52 @@ foreach ($collectionItems as $ci) {
                                             </option>
                                         <?php endforeach; ?>
                                     </select>
+                                </div>
+                            </div>
+
+                            <!-- Expandable per-item overrides -->
+                            <div class="text-center mt-2">
+                                <button type="button" class="btn btn-link btn-sm text-decoration-none p-0 text-muted small"
+                                        data-bs-toggle="collapse" data-bs-target="#item_details_<?= $idx ?>">
+                                    <i class="fa-solid fa-chevron-down me-1"></i> Item overrides (status, packaging, storage, notes)
+                                </button>
+                            </div>
+                            <div class="collapse <?= $hasItemOverrides ? 'show' : '' ?> mt-3 pt-3 border-top" id="item_details_<?= $idx ?>">
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label small text-muted mb-0">Acquisition Status</label>
+                                        <select class="form-select form-select-sm" name="items[<?= $idx ?>][acquisition_status_id]">
+                                            <option value="">Use parent value</option>
+                                            <?php foreach($acquisitionStatuses as $st): ?>
+                                                <option value="<?= $st['id'] ?>" <?= ($ci['acquisition_status_id'] ?? '') == $st['id'] ? 'selected' : '' ?>><?= $e($st['name']) ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small text-muted mb-0">Packaging</label>
+                                        <select class="form-select form-select-sm" name="items[<?= $idx ?>][packaging_type_id]">
+                                            <option value="">Use parent value</option>
+                                            <?php foreach($packagingTypes as $p): ?>
+                                                <option value="<?= $p['id'] ?>" <?= ($ci['packaging_type_id'] ?? '') == $p['id'] ? 'selected' : '' ?>><?= $e($p['name']) ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small text-muted mb-0">Storage Unit</label>
+                                        <select class="form-select form-select-sm" name="items[<?= $idx ?>][storage_unit_id]">
+                                            <option value="">Use parent value</option>
+                                            <?php foreach($storageUnits as $su): ?>
+                                                <option value="<?= $su['id'] ?>" <?= ($ci['storage_unit_id'] ?? '') == $su['id'] ? 'selected' : '' ?>>
+                                                    <?= $e($su['box_code'] ? $su['box_code'] . ' - ' . $su['name'] : $su['name']) ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small text-muted mb-0">Condition Notes</label>
+                                        <input type="text" class="form-control form-control-sm" name="items[<?= $idx ?>][condition_notes]"
+                                               value="<?= $e($ci['condition_notes'] ?? '') ?>" placeholder="e.g. Small paint chip on left arm">
+                                    </div>
                                 </div>
                             </div>
                         </div>
