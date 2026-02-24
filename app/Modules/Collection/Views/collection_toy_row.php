@@ -34,8 +34,11 @@
     </td>
     <td class="text-end pe-3">
         <div class="btn-group">
-            <button type="button" class="btn btn-sm btn-outline-secondary" title="Edit Collection Item">
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="CollectionWizard.editToy(<?= $t['id'] ?>)" title="Edit Collection Item">
                 <i class="fa-solid fa-pencil"></i>
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="CollectionWizard.editPhotos(<?= $t['id'] ?>)" title="Manage Photos">
+                <i class="fa-solid fa-camera"></i>
             </button>
             <button type="button" class="btn btn-sm btn-outline-secondary btn-delete" data-id="<?= $e($t['id']) ?>" title="Delete">
                 <i class="fa-solid fa-trash-alt"></i>

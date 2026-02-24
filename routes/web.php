@@ -165,4 +165,9 @@ $router->get('/storage-unit/migrate-on-delete-options', [CollectionStorageUnitCo
 // ==========================================================
 $router->get('/collection-toy', [CollectionToyController::class, 'index']);
 $router->get('/collection-toy/list', [CollectionToyController::class, 'list']);
-// We will add the store/update/delete/wizard routes later!
+$router->get('/collection-toy/create-step-1', [CollectionToyController::class, 'createStep1']);
+$router->get('/collection-toy/search-catalog', [CollectionToyController::class, 'searchCatalog']);
+$router->get('/collection-toy/create-step-2', [CollectionToyController::class, 'createStep2']);
+$router->post('/collection-toy/store', [CollectionToyController::class, 'store']);
+$router->get('/collection-toy/create-step-3', [CollectionToyController::class, 'createStep3']);
+$router->delete('/collection-toy/{id}', [CollectionToyController::class, 'destroy']);

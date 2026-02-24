@@ -98,10 +98,10 @@ $hasMissing = $missingCount > 0;
                 </div>
 
                 <div class="btn-group flex-shrink-0">
-                    <button type="button" class="btn btn-sm btn-outline-secondary btn-edit" title="Edit Collection Details">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="CollectionWizard.editToy(<?= $t['id'] ?>)" title="Edit Collection Details">
                         <i class="fa-solid fa-pencil"></i>
                     </button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary btn-media" title="Manage Photos">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="CollectionWizard.editPhotos(<?= $t['id'] ?>)" title="Manage Photos">
                         <i class="fa-solid fa-camera"></i>
                     </button>
                     <button type="button" class="btn btn-sm btn-outline-secondary btn-delete" data-id="<?= $e($t['id']) ?>" title="Remove from Collection">
