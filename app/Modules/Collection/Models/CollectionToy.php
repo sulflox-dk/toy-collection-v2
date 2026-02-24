@@ -43,13 +43,31 @@ class CollectionToy extends BaseModel
                 cat.year_released,
                 u.name as universe_name,
                 tl.name as toy_line_name,
+                m.name as manufacturer_name,
+                pt.name as product_type_name,
+                es.name as source_name,
+                es.release_year as source_year,
+                es.type as source_type,
                 acq.name as acquisition_status,
                 cond.name as condition_name,
                 pack.name as packaging_name,
                 su.name as storage_unit_name,
                 su.box_code as storage_box_code,
-                (SELECT COUNT(*) FROM collection_toy_items WHERE collection_toy_id = ct.id AND is_present = 1) as items_owned_count,
                 (SELECT COUNT(*) FROM catalog_toy_items WHERE catalog_toy_id = cat.id) as items_total_count,
+                (SELECT COUNT(*) FROM collection_toy_items WHERE collection_toy_id = ct.id AND is_present = 1) as items_owned_count,
+                
+                -- Check if user uploaded a photo; if not, flag it as a stock/catalog image
+                CASE WHEN EXISTS (SELECT 1 FROM media_links WHERE entity_type = 'collection_toys' AND entity_id = ct.id) THEN 0 ELSE 1 END as is_stock_image,
+                
+                -- Generate comma-separated list of missing items
+                (SELECT GROUP_CONCAT(s.name SEPARATOR ', ') 
+                 FROM catalog_toy_items cti 
+                 JOIN meta_subjects s ON cti.subject_id = s.id 
+                 WHERE cti.catalog_toy_id = cat.id 
+                   AND cti.id NOT IN (
+                       SELECT catalog_toy_item_id FROM collection_toy_items WHERE collection_toy_id = ct.id AND is_present = 1
+                   )
+                ) as missing_parts_list,
                 
                 COALESCE(
                     (SELECT CONCAT(?, f.filepath) FROM media_links ml JOIN media_files f ON ml.media_file_id = f.id WHERE ml.entity_type = 'collection_toys' AND ml.entity_id = ct.id ORDER BY ml.is_featured DESC, ml.sort_order ASC LIMIT 1),
@@ -60,6 +78,9 @@ class CollectionToy extends BaseModel
             JOIN catalog_toys cat ON ct.catalog_toy_id = cat.id
             LEFT JOIN meta_universes u ON cat.universe_id = u.id
             LEFT JOIN meta_toy_lines tl ON cat.toy_line_id = tl.id
+            LEFT JOIN meta_manufacturers m ON cat.manufacturer_id = m.id
+            LEFT JOIN meta_product_types pt ON cat.product_type_id = pt.id
+            LEFT JOIN meta_entertainment_sources es ON cat.entertainment_source_id = es.id
             LEFT JOIN meta_acquisition_statuses acq ON ct.acquisition_status_id = acq.id
             LEFT JOIN meta_condition_grades cond ON ct.condition_grade_id = cond.id
             LEFT JOIN meta_packaging_types pack ON ct.packaging_type_id = pack.id
