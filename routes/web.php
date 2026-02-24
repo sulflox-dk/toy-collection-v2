@@ -18,6 +18,7 @@ use App\Modules\Auth\Controllers\UserController;
 use App\Modules\Media\Controllers\MediaTagController;
 use \App\Modules\Catalog\Controllers\CatalogToyController;
 Use \App\Modules\Collection\Controllers\CollectionStorageUnitController;
+use \App\Modules\Collection\Controllers\CollectionToyController;
 
 
 /** @var Router $router */
@@ -158,3 +159,10 @@ $router->post('/storage-unit', [CollectionStorageUnitController::class, 'store']
 $router->put('/storage-unit/{id}', [CollectionStorageUnitController::class, 'update']);
 $router->delete('/storage-unit/{id}', [CollectionStorageUnitController::class, 'destroy']);
 $router->get('/storage-unit/migrate-on-delete-options', [CollectionStorageUnitController::class, 'migrateOnDeleteOptions']);
+
+// ==========================================================
+// USER COLLECTION TOYS
+// ==========================================================
+$router->get('/collection-toy', [CollectionToyController::class, 'index']);
+$router->get('/collection-toy/list', [CollectionToyController::class, 'list']);
+// We will add the store/update/delete/wizard routes later!

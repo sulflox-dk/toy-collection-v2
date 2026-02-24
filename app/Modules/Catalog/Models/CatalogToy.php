@@ -3,7 +3,7 @@ namespace App\Modules\Catalog\Models;
 
 use App\Kernel\Database\BaseModel;
 use App\Kernel\Database\HasSlug;
-use App\Kernel\Core\Config; // <-- Don't forget this!
+use App\Kernel\Core\Config;
 use App\Modules\Meta\Traits\HasManufacturer;
 use App\Modules\Meta\Traits\HasUniverse;
 use App\Modules\Meta\Traits\HasToyLine;
