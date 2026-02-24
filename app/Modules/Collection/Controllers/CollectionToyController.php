@@ -273,8 +273,10 @@ class CollectionToyController extends Controller
                     'catalog_toy_item_id' => $catalogToyItemId,
                     'is_present' => !empty($item['is_present']) ? 1 : 0,
                     'is_repro' => !empty($item['is_repro']) ? 1 : 0,
-                    'condition_grade_id' => (int) ($item['condition_grade_id'] ?? 0) ?: null,
+                    'acquisition_status_id' => (int) ($item['acquisition_status_id'] ?? 0) ?: null,
                     'packaging_type_id' => (int) ($item['packaging_type_id'] ?? 0) ?: null,
+                    'condition_grade_id' => (int) ($item['condition_grade_id'] ?? 0) ?: null,
+                    'storage_unit_id' => (int) ($item['storage_unit_id'] ?? 0) ?: null,
                     'condition_notes' => trim($item['condition_notes'] ?? '') ?: null,
                 ];
 
