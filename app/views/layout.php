@@ -97,6 +97,19 @@ $baseUrl = rtrim(Config::get('app.url', ''), '/') . '/';
                 </div>
             </li>
 
+            <li class="nav-item">
+                <a class="nav-link btn-toggle-nav collapsed" data-bs-toggle="collapse" href="#menu-importer" role="button" aria-expanded="false">
+                    <i class="fa-solid fa-cloud-download-alt"></i> Importer
+                </a>
+                <div class="collapse" id="menu-importer">
+                    <ul class="sidebar-submenu btn-toggle-nav-list align-items-center rounded">
+                        <li><a href="<?= $baseUrl ?>importer-run" class="nav-link">Run Import</a></li>
+                        <li><a href="<?= $baseUrl ?>importer-source" class="nav-link">Import Sources</a></li>
+                        <li><a href="<?= $baseUrl ?>importer-log" class="nav-link">Import Logs</a></li>
+                    </ul>
+                </div>
+            </li>
+
             <?php if (\App\Kernel\Auth\Auth::isAdmin()): ?>
             <li class="nav-item">
                 <a class="nav-link btn-toggle-nav collapsed" data-bs-toggle="collapse" href="#menu-admin" role="button" aria-expanded="false">

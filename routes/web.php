@@ -19,6 +19,9 @@ use App\Modules\Media\Controllers\MediaTagController;
 use \App\Modules\Catalog\Controllers\CatalogToyController;
 Use \App\Modules\Collection\Controllers\CollectionStorageUnitController;
 use \App\Modules\Collection\Controllers\CollectionToyController;
+use App\Modules\Importer\Controllers\ImporterSourceController;
+use App\Modules\Importer\Controllers\ImporterRunController;
+use App\Modules\Importer\Controllers\ImporterLogController;
 
 
 /** @var Router $router */
@@ -171,3 +174,19 @@ $router->get('/collection-toy/create-step-2', [CollectionToyController::class, '
 $router->post('/collection-toy/store', [CollectionToyController::class, 'store']);
 $router->get('/collection-toy/create-step-3', [CollectionToyController::class, 'createStep3']);
 $router->delete('/collection-toy/{id}', [CollectionToyController::class, 'destroy']);
+
+// ==========================================================
+// IMPORTER
+// ==========================================================
+$router->get('/importer-source',        [ImporterSourceController::class, 'index']);
+$router->get('/importer-source/list',   [ImporterSourceController::class, 'list']);
+$router->post('/importer-source',       [ImporterSourceController::class, 'store']);
+$router->put('/importer-source/{id}',   [ImporterSourceController::class, 'update']);
+$router->delete('/importer-source/{id}',[ImporterSourceController::class, 'destroy']);
+
+$router->get('/importer-run',           [ImporterRunController::class, 'index']);
+$router->post('/importer-run/preview',  [ImporterRunController::class, 'preview']);
+$router->post('/importer-run/import',   [ImporterRunController::class, 'runImport']);
+
+$router->get('/importer-log',           [ImporterLogController::class, 'index']);
+$router->get('/importer-log/list',      [ImporterLogController::class, 'list']);
