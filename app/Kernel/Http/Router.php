@@ -88,9 +88,6 @@ class Router
 
         // 3. Authentication Gate
         if (!$this->isGuestRoute($uri) && !\App\Kernel\Auth\Auth::check()) {
-            // Store intended URL for redirect after login
-            $_SESSION['intended_url'] = $uri;
-
             // For AJAX requests, return 401 JSON
             if (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])
                 && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
@@ -98,6 +95,15 @@ class Router
                 header('Content-Type: application/json');
                 echo json_encode(['error' => 'Unauthenticated. Please log in.']);
                 return null;
+            }
+
+            // Only remember this as the "intended" post-login destination if it
+            // looks like an actual page visit (a GET request asking for HTML).
+            // Otherwise a stray unauthenticated request the browser makes on its
+            // own — e.g. /favicon.ico — would overwrite the real intended page
+            // and send the user somewhere broken right after they log in.
+            if ($method === 'GET' && str_contains($_SERVER['HTTP_ACCEPT'] ?? '', 'text/html')) {
+                $_SESSION['intended_url'] = $uri;
             }
 
             http_response_code(302);

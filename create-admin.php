@@ -74,7 +74,7 @@ if (strlen($password) < 8) {
 // Create user
 $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 $db->query(
-    "INSERT INTO users (name, email, password) VALUES (?, ?, ?)",
+    "INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, 'admin')",
     [$name, $email, $hashedPassword]
 );
 
