@@ -24,6 +24,7 @@ use \App\Modules\Collection\Controllers\CollectionToyController;
 use App\Modules\Importer\Controllers\ImporterSourceController;
 use App\Modules\Importer\Controllers\ImporterRunController;
 use App\Modules\Importer\Controllers\ImporterLogController;
+use App\Modules\Importer\Controllers\ImporterGuideController;
 
 
 /** @var Router $router */
@@ -202,3 +203,5 @@ $router->post('/importer-run/import',   [ImporterRunController::class, 'runImpor
 
 $router->get('/importer-log',           [ImporterLogController::class, 'index']);
 $router->get('/importer-log/list',      [ImporterLogController::class, 'list']);
+
+$router->get('/importer-guide',         [ImporterGuideController::class, 'index']);
