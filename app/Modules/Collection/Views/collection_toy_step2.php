@@ -58,6 +58,33 @@ foreach ($collectionItems as $ci) {
             </div>
         </div>
 
+        <!-- Personal Rating -->
+        <div>
+            <h6 class="text-uppercase fw-bold text-muted small mb-2">Cherish Level</h6>
+            <div class="card shadow-sm border-0">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="star-rating-picker">
+                        <?php $cherish = (int) ($ct['cherish_rating'] ?? 0); ?>
+                        <?php for ($i = 5; $i >= 1; $i--): ?>
+                            <input type="radio" id="cherish_<?= $i ?>" name="cherish_rating" value="<?= $i ?>" <?= $cherish === $i ? 'checked' : '' ?>>
+                            <label for="cherish_<?= $i ?>" title="<?= $i ?> star<?= $i > 1 ? 's' : '' ?>"><i class="fa-solid fa-star"></i></label>
+                        <?php endfor; ?>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-link text-muted p-0" onclick="CollectionWizard.clearCherishRating()">Clear</button>
+                    <span class="small text-muted ms-auto">How much do you personally love this one? Not the same as condition or value.</span>
+                </div>
+            </div>
+        </div>
+
+        <style>
+            .star-rating-picker { display: inline-flex; flex-direction: row-reverse; gap: 2px; }
+            .star-rating-picker input { position: absolute; opacity: 0; pointer-events: none; }
+            .star-rating-picker label { cursor: pointer; font-size: 1.5rem; line-height: 1; color: #dee2e6; }
+            .star-rating-picker input:checked ~ label,
+            .star-rating-picker label:hover,
+            .star-rating-picker label:hover ~ label { color: #f0ad4e; }
+        </style>
+
         <!-- Purchase Information -->
         <div>
             <h6 class="text-uppercase fw-bold text-muted small mb-2">Purchase Information</h6>
