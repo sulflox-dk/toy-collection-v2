@@ -105,6 +105,7 @@ $baseUrl = rtrim(Config::get('app.url', ''), '/') . '/';
                 </a>
                 <div class="collapse" id="menu-importer">
                     <ul class="sidebar-submenu btn-toggle-nav-list align-items-center rounded">
+                        <li><a href="<?= $baseUrl ?>importer-guide" class="nav-link">Guide</a></li>
                         <li><a href="<?= $baseUrl ?>importer-run" class="nav-link">Run Import</a></li>
                         <li><a href="<?= $baseUrl ?>importer-source" class="nav-link">Import Sources</a></li>
                         <li><a href="<?= $baseUrl ?>importer-log" class="nav-link">Import Logs</a></li>

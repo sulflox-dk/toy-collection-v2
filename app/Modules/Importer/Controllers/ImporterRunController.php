@@ -218,15 +218,36 @@ class ImporterRunController extends Controller
                     );
                     $catalogToyId = $db->lastInsertId();
 
-                    // Create catalog toy items (accessories)
+                    // Create catalog toy items (accessories).
+                    // catalog_toy_items.subject_id is required (see migration
+                    // 020) — a scraped accessory only gives us a name, so we
+                    // find-or-create a matching meta_subjects row for it.
                     if (!empty($item['items']) && is_array($item['items'])) {
                         foreach ($item['items'] as $accessoryName) {
                             $accessoryName = trim($accessoryName);
                             if ($accessoryName === '') continue;
 
+                            $subject = $db->fetch(
+                                "SELECT id FROM meta_subjects WHERE name = ? LIMIT 1",
+                                [$accessoryName]
+                            );
+
+                            if ($subject) {
+                                $subjectId = (int) $subject['id'];
+                            } else {
+                                $subjectSlug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $accessoryName), '-'))
+                                    . '-' . time() . '-' . mt_rand(100, 999);
+
+                                $db->execute(
+                                    "INSERT INTO meta_subjects (name, slug, type) VALUES (?, ?, 'Accessory')",
+                                    [$accessoryName, $subjectSlug]
+                                );
+                                $subjectId = $db->lastInsertId();
+                            }
+
                             $db->execute(
-                                "INSERT INTO catalog_toy_items (catalog_toy_id, description) VALUES (?, ?)",
-                                [$catalogToyId, $accessoryName]
+                                "INSERT INTO catalog_toy_items (catalog_toy_id, subject_id, description) VALUES (?, ?, NULL)",
+                                [$catalogToyId, $subjectId]
                             );
                         }
                     }
