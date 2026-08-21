@@ -8,16 +8,36 @@ use App\Modules\Importer\Models\ImporterSource;
 use App\Modules\Importer\Models\ImporterItem;
 use App\Modules\Importer\Models\ImporterLog;
 use App\Modules\Importer\Drivers\SiteDriverInterface;
+use App\Modules\Meta\Models\Universe;
+use App\Modules\Meta\Models\Manufacturer;
+use App\Modules\Meta\Models\ProductType;
+use App\Modules\Meta\Models\EntertainmentSource;
 
 class ImporterRunController extends Controller
 {
     public function index(Request $request): void
     {
         $stats = ImporterSource::getStats();
+        $db = Database::getInstance();
+
+        // Toy lines joined with manufacturer/universe names, so the dropdown
+        // label can disambiguate lines that share a name across universes.
+        $toyLines = $db->fetchAll("
+            SELECT tl.id, tl.name, m.name AS manufacturer_name, u.name AS universe_name
+            FROM meta_toy_lines tl
+            LEFT JOIN meta_manufacturers m ON tl.manufacturer_id = m.id
+            LEFT JOIN meta_universes u ON tl.universe_id = u.id
+            ORDER BY tl.name ASC
+        ");
 
         $this->render('importer_run_index', [
             'title'   => 'Run Import',
             'stats'   => $stats,
+            'universes' => Universe::all(),
+            'manufacturers' => Manufacturer::all(),
+            'toyLines' => $toyLines,
+            'productTypes' => ProductType::all(),
+            'entertainmentSources' => EntertainmentSource::all(),
             'scripts' => [
                 'assets/js/modules/importer/importer_run.js'
             ]
@@ -31,6 +51,16 @@ class ImporterRunController extends Controller
     public function preview(Request $request): void
     {
         $url = trim($request->input('url', ''));
+        $offset = max(0, (int) $request->input('offset', 0));
+
+        // Batch defaults: when set, these are an explicit instruction from
+        // the user ("this whole batch is Hasbro / Vintage Collection"), and
+        // take priority over whatever the scraper guessed — auto-detected
+        // manufacturer/toy line only ever match on an exact string, so an
+        // explicit choice here is strictly more reliable.
+        $batchUniverseId = (int) $request->input('universe_id', 0) ?: null;
+        $batchManufacturerId = (int) $request->input('manufacturer_id', 0) ?: null;
+        $batchToyLineId = (int) $request->input('toy_line_id', 0) ?: null;
 
         if ($url === '') {
             $this->json(['error' => 'Please enter a URL'], 400);
@@ -61,13 +91,16 @@ class ImporterRunController extends Controller
             $driver = new $driverClass();
 
             $toysToProcess = [];
+            $totalFound = null;
 
             if ($driver->isOverviewPage($url)) {
                 $detailUrls = $driver->parseOverviewPage($url);
-                // Limit to first 20 items on overview pages
-                $detailUrls = array_slice($detailUrls, 0, 20);
+                $totalFound = count($detailUrls);
+                // 20 at a time, starting from the given offset — re-run with
+                // a higher offset to page through a long listing.
+                $pageUrls = array_slice($detailUrls, $offset, 20);
 
-                foreach ($detailUrls as $detailUrl) {
+                foreach ($pageUrls as $detailUrl) {
                     try {
                         $toysToProcess[] = $driver->parseSinglePage($detailUrl);
                     } catch (\Exception $e) {
@@ -109,6 +142,37 @@ class ImporterRunController extends Controller
                     }
                 }
 
+                // Resolve universe/manufacturer/toy line to real IDs so the
+                // preview grid can pre-select them: the batch default wins
+                // when set, otherwise fall back to an exact-name match
+                // against what the scraper found.
+                $item['universe_id'] = $batchUniverseId;
+
+                if ($batchManufacturerId) {
+                    $item['manufacturer_id'] = $batchManufacturerId;
+                } else {
+                    $item['manufacturer_id'] = null;
+                    if (!empty($item['manufacturer'])) {
+                        $mfg = $db->fetch("SELECT id FROM meta_manufacturers WHERE name = ? LIMIT 1", [$item['manufacturer']]);
+                        if ($mfg) $item['manufacturer_id'] = (int) $mfg['id'];
+                    }
+                }
+
+                if ($batchToyLineId) {
+                    $item['toy_line_id'] = $batchToyLineId;
+                } else {
+                    $item['toy_line_id'] = null;
+                    if (!empty($item['toyLine'])) {
+                        $tl = $db->fetch("SELECT id FROM meta_toy_lines WHERE name = ? LIMIT 1", [$item['toyLine']]);
+                        if ($tl) $item['toy_line_id'] = (int) $tl['id'];
+                    }
+                }
+
+                // The scraper has no way to know these — always left for the
+                // preview grid to fill in per toy.
+                $item['product_type_id'] = null;
+                $item['entertainment_source_id'] = null;
+
                 $item['source_id'] = (int) $source['id'];
                 $results[] = $item;
             }
@@ -117,7 +181,9 @@ class ImporterRunController extends Controller
                 'success' => true,
                 'data' => $results,
                 'source' => $source['name'],
-                'count' => count($results)
+                'count' => count($results),
+                'offset' => $offset,
+                'totalFound' => $totalFound, // null for single-page imports
             ]);
 
         } catch (\Exception $e) {
@@ -186,35 +252,21 @@ class ImporterRunController extends Controller
                     $wave = $item['wave'] ?? '';
                     $assortmentSku = $item['assortmentSku'] ?? '';
 
-                    // Look up manufacturer by name
-                    $manufacturerId = null;
-                    if (!empty($item['manufacturer'])) {
-                        $mfg = $db->fetch(
-                            "SELECT id FROM meta_manufacturers WHERE name = ? LIMIT 1",
-                            [$item['manufacturer']]
-                        );
-                        if ($mfg) {
-                            $manufacturerId = (int) $mfg['id'];
-                        }
-                    }
-
-                    // Look up toy line by name
-                    $toyLineId = null;
-                    if (!empty($item['toyLine'])) {
-                        $tl = $db->fetch(
-                            "SELECT id FROM meta_toy_lines WHERE name = ? LIMIT 1",
-                            [$item['toyLine']]
-                        );
-                        if ($tl) {
-                            $toyLineId = (int) $tl['id'];
-                        }
-                    }
+                    // These now come as real IDs straight from the preview
+                    // grid's dropdowns (batch default or per-toy override,
+                    // whichever the user left selected) rather than being
+                    // re-derived from a fuzzy name match here.
+                    $universeId = (int) ($item['universe_id'] ?? 0) ?: null;
+                    $manufacturerId = (int) ($item['manufacturer_id'] ?? 0) ?: null;
+                    $toyLineId = (int) ($item['toy_line_id'] ?? 0) ?: null;
+                    $productTypeId = (int) ($item['product_type_id'] ?? 0) ?: null;
+                    $entertainmentSourceId = (int) ($item['entertainment_source_id'] ?? 0) ?: null;
 
                     $db->execute(
                         "INSERT INTO catalog_toys
-                            (name, slug, year_released, wave, assortment_sku, manufacturer_id, toy_line_id)
-                         VALUES (?, ?, ?, ?, ?, ?, ?)",
-                        [$name, $slug, $yearReleased, $wave, $assortmentSku, $manufacturerId, $toyLineId]
+                            (name, slug, year_released, wave, assortment_sku, manufacturer_id, toy_line_id, universe_id, product_type_id, entertainment_source_id)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        [$name, $slug, $yearReleased, $wave, $assortmentSku, $manufacturerId, $toyLineId, $universeId, $productTypeId, $entertainmentSourceId]
                     );
                     $catalogToyId = $db->lastInsertId();
 

@@ -1,6 +1,11 @@
 document.addEventListener('DOMContentLoaded', () => {
 	const btnPreview = document.getElementById('btnPreview');
 	const importUrl = document.getElementById('importUrl');
+	const importOffset = document.getElementById('importOffset');
+	const offsetInfo = document.getElementById('offsetInfo');
+	const batchUniverse = document.getElementById('batchUniverse');
+	const batchManufacturer = document.getElementById('batchManufacturer');
+	const batchToyLine = document.getElementById('batchToyLine');
 	const resultsGrid = document.getElementById('resultsGrid');
 	const importResults = document.getElementById('importResults');
 	const btnRunImport = document.getElementById('btnRunImport');
@@ -29,6 +34,10 @@ document.addEventListener('DOMContentLoaded', () => {
 		try {
 			const formData = new FormData();
 			formData.append('url', url);
+			formData.append('offset', importOffset.value || '0');
+			if (batchUniverse.value) formData.append('universe_id', batchUniverse.value);
+			if (batchManufacturer.value) formData.append('manufacturer_id', batchManufacturer.value);
+			if (batchToyLine.value) formData.append('toy_line_id', batchToyLine.value);
 
 			const result = await ApiClient.post(
 				SITE_URL + 'importer-run/preview',
@@ -42,9 +51,17 @@ document.addEventListener('DOMContentLoaded', () => {
 				document.getElementById('sourceName').textContent =
 					'Source: ' + result.source;
 
+				if (result.totalFound !== null && result.totalFound !== undefined) {
+					const start = result.offset + 1;
+					const end = result.offset + currentItems.length;
+					offsetInfo.textContent = `Showing ${start}-${end} of ${result.totalFound} found`;
+				} else {
+					offsetInfo.textContent = '';
+				}
+
 				if (currentItems.length === 0) {
 					resultsGrid.innerHTML =
-						'<div class="alert alert-warning"><i class="fa-solid fa-triangle-exclamation me-2"></i>No items found on this URL.</div>';
+						'<div class="alert alert-warning"><i class="fa-solid fa-triangle-exclamation me-2"></i>No items found on this URL or offset.</div>';
 				} else {
 					renderGrid(currentItems);
 				}
@@ -59,6 +76,15 @@ document.addEventListener('DOMContentLoaded', () => {
 			btnPreview.disabled = false;
 		}
 	});
+
+	function selectOptionsHtml(list, selectedId, placeholder) {
+		let html = `<option value="">${esc(placeholder)}</option>`;
+		list.forEach((opt) => {
+			const sel = selectedId && Number(selectedId) === opt.id ? 'selected' : '';
+			html += `<option value="${opt.id}" ${sel}>${esc(opt.name)}</option>`;
+		});
+		return html;
+	}
 
 	// Render results grid
 	function renderGrid(items) {
@@ -91,7 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>`;
 			}
 
-			// Accessories
+			// Accessories (read-only — not editable here)
 			let itemsHtml =
 				'<span class="text-muted fst-italic">None detected</span>';
 			if (item.items && item.items.length > 0) {
@@ -103,10 +129,13 @@ document.addEventListener('DOMContentLoaded', () => {
 					.join('');
 			}
 
+			const isExisting = item.status === 'conflict' || item.status === 'linked';
+
 			const col = document.createElement('div');
 			col.className = 'col-12 mb-3';
+			col.dataset.index = index;
 			col.innerHTML = `
-                <div class="card ${cardClass} shadow-sm">
+                <div class="card ${cardClass} shadow-sm import-row" data-index="${index}">
                     <div class="row g-0">
                         <div class="col-md-2 border-end">
                             ${imgHtml}
@@ -123,31 +152,56 @@ document.addEventListener('DOMContentLoaded', () => {
                                 </div>
                             </div>
                             <div class="card-body py-2">
-                                <h5 class="card-title text-primary mb-2">${esc(item.name)}</h5>
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <table class="table table-sm table-borderless mb-0">
-                                            <tbody>
-                                                <tr><td class="text-muted" style="width:100px">Year</td><td><strong>${esc(item.year || '-')}</strong></td></tr>
-                                                <tr><td class="text-muted">Toy Line</td><td>${esc(item.toyLine || '-')}</td></tr>
-                                                <tr><td class="text-muted">Manufacturer</td><td>${esc(item.manufacturer || '-')}</td></tr>
-                                            </tbody>
-                                        </table>
+                                <input type="text" class="form-control form-control-sm fw-bold text-primary mb-2 field-name" value="${esc(item.name)}">
+                                ${isExisting ? `<div class="small mb-2">${statusHtml} — fields below are ignored for existing items, only the link is created.</div>` : ''}
+                                <div class="row g-2">
+                                    <div class="col-md-3">
+                                        <label class="form-label small text-muted mb-0">Year</label>
+                                        <input type="text" class="form-control form-control-sm field-year" value="${esc(item.year || '')}">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small text-muted mb-0">Wave</label>
+                                        <input type="text" class="form-control form-control-sm field-wave" value="${esc(item.wave || '')}">
+                                    </div>
+                                    <div class="col-md-5">
+                                        <label class="form-label small text-muted mb-0">SKU</label>
+                                        <input type="text" class="form-control form-control-sm field-sku" value="${esc(item.assortmentSku || '')}">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small text-muted mb-0">Universe</label>
+                                        <select class="form-select form-select-sm field-universe">
+                                            ${selectOptionsHtml(IMPORTER_LOOKUPS.universes, item.universe_id, '-- Select --')}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small text-muted mb-0">Manufacturer</label>
+                                        <select class="form-select form-select-sm field-manufacturer">
+                                            ${selectOptionsHtml(IMPORTER_LOOKUPS.manufacturers, item.manufacturer_id, item.manufacturer || '-- Select --')}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small text-muted mb-0">Toy Line <span class="text-danger">*</span></label>
+                                        <select class="form-select form-select-sm field-toy-line">
+                                            ${selectOptionsHtml(IMPORTER_LOOKUPS.toyLines, item.toy_line_id, item.toyLine || '-- Select --')}
+                                        </select>
                                     </div>
                                     <div class="col-md-6">
-                                        <table class="table table-sm table-borderless mb-0">
-                                            <tbody>
-                                                <tr><td class="text-muted" style="width:100px">Wave</td><td>${esc(item.wave || '-')}</td></tr>
-                                                <tr><td class="text-muted">SKU</td><td>${esc(item.assortmentSku || '-')}</td></tr>
-                                                <tr><td class="text-muted">Status</td><td>${statusHtml}</td></tr>
-                                            </tbody>
-                                        </table>
+                                        <label class="form-label small text-muted mb-0">Product Type</label>
+                                        <select class="form-select form-select-sm field-product-type">
+                                            ${selectOptionsHtml(IMPORTER_LOOKUPS.productTypes, item.product_type_id, '-- Select --')}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small text-muted mb-0">Entertainment Source</label>
+                                        <select class="form-select form-select-sm field-entertainment-source">
+                                            ${selectOptionsHtml(IMPORTER_LOOKUPS.entertainmentSources, item.entertainment_source_id, '-- Select --')}
+                                        </select>
                                     </div>
                                 </div>
                                 ${
 									item.items && item.items.length > 0
 										? `<div class="mt-2 pt-2 border-top">
-                                    <small class="text-uppercase text-muted fw-bold">Accessories</small>
+                                    <small class="text-uppercase text-muted fw-bold">Accessories (detected, not editable here)</small>
                                     <div class="mt-1">${itemsHtml}</div>
                                 </div>`
 										: ''
@@ -174,16 +228,52 @@ document.addEventListener('DOMContentLoaded', () => {
 			.forEach((cb) => (cb.checked = false));
 	});
 
+	// Read the live (possibly user-edited) values for one row out of the DOM,
+	// merged onto the original scraped item (which still carries source_id,
+	// externalId, externalUrl, status, existingId, and the accessories list).
+	function readRow(index) {
+		const original = currentItems[index];
+		const row = resultsGrid.querySelector(`.import-row[data-index="${index}"]`);
+		if (!row) return original;
+
+		const val = (sel) => row.querySelector(sel)?.value ?? '';
+
+		return {
+			...original,
+			name: val('.field-name'),
+			year: val('.field-year'),
+			wave: val('.field-wave'),
+			assortmentSku: val('.field-sku'),
+			universe_id: val('.field-universe') || null,
+			manufacturer_id: val('.field-manufacturer') || null,
+			toy_line_id: val('.field-toy-line') || null,
+			product_type_id: val('.field-product-type') || null,
+			entertainment_source_id: val('.field-entertainment-source') || null,
+		};
+	}
+
 	// Run Import
 	btnRunImport.addEventListener('click', async () => {
 		const checkboxes = document.querySelectorAll('.item-select:checked');
 		const selectedIndices = Array.from(checkboxes).map((cb) =>
 			parseInt(cb.value),
 		);
-		const itemsToImport = selectedIndices.map((i) => currentItems[i]);
+		const itemsToImport = selectedIndices.map((i) => readRow(i));
 
 		if (itemsToImport.length === 0) {
 			UiHelper.showError('No items selected');
+			return;
+		}
+
+		// catalog_toys.toy_line_id is required — catch this before submitting
+		// rather than letting each one fail individually server-side.
+		const missingToyLine = itemsToImport.filter(
+			(item) => item.status === 'new' && !item.toy_line_id,
+		);
+		if (missingToyLine.length > 0) {
+			UiHelper.showError(
+				`${missingToyLine.length} selected item(s) have no Toy Line set — pick one (per item, or via the batch Toy Line field above and re-analyze) before importing: ${missingToyLine.map((i) => i.name).join(', ')}`,
+			);
 			return;
 		}
 

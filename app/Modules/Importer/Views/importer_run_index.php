@@ -45,13 +45,58 @@
     <div class="card-body">
         <form id="importForm" onsubmit="return false;">
             <?= $csrfField() ?>
-            <div class="input-group input-group-lg">
+            <div class="input-group input-group-lg mb-2">
                 <input type="text" id="importUrl" class="form-control" placeholder="Paste URL here (overview or single detail page)" required>
                 <button class="btn btn-primary" type="button" id="btnPreview">
                     <i class="fa-solid fa-search me-2"></i> Analyze
                 </button>
             </div>
-            <div class="form-text">Paste a URL from any active source. Overview pages import multiple items; detail pages import a single item.</div>
+            <div class="form-text mb-3">Paste a URL from any active source. Overview pages import multiple items; detail pages import a single item.</div>
+
+            <div class="row g-2 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label small text-muted mb-1">Batch Universe</label>
+                    <select class="form-select form-select-sm" id="batchUniverse">
+                        <option value="">Auto-detect / none</option>
+                        <?php foreach ($universes as $u): ?>
+                            <option value="<?= $e($u['id']) ?>"><?= $e($u['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted mb-1">Batch Manufacturer</label>
+                    <select class="form-select form-select-sm" id="batchManufacturer">
+                        <option value="">Auto-detect from page</option>
+                        <?php foreach ($manufacturers as $m): ?>
+                            <option value="<?= $e($m['id']) ?>"><?= $e($m['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted mb-1">Batch Toy Line</label>
+                    <select class="form-select form-select-sm" id="batchToyLine">
+                        <option value="">Auto-detect from page</option>
+                        <?php foreach ($toyLines as $tl): ?>
+                            <option value="<?= $e($tl['id']) ?>">
+                                <?= $e($tl['name']) ?><?= $tl['manufacturer_name'] ? ' (' . $e($tl['manufacturer_name']) . ')' : '' ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small text-muted mb-1">Offset</label>
+                    <input type="number" min="0" step="20" class="form-control form-control-sm" id="importOffset" value="0">
+                </div>
+                <div class="col-md-1">
+                    <span class="text-muted small" id="offsetInfo"></span>
+                </div>
+            </div>
+            <div class="form-text">
+                Universe/Manufacturer/Toy Line set here apply to every item found — leave blank to let each
+                toy's own value (from the page, if detected) be used instead. Both are still editable per-item
+                below before you import. Offset only matters for listing pages with more than 20 items: run
+                Analyze again with Offset 20, then 40, and so on to work through the rest.
+            </div>
         </form>
     </div>
 </div>
@@ -77,3 +122,17 @@
 
     <div id="resultsGrid"></div>
 </div>
+
+<script>
+    // Lookup lists for the per-item editable fields in the preview grid.
+    const IMPORTER_LOOKUPS = <?= json_encode([
+        'universes' => array_map(fn($u) => ['id' => (int) $u['id'], 'name' => $u['name']], $universes),
+        'manufacturers' => array_map(fn($m) => ['id' => (int) $m['id'], 'name' => $m['name']], $manufacturers),
+        'toyLines' => array_map(fn($tl) => [
+            'id' => (int) $tl['id'],
+            'name' => $tl['name'] . ($tl['manufacturer_name'] ? ' (' . $tl['manufacturer_name'] . ')' : ''),
+        ], $toyLines),
+        'productTypes' => array_map(fn($pt) => ['id' => (int) $pt['id'], 'name' => $pt['name']], $productTypes),
+        'entertainmentSources' => array_map(fn($es) => ['id' => (int) $es['id'], 'name' => $es['name']], $entertainmentSources),
+    ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
+</script>

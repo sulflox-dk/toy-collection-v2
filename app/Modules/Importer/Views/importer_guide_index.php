@@ -40,13 +40,19 @@
                     <strong>Run Import</strong>
                 </div>
                 <p class="small text-muted mb-0">
-                    This is the page you'll actually use. Paste a URL, click <strong>Analyze</strong>.
-                    It figures out which site it's from, scrapes it, and shows you a preview grid — each
-                    row flagged <span class="badge bg-success-subtle text-success">New</span>,
+                    This is the page you'll actually use. Optionally set a batch Universe/Manufacturer/Toy
+                    Line above the URL box first — useful when you know everything on a page is, say,
+                    Hasbro's Vintage Collection, since auto-detection only matches on an exact name and
+                    is often blank. Paste a URL, click <strong>Analyze</strong>. Each result in the preview
+                    is flagged <span class="badge bg-success-subtle text-success">New</span>,
                     <span class="badge bg-warning-subtle text-warning">Conflict</span> (name already
                     exists in your catalog), or <span class="badge bg-secondary-subtle text-secondary">Linked</span>
-                    (already imported before). Select the ones you want, click <strong>Import Selected</strong>.
-                    Nothing is written until that click.
+                    (already imported before) — and every field (name, year, wave, SKU, universe,
+                    manufacturer, toy line, product type, entertainment source) is editable right there
+                    before you commit to anything. Select the ones you want, click
+                    <strong>Import Selected</strong>. Nothing is written until that click. On a listing
+                    page with more than 20 items, re-run Analyze with a higher Offset (20, then 40, ...)
+                    to work through the rest.
                 </p>
             </div>
             <div class="col-md-4">
@@ -83,8 +89,8 @@
                 </tr>
                 <tr>
                     <td class="ps-3 fw-bold">Galactic Collector</td>
-                    <td class="small text-muted">A listing page pulls up to 20 figures; a URL containing <code>/fig/</code> is one figure</td>
-                    <td><span class="badge bg-success-subtle text-success">Bulk supported</span></td>
+                    <td class="small text-muted">Any single figure's detail page (a URL containing <code>/fig/</code>)</td>
+                    <td><span class="badge bg-secondary-subtle text-secondary">Single page only</span></td>
                 </tr>
                 <tr>
                     <td class="ps-3 fw-bold">Galactic Figures</td>
@@ -116,16 +122,28 @@
     <div class="card-body">
         <ul class="mb-0">
             <li class="mb-2">
-                <strong>Manufacturer and toy line only match on an exact name.</strong> If the scraped
-                site says "Kenner" and you already have a manufacturer named exactly "Kenner", it links
-                automatically. Anything that doesn't match exactly — different spelling, extra
-                whitespace, a name you haven't created yet — is silently left blank rather than guessed
-                at or auto-created. Worth a quick check on the Catalog Toys page after importing.
+                <strong>Auto-detected manufacturer and toy line only match on an exact name</strong> —
+                if the scraped site says "Kenner" and you already have a manufacturer named exactly
+                "Kenner", it links automatically; anything that doesn't match exactly is left blank.
+                That's why Universe/Manufacturer/Toy Line are editable dropdowns both as a batch default
+                above the URL box and per item in the preview grid — set them explicitly rather than
+                relying on the auto-match whenever you already know what you're importing.
             </li>
             <li class="mb-2">
-                <strong>Universe, product type, and entertainment source are never set by an import.</strong>
-                The scrapers don't have a reliable way to know these, so every imported toy needs a
-                short manual pass afterward if you want those filled in.
+                <strong>Toy Line is required</strong> for any item flagged New — the app won't let you
+                catalog a toy without one. The preview grid stops you before submitting if any selected
+                new item is missing it.
+            </li>
+            <li class="mb-2">
+                <strong>Product type and entertainment source are never auto-detected</strong> — the
+                scrapers have no reliable way to know these, so they always start unset in the preview
+                grid. Fill them in per item there if you want them, or leave them blank and do it later
+                from the Catalog Toys page.
+            </li>
+            <li class="mb-2">
+                <strong>Galactic Collector's bulk/listing-page import isn't actually implemented</strong>
+                despite the site technically supporting a "browse all figures" page — only single
+                detail-page URLs work for this one today.
             </li>
             <li class="mb-2">
                 <strong>These are screen-scrapers reading raw HTML</strong>, not official APIs — several
@@ -136,8 +154,9 @@
                 after.
             </li>
             <li>
-                <strong>Bulk imports cap at 20 items</strong> per overview page, to keep a single click
-                from hammering someone else's website.
+                <strong>Bulk imports fetch 20 items per Analyze click</strong>, to keep a single click
+                from hammering someone else's website — use the Offset field to work through a longer
+                listing 20 at a time.
             </li>
         </ul>
     </div>
