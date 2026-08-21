@@ -48,6 +48,7 @@ $baseUrl = rtrim(Config::get('app.url', ''), '/') . '/';
                         <li><a href="<?= $baseUrl ?>collection-toy" class="nav-link">Collection</a></li>
                         <li><a href="<?= $baseUrl ?>storage-unit" class="nav-link">Storage</a></li>
                         <li><a href="<?= $baseUrl ?>collection-source" class="nav-link">Sources</a></li>
+                        <li><a href="<?= $baseUrl ?>missing-part" class="nav-link">Missing Parts</a></li>
                     </ul>
                 </div>
             </li>

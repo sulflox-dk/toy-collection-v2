@@ -234,6 +234,7 @@ class CollectionToyController extends Controller
             'purchase_price' => $request->input('purchase_price', '') !== '' ? (float) $request->input('purchase_price') : null,
             'purchase_currency' => trim($request->input('purchase_currency', 'USD')) ?: 'USD',
             'current_value' => $request->input('current_value', '') !== '' ? (float) $request->input('current_value') : null,
+            'cherish_rating' => (int) $request->input('cherish_rating', 0) ?: null,
             'packaging_type_id' => (int) $request->input('packaging_type_id', 0) ?: null,
             'condition_grade_id' => (int) $request->input('condition_grade_id', 0) ?: null,
             'grader_company_id' => (int) $request->input('grader_company_id', 0) ?: null,

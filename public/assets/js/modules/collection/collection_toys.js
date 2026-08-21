@@ -147,6 +147,12 @@ const CollectionWizard = {
 		this.goToStep3(collectionToyId);
 	},
 
+	clearCherishRating() {
+		document.querySelectorAll('input[name="cherish_rating"]').forEach((r) => {
+			r.checked = false;
+		});
+	},
+
 	initGradingToggle() {
 		const section = document.getElementById('gradingSection');
 		const chevron = document.getElementById('gradingChevron');

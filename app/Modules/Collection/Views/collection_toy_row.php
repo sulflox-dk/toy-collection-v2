@@ -10,7 +10,15 @@
     </td>
     <td>
         <div class="fw-bold text-dark"><?= $e($t['toy_name']) ?></div>
-        <small class="text-muted">Added: <?= date('Y-m-d', strtotime($t['created_at'])) ?></small>
+        <?php if (!empty($t['cherish_rating'])): ?>
+            <div title="Cherish level: <?= $e($t['cherish_rating']) ?>/5">
+                <?php for ($i = 1; $i <= 5; $i++): ?>
+                    <i class="fa-solid fa-star <?= $i <= (int) $t['cherish_rating'] ? 'text-warning' : 'text-muted opacity-25' ?>" style="font-size: 0.65rem;"></i>
+                <?php endfor; ?>
+            </div>
+        <?php else: ?>
+            <small class="text-muted">Added: <?= date('Y-m-d', strtotime($t['created_at'])) ?></small>
+        <?php endif; ?>
     </td>
     <td>
         <div><?= $e($t['universe_name'] ?? '—') ?></div>

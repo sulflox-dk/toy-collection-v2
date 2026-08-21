@@ -36,7 +36,15 @@ $hasMissing = $missingCount > 0;
             <h6 class="card-title fw-bold text-dark mb-1 text-truncate" title="<?= $e($t['toy_name']) ?>">
                 <?= $e($t['toy_name']) ?>
             </h6>
-            
+
+            <?php if (!empty($t['cherish_rating'])): ?>
+                <div class="mb-1" title="Cherish level: <?= $e($t['cherish_rating']) ?>/5">
+                    <?php for ($i = 1; $i <= 5; $i++): ?>
+                        <i class="fa-solid fa-star <?= $i <= (int) $t['cherish_rating'] ? 'text-warning' : 'text-muted opacity-25' ?>" style="font-size: 0.7rem;"></i>
+                    <?php endfor; ?>
+                </div>
+            <?php endif; ?>
+
             <div class="small text-secondary mb-1">
                 <?php 
                     $meta1 = [];

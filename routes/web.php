@@ -19,6 +19,7 @@ use App\Modules\Media\Controllers\MediaTagController;
 use \App\Modules\Catalog\Controllers\CatalogToyController;
 Use \App\Modules\Collection\Controllers\CollectionStorageUnitController;
 use \App\Modules\Collection\Controllers\CollectionSourceController;
+use \App\Modules\Collection\Controllers\MissingPartController;
 use \App\Modules\Collection\Controllers\CollectionToyController;
 use App\Modules\Importer\Controllers\ImporterSourceController;
 use App\Modules\Importer\Controllers\ImporterRunController;
@@ -170,6 +171,9 @@ $router->post('/collection-source', [CollectionSourceController::class, 'store']
 $router->put('/collection-source/{id}', [CollectionSourceController::class, 'update']);
 $router->delete('/collection-source/{id}', [CollectionSourceController::class, 'destroy']);
 $router->get('/collection-source/migrate-on-delete-options', [CollectionSourceController::class, 'migrateOnDeleteOptions']);
+
+$router->get('/missing-part', [MissingPartController::class, 'index']);
+$router->get('/missing-part/list', [MissingPartController::class, 'list']);
 
 // ==========================================================
 // USER COLLECTION TOYS
