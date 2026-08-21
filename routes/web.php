@@ -18,6 +18,7 @@ use App\Modules\Auth\Controllers\UserController;
 use App\Modules\Media\Controllers\MediaTagController;
 use \App\Modules\Catalog\Controllers\CatalogToyController;
 Use \App\Modules\Collection\Controllers\CollectionStorageUnitController;
+use \App\Modules\Collection\Controllers\CollectionSourceController;
 use \App\Modules\Collection\Controllers\CollectionToyController;
 use App\Modules\Importer\Controllers\ImporterSourceController;
 use App\Modules\Importer\Controllers\ImporterRunController;
@@ -162,6 +163,13 @@ $router->post('/storage-unit', [CollectionStorageUnitController::class, 'store']
 $router->put('/storage-unit/{id}', [CollectionStorageUnitController::class, 'update']);
 $router->delete('/storage-unit/{id}', [CollectionStorageUnitController::class, 'destroy']);
 $router->get('/storage-unit/migrate-on-delete-options', [CollectionStorageUnitController::class, 'migrateOnDeleteOptions']);
+
+$router->get('/collection-source', [CollectionSourceController::class, 'index']);
+$router->get('/collection-source/list', [CollectionSourceController::class, 'list']);
+$router->post('/collection-source', [CollectionSourceController::class, 'store']);
+$router->put('/collection-source/{id}', [CollectionSourceController::class, 'update']);
+$router->delete('/collection-source/{id}', [CollectionSourceController::class, 'destroy']);
+$router->get('/collection-source/migrate-on-delete-options', [CollectionSourceController::class, 'migrateOnDeleteOptions']);
 
 // ==========================================================
 // USER COLLECTION TOYS

@@ -47,6 +47,7 @@ $baseUrl = rtrim(Config::get('app.url', ''), '/') . '/';
                     <ul class="sidebar-submenu btn-toggle-nav-list align-items-center rounded">
                         <li><a href="<?= $baseUrl ?>collection-toy" class="nav-link">Collection</a></li>
                         <li><a href="<?= $baseUrl ?>storage-unit" class="nav-link">Storage</a></li>
+                        <li><a href="<?= $baseUrl ?>collection-source" class="nav-link">Sources</a></li>
                     </ul>
                 </div>
             </li>
