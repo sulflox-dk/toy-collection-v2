@@ -5,6 +5,9 @@ document.addEventListener('DOMContentLoaded', () => {
 	const batchUniverse = document.getElementById('batchUniverse');
 	const batchManufacturer = document.getElementById('batchManufacturer');
 	const batchToyLine = document.getElementById('batchToyLine');
+	const batchProductType = document.getElementById('batchProductType');
+	const batchEntertainmentSource = document.getElementById('batchEntertainmentSource');
+	const btnResetBatchDefaults = document.getElementById('btnResetBatchDefaults');
 	const queueEl = document.getElementById('importQueue');
 	const queueEmpty = document.getElementById('importQueueEmpty');
 	const btnRunImport = document.getElementById('btnRunImport');
@@ -19,6 +22,62 @@ document.addEventListener('DOMContentLoaded', () => {
 	let groupIdSeq = 0;
 
 	// ---------------------------------------------------------------
+	// Batch defaults — remembered across visits in a cookie, since the
+	// queue itself doesn't survive a reload but a session of imports
+	// (e.g. "everything today is Hasbro Vintage Collection") often does.
+	// ---------------------------------------------------------------
+
+	const BATCH_DEFAULTS_COOKIE = 'importer_batch_defaults';
+	const batchFieldEls = {
+		universe_id: batchUniverse,
+		manufacturer_id: batchManufacturer,
+		toy_line_id: batchToyLine,
+		product_type_id: batchProductType,
+		entertainment_source_id: batchEntertainmentSource,
+	};
+
+	function readCookie(name) {
+		const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+		return match ? decodeURIComponent(match[1]) : null;
+	}
+
+	function writeCookie(name, value) {
+		const expires = new Date(Date.now() + 365 * 864e5).toUTCString();
+		document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
+	}
+
+	function saveBatchDefaults() {
+		const values = {};
+		Object.entries(batchFieldEls).forEach(([key, el]) => (values[key] = el.value));
+		writeCookie(BATCH_DEFAULTS_COOKIE, JSON.stringify(values));
+	}
+
+	function loadBatchDefaults() {
+		const raw = readCookie(BATCH_DEFAULTS_COOKIE);
+		if (!raw) return;
+		let values;
+		try {
+			values = JSON.parse(raw);
+		} catch (e) {
+			return;
+		}
+		Object.entries(batchFieldEls).forEach(([key, el]) => {
+			if (values[key] && el.querySelector(`option[value="${values[key]}"]`)) {
+				el.value = values[key];
+			}
+		});
+	}
+
+	Object.values(batchFieldEls).forEach((el) => el.addEventListener('change', saveBatchDefaults));
+
+	btnResetBatchDefaults.addEventListener('click', () => {
+		Object.values(batchFieldEls).forEach((el) => (el.value = ''));
+		saveBatchDefaults();
+	});
+
+	loadBatchDefaults();
+
+	// ---------------------------------------------------------------
 	// Server calls
 	// ---------------------------------------------------------------
 
@@ -29,6 +88,8 @@ document.addEventListener('DOMContentLoaded', () => {
 		if (batchUniverse.value) formData.append('universe_id', batchUniverse.value);
 		if (batchManufacturer.value) formData.append('manufacturer_id', batchManufacturer.value);
 		if (batchToyLine.value) formData.append('toy_line_id', batchToyLine.value);
+		if (batchProductType.value) formData.append('product_type_id', batchProductType.value);
+		if (batchEntertainmentSource.value) formData.append('entertainment_source_id', batchEntertainmentSource.value);
 		return ApiClient.post(baseUrl + 'importer-run/analyze-url', formData);
 	}
 
@@ -106,12 +167,12 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 
 		// Universe/product type/entertainment source aren't per-URL
-		// conflict candidates (universe comes from the batch default;
-		// product type/entertainment source are never scraped) — just
-		// carry through the first non-empty value found, editable as normal.
+		// conflict candidates — none of them are ever scraped from a page,
+		// so whatever the server resolved (the batch default, if any) is
+		// just carried through as-is, editable as normal.
 		merged.universe_id = g.urlResults.find((r) => r.universe_id)?.universe_id || '';
-		merged.product_type_id = '';
-		merged.entertainment_source_id = '';
+		merged.product_type_id = g.urlResults.find((r) => r.product_type_id)?.product_type_id || '';
+		merged.entertainment_source_id = g.urlResults.find((r) => r.entertainment_source_id)?.entertainment_source_id || '';
 
 		// Free-text prose isn't worth a conflict picker if two sources
 		// disagree (they virtually always will) — just take the first

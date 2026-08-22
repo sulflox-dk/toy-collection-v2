@@ -66,27 +66,27 @@
 
         <div class="row g-2 align-items-end mt-2 pt-2 border-top">
             <div class="col-md-4">
-                <label class="form-label small text-muted mb-1">Batch Universe</label>
+                <label class="form-label small text-muted mb-1">Default Universe</label>
                 <select class="form-select form-select-sm" id="batchUniverse">
-                    <option value="">Auto-detect / none</option>
+                    <option value="">None</option>
                     <?php foreach ($universes as $u): ?>
                         <option value="<?= $e($u['id']) ?>"><?= $e($u['name']) ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
             <div class="col-md-4">
-                <label class="form-label small text-muted mb-1">Batch Manufacturer</label>
+                <label class="form-label small text-muted mb-1">Default Manufacturer</label>
                 <select class="form-select form-select-sm" id="batchManufacturer">
-                    <option value="">Auto-detect from page</option>
+                    <option value="">None</option>
                     <?php foreach ($manufacturers as $m): ?>
                         <option value="<?= $e($m['id']) ?>"><?= $e($m['name']) ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
             <div class="col-md-4">
-                <label class="form-label small text-muted mb-1">Batch Toy Line</label>
+                <label class="form-label small text-muted mb-1">Default Toy Line</label>
                 <select class="form-select form-select-sm" id="batchToyLine">
-                    <option value="">Auto-detect from page</option>
+                    <option value="">None</option>
                     <?php foreach ($toyLines as $tl): ?>
                         <option value="<?= $e($tl['id']) ?>">
                             <?= $e($tl['name']) ?><?= $tl['manufacturer_name'] ? ' (' . $e($tl['manufacturer_name']) . ')' : '' ?>
@@ -94,11 +94,35 @@
                     <?php endforeach; ?>
                 </select>
             </div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted mb-1">Default Product Type</label>
+                <select class="form-select form-select-sm" id="batchProductType">
+                    <option value="">None</option>
+                    <?php foreach ($productTypes as $pt): ?>
+                        <option value="<?= $e($pt['id']) ?>"><?= $e($pt['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted mb-1">Default Entertainment Source</label>
+                <select class="form-select form-select-sm" id="batchEntertainmentSource">
+                    <option value="">None</option>
+                    <?php foreach ($entertainmentSources as $es): ?>
+                        <option value="<?= $e($es['id']) ?>"><?= $e($es['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <button class="btn btn-outline-secondary btn-sm w-100" type="button" id="btnResetBatchDefaults">
+                    <i class="fa-solid fa-rotate-left me-1"></i> Reset defaults
+                </button>
+            </div>
         </div>
         <div class="form-text">
-            Set these when you already know what a page contains (e.g. "this whole page is Hasbro Vintage
-            Collection") — they apply to everything you add next, and outrank auto-detection, which only matches
-            on an exact name. Still editable per item below.
+            Set these when you're about to import a batch that's mostly the same (e.g. "this whole session is
+            Hasbro Vintage Collection") — they're remembered across visits and applied to everything you add,
+            <strong>unless</strong> the importer finds a more specific value on the page itself, which always wins.
+            Still editable per item below.
         </div>
     </div>
 </div>
