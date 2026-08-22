@@ -41,86 +41,131 @@ class JediTempleArchivesDriver extends AbstractSiteDriver
         $pathInfo = pathinfo(parse_url($url, PHP_URL_PATH) ?? '');
         $dto->externalId = $pathInfo['filename'] ?? md5($url);
 
-        // Name from title
-        $title = $this->getText($xpath, "//title");
-        $dto->name = $this->cleanName($title);
+        // The "InfoBox" fields (Name/Collection/License/Availability/
+        // Accessory Details) are a clean, structured summary of the exact
+        // figure this page is about — far more reliable than screen-scraping
+        // the <title>, which mashes name, manufacturer, and figure number
+        // together with no consistent separator to split back apart.
+        $dto->name = $this->infoValue($xpath, 'Name') ?: 'Unknown Toy';
+        $dto->manufacturer = $this->infoValue($xpath, 'License');
 
-        // Year
-        if (preg_match('/Release Date:.*?(\d{4})/i', $html, $m)) {
-            $dto->year = $m[1];
-        } elseif (strpos($url, 'vintage-star-wars') !== false && preg_match('/Kenner.*?(\d{4})/s', $html, $m)) {
+        // "Collection" reads like "The Vintage Collection (Basic Figures –
+        // VC04)" — the parenthetical's last dash-separated segment is the
+        // figure/collection number (assortmentSku); the rest, with the
+        // parenthetical dropped, is the toy line.
+        $collection = $this->infoValue($xpath, 'Collection');
+        if (preg_match('/\(([^)]*)\)\s*$/u', $collection, $m)) {
+            $segments = preg_split('/[-\x{2013}\x{2014}]/u', $m[1]);
+            $dto->assortmentSku = trim((string) end($segments));
+        }
+        $dto->toyLine = trim(preg_replace('/\s*\([^)]*\)\s*$/u', '', $collection));
+
+        // "Availability" (e.g. "August 2010") is this page's one clean,
+        // unambiguous year — the alternative, the Packaging Details table,
+        // often lists several years across a figure's re-release variants.
+        $availability = $this->infoValue($xpath, 'Availability');
+        if (preg_match('/(\d{4})/', $availability, $m)) {
             $dto->year = $m[1];
         }
 
-        // Series / Manufacturer from URL patterns
-        if (strpos($url, 'vintage-star-wars') !== false) {
-            $dto->toyLine = 'Kenner Vintage Star Wars';
-            $dto->manufacturer = 'Kenner';
-        } elseif (strpos($url, 'vintage-return-of-the-jedi') !== false) {
-            $dto->toyLine = 'Kenner Return of the Jedi';
-            $dto->manufacturer = 'Kenner';
-        } elseif (strpos($url, 'the-vintage-collection') !== false) {
-            $dto->toyLine = 'The Vintage Collection';
-            $dto->manufacturer = 'Hasbro';
-        } elseif (strpos($url, 'the-black-series') !== false) {
-            $dto->toyLine = 'The Black Series';
-            $dto->manufacturer = 'Hasbro';
-        }
-
-        // SKU / VC Number
-        if (preg_match('/(VC\d{2,3})/', $title, $m)) {
-            $dto->assortmentSku = $m[1];
+        // The sidebar's "Related Guides: Wave N" heading is this site's
+        // only distinct wave value — Collection's own number (VC04, above)
+        // is the figure/assortment number, not the wave.
+        $relatedHeading = $this->getText($xpath, "//h2[starts-with(normalize-space(.), 'Related Guides')]");
+        if (preg_match('/Wave\s*(\d+)/i', $relatedHeading, $m)) {
             $dto->wave = $m[1];
         }
 
-        // Accessories
-        $accessoriesNode = $xpath->query("//b[contains(text(), 'Accessories:')]");
-        if ($accessoriesNode->length > 0) {
-            $accText = $accessoriesNode->item(0)->nextSibling->textContent ?? '';
-            if (empty($accText)) {
-                $accText = $accessoriesNode->item(0)->parentNode->textContent ?? '';
-                $accText = str_replace('Accessories:', '', $accText);
-            }
+        // UPC only appears in the Packaging Details table, which can list
+        // several card-back variants (including later re-releases with a
+        // different UPC/assortment) — the first row matches the release
+        // already summarized above in the InfoBox, so take that one.
+        $upc = $this->packagingValue($xpath, 'UPC');
+        $dto->upc = $upc !== '' ? preg_replace('/\s+/', '', $upc) : '';
 
-            foreach (explode(',', $accText) as $item) {
-                $clean = trim(strip_tags($item), ". \t\n\r");
-                if (strlen($clean) > 2) {
+        $accessories = $this->infoValue($xpath, 'Accessory Details');
+        if ($accessories !== '') {
+            foreach (explode(',', $accessories) as $item) {
+                $clean = trim($item, " \t\n\r.");
+                if ($clean !== '') {
                     $dto->items[] = $clean;
                 }
             }
         }
 
-        // Images
-        $imgNodes = $xpath->query("//img");
-        foreach ($imgNodes as $node) {
-            if (!($node instanceof \DOMElement)) continue;
-            $src = $node->getAttribute('src');
+        // The main photo gallery is loaded client-side from a separate XML
+        // feed (see the finalTilesGallery script config), not present in
+        // the fetched HTML at all, so it can't be scraped here. The
+        // card-back/packaging photos in the Packaging Details table are
+        // real embedded images though, and worth pulling in on their own.
+        $dto->images = $this->extractPackagingImages($xpath);
 
-            if (strpos($src, 'banner') !== false || strpos($src, 'button') !== false || strpos($src, 'logo') !== false) {
-                continue;
-            }
-
-            $src = $this->fixRelativeUrl($src, 'https://www.jeditemplearchives.com');
-
-            if (strpos($src, '_th.') !== false) {
-                $src = str_replace('_th.', '.', $src);
-            }
-
-            if (!in_array($src, $dto->images)) {
-                $dto->images[] = $src;
-            }
-        }
+        // Deliberately not scraping a description: the "Release Notes"
+        // text on this page is often specifically about a later re-release
+        // variant, not the figure this page's own InfoBox summarizes —
+        // attaching it here risks pulling in facts about the wrong variant.
 
         return $dto;
     }
 
-    private function cleanName(string $title): string
+    /**
+     * Read a "<p><span class="InfoDetailsEmphasis">Label:</span> value</p>"
+     * field from the top summary box.
+     */
+    private function infoValue(\DOMXPath $xpath, string $label): string
     {
-        $title = str_replace(
-            ['Jedi Temple Archives', 'Review', 'Visual Guide', 'Research Droids Reviews'],
-            '', $title
+        return $this->spanLabelValue($xpath, 'InfoDetailsEmphasis', $label);
+    }
+
+    /**
+     * Read a "<p><span class="RDRAdditionalStatsBlack">Label:</span>
+     * value</p>" field from the (possibly repeated, once per card-back
+     * variant) Packaging Details table — always the first match, which
+     * corresponds to the release already summarized in the InfoBox.
+     */
+    private function packagingValue(\DOMXPath $xpath, string $label): string
+    {
+        return $this->spanLabelValue($xpath, 'RDRAdditionalStatsBlack', $label);
+    }
+
+    private function spanLabelValue(\DOMXPath $xpath, string $spanClass, string $label): string
+    {
+        $nodes = $xpath->query(
+            "(//p[span[@class='{$spanClass}' and translate(normalize-space(.), ':', '') = '{$label}']])[1]"
         );
-        $parts = explode(' - ', $title);
-        return trim($parts[0]);
+        if (!$nodes || $nodes->length === 0) {
+            return '';
+        }
+
+        $p = $nodes->item(0);
+        $spanText = '';
+        foreach ($p->childNodes as $child) {
+            if ($child instanceof \DOMElement
+                && strtolower($child->nodeName) === 'span'
+                && $child->getAttribute('class') === $spanClass
+            ) {
+                $spanText = $child->textContent;
+                break;
+            }
+        }
+
+        $full = trim(preg_replace('/\s+/', ' ', $p->textContent));
+        $labelText = trim(preg_replace('/\s+/', ' ', $spanText));
+
+        return trim(substr($full, strlen($labelText)));
+    }
+
+    private function extractPackagingImages(\DOMXPath $xpath): array
+    {
+        $images = [];
+        $base = 'https://www.jeditemplearchives.com';
+
+        foreach ($xpath->query("//a[contains(@rel,'shadowbox')]") as $node) {
+            if ($node instanceof \DOMElement && $node->getAttribute('href')) {
+                $images[] = $this->fixRelativeUrl($node->getAttribute('href'), $base);
+            }
+        }
+
+        return array_values(array_unique($images));
     }
 }
