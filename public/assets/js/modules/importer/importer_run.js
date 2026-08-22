@@ -113,6 +113,11 @@ document.addEventListener('DOMContentLoaded', () => {
 		merged.product_type_id = '';
 		merged.entertainment_source_id = '';
 
+		// Free-text prose isn't worth a conflict picker if two sources
+		// disagree (they virtually always will) — just take the first
+		// source's description and let it be edited directly.
+		merged.description = g.urlResults.find((r) => r.description)?.description || '';
+
 		// Pooled list fields
 		const accessories = [];
 		const seenAcc = new Set();
@@ -280,6 +285,10 @@ document.addEventListener('DOMContentLoaded', () => {
 					<label class="form-label small text-muted mb-0">Entertainment Source</label>
 					<select class="form-select form-select-sm field-entertainment-source">${selectOptionsHtml(IMPORTER_LOOKUPS.entertainmentSources, g.merged.entertainment_source_id, '-- Select --')}</select>
 				</div>
+				<div class="col-md-12">
+					<label class="form-label small text-muted mb-0">Description</label>
+					<textarea class="form-control form-control-sm field-description" rows="2">${esc(g.merged.description)}</textarea>
+				</div>
 			</div>
 		`;
 	}
@@ -322,6 +331,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			compareRow('manufacturer_id', 'Manufacturer', lookupName(IMPORTER_LOOKUPS.manufacturers, cur.manufacturer_id), lookupName(IMPORTER_LOOKUPS.manufacturers, g.merged.manufacturer_id), !!g.conflicts.manufacturer_id, g),
 			compareRow('toy_line_id', 'Toy Line', lookupName(IMPORTER_LOOKUPS.toyLines, cur.toy_line_id), lookupName(IMPORTER_LOOKUPS.toyLines, g.merged.toy_line_id), !!g.conflicts.toy_line_id, g),
 			compareRow('universe_id', 'Universe', lookupName(IMPORTER_LOOKUPS.universes, cur.universe_id), lookupName(IMPORTER_LOOKUPS.universes, g.merged.universe_id), false, g),
+			compareRow('description', 'Description', cur.description, g.merged.description, false, g),
 		].join('');
 
 		const accCount = g.accessories.length;
@@ -588,6 +598,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				toy_line_id: pickVal('toy_line_id', val('.field-toy-line')) || null,
 				product_type_id: val('.field-product-type') || null,
 				entertainment_source_id: val('.field-entertainment-source') || null,
+				description: val('.field-description'),
 			},
 			accessories: g.accessories,
 			images: g.images,
