@@ -61,20 +61,55 @@ class ImporterSource extends BaseModel
 
     /**
      * Find a source whose base_url matches the given URL.
+     *
+     * Compares hosts rather than doing a raw substring match, so a pasted
+     * URL still matches its source regardless of a "www." or scheme
+     * mismatch against how the source's base_url happens to be stored
+     * (e.g. "galacticfigures.com" vs "https://www.galacticfigures.com").
      */
     public static function findByUrl(string $url): ?array
     {
+        $urlHost = static::normalizeHost($url);
+        if ($urlHost === null) {
+            return null;
+        }
+
         $sources = static::db()->fetchAll(
             "SELECT * FROM " . static::$table . " WHERE is_active = 1 ORDER BY name ASC"
         );
 
         foreach ($sources as $source) {
-            if (strpos($url, $source['base_url']) !== false) {
+            if ($urlHost === static::normalizeHost($source['base_url'])) {
                 return $source;
             }
         }
 
         return null;
+    }
+
+    /**
+     * Extract a lowercased, "www."-stripped host from a URL that may or may
+     * not include a scheme (source base_urls are sometimes entered as a
+     * bare domain, e.g. "galacticfigures.com").
+     */
+    private static function normalizeHost(string $url): ?string
+    {
+        $url = trim($url);
+        if ($url === '') {
+            return null;
+        }
+
+        if (!preg_match('#^[a-zA-Z][a-zA-Z0-9+.-]*://#', $url)) {
+            $url = '//' . ltrim($url, '/');
+        }
+
+        $host = parse_url($url, PHP_URL_HOST);
+        if (!$host) {
+            return null;
+        }
+
+        $host = strtolower($host);
+        return str_starts_with($host, 'www.') ? substr($host, 4) : $host;
     }
 
     /**
