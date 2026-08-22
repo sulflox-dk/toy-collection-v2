@@ -428,10 +428,66 @@ document.addEventListener('DOMContentLoaded', () => {
 			${rows}
 			<div class="small text-muted mt-2">
 				<i class="fa-solid fa-plus-circle me-1"></i>
-				${accCount} accessor${accCount === 1 ? 'y' : 'ies'} and ${imgCount} photo(s) found will be <strong>added</strong>
+				${imgCount} toy photo(s) found will be <strong>added</strong>; ${accCount} accessor${accCount === 1 ? 'y' : 'ies'} found below —
+				match any that are something you already have under a different name
 				(you have ${g.currentToyData.existingAccessories.length} accessory record(s) and ${g.currentToyData.existingImageCount} photo(s) already — nothing existing is removed).
 			</div>
 		`;
+	}
+
+	// For update-mode groups, a found accessory might just be something the
+	// toy already has under a different name from a different site — let
+	// the user say so instead of it silently creating a duplicate. Defaults
+	// to matching an existing accessory of the exact same name (which the
+	// backend would dedupe anyway), so the UI never hides what's about to
+	// happen.
+	function renderAccessoriesSection(g, isUpdate) {
+		if (!isUpdate) {
+			return g.accessories.length
+				? g.accessories
+						.map((a) => {
+							const imgUrl = g.itemImages[a.trim().toLowerCase()];
+							const thumb = imgUrl
+								? `<img src="${esc(imgUrl)}" class="rounded me-1" style="width:18px;height:18px;object-fit:contain;">`
+								: '';
+							return `<span class="badge bg-light text-dark border me-1 mb-1 d-inline-flex align-items-center">${thumb}${esc(a)}</span>`;
+						})
+						.join('')
+				: '<span class="text-muted fst-italic small">None detected</span>';
+		}
+
+		if (!g.currentToyData) {
+			return '<div class="text-muted small py-2"><i class="fa-solid fa-spinner fa-spin me-2"></i>Loading current accessories...</div>';
+		}
+
+		if (g.accessories.length === 0) {
+			return '<span class="text-muted fst-italic small">None detected</span>';
+		}
+
+		const existing = g.currentToyData.existingAccessories || [];
+
+		return g.accessories
+			.map((a) => {
+				const imgUrl = g.itemImages[a.trim().toLowerCase()];
+				const thumb = imgUrl
+					? `<img src="${esc(imgUrl)}" class="rounded me-2" style="width:24px;height:24px;object-fit:contain;">`
+					: '<span style="width:24px;display:inline-block;"></span>';
+				const exactMatchId = (existing.find((e) => e.name.trim().toLowerCase() === a.trim().toLowerCase()) || {}).id;
+				const options = existing
+					.map((e) => `<option value="${e.id}" ${e.id === exactMatchId ? 'selected' : ''}>Already have: ${esc(e.name)}</option>`)
+					.join('');
+				return `
+					<div class="d-flex align-items-center gap-2 mb-1 acc-match-row" data-name="${esc(a)}">
+						${thumb}
+						<span class="small flex-shrink-0" style="min-width:160px;">${esc(a)}</span>
+						<select class="form-select form-select-sm acc-match-select">
+							<option value="" ${exactMatchId ? '' : 'selected'}>+ Add as new accessory</option>
+							${options}
+						</select>
+					</div>
+				`;
+			})
+			.join('');
 	}
 
 	function renderGroupCard(g) {
@@ -449,17 +505,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			.map((r) => `<span class="badge bg-light text-dark border me-1">${esc(r.source_name)}</span>`)
 			.join('');
 
-		const accessoriesHtml = g.accessories.length
-			? g.accessories
-					.map((a) => {
-						const imgUrl = g.itemImages[a.trim().toLowerCase()];
-						const thumb = imgUrl
-							? `<img src="${esc(imgUrl)}" class="rounded me-1" style="width:18px;height:18px;object-fit:contain;">`
-							: '';
-						return `<span class="badge bg-light text-dark border me-1 mb-1 d-inline-flex align-items-center">${thumb}${esc(a)}</span>`;
-					})
-					.join('')
-			: '<span class="text-muted fst-italic small">None detected</span>';
+		const accessoriesHtml = renderAccessoriesSection(g, isUpdate);
 
 		const atCap = g.urlResults.length >= MAX_SOURCES_PER_GROUP;
 
@@ -658,11 +704,32 @@ document.addEventListener('DOMContentLoaded', () => {
 				fields[fieldKey] = pick ? pick.value : g.merged[mergedKeyFor[fieldKey] || fieldKey];
 			});
 
+			// Split found accessories into "add as new" vs. "matched to
+			// something already on the toy" based on each row's select —
+			// only the new ones get created; a matched one just gets its
+			// photo (if any) attached to the existing item instead.
+			const newAccessories = [];
+			const accessoryMatches = [];
+			card.querySelectorAll('.acc-match-row').forEach((row) => {
+				const name = row.dataset.name;
+				const select = row.querySelector('.acc-match-select');
+				const matchedId = select ? select.value : '';
+				if (matchedId) {
+					const imageUrl = g.itemImages[name.trim().toLowerCase()];
+					if (imageUrl) {
+						accessoryMatches.push({ existingItemId: parseInt(matchedId, 10), imageUrl });
+					}
+				} else {
+					newAccessories.push(name);
+				}
+			});
+
 			return {
 				mode: 'update',
 				targetCatalogToyId: g.target.catalogToyId,
 				fields: { name: fields.name || g.merged.name, ...fields },
-				accessories: g.accessories,
+				accessories: newAccessories,
+				accessoryMatches,
 				images: g.images,
 				itemImages: g.itemImages,
 				sources,

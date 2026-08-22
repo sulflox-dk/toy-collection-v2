@@ -241,11 +241,12 @@ class ImporterRunController extends Controller
             return;
         }
 
-        $accessoryNames = $db->query("
-            SELECT s.name FROM catalog_toy_items cti
+        $existingAccessories = $db->query("
+            SELECT cti.id, s.name FROM catalog_toy_items cti
             JOIN meta_subjects s ON cti.subject_id = s.id
             WHERE cti.catalog_toy_id = ?
-        ", [$id])->fetchAll(\PDO::FETCH_COLUMN);
+            ORDER BY s.name ASC
+        ", [$id])->fetchAll(\PDO::FETCH_ASSOC);
 
         $imageCount = (int) $db->query(
             "SELECT COUNT(*) FROM media_links WHERE entity_type = 'catalog_toys' AND entity_id = ?",
@@ -255,7 +256,7 @@ class ImporterRunController extends Controller
         $this->json([
             'success' => true,
             'toy' => $toy,
-            'existingAccessories' => $accessoryNames,
+            'existingAccessories' => $existingAccessories,
             'existingImageCount' => $imageCount,
         ]);
     }
@@ -289,6 +290,11 @@ class ImporterRunController extends Controller
                 $accessories = is_array($group['accessories'] ?? null) ? $group['accessories'] : [];
                 $images = is_array($group['images'] ?? null) ? $group['images'] : [];
                 $itemImages = is_array($group['itemImages'] ?? null) ? $group['itemImages'] : [];
+                // Found accessories the user matched to something they
+                // already have (instead of letting it create a duplicate
+                // under a different name) — just the photo, if any, still
+                // gets attached, to the existing item.
+                $accessoryMatches = is_array($group['accessoryMatches'] ?? null) ? $group['accessoryMatches'] : [];
                 $sources = is_array($group['sources'] ?? null) ? $group['sources'] : [];
 
                 if (empty($sources)) {
@@ -357,6 +363,14 @@ class ImporterRunController extends Controller
                     $itemId = $itemIdsByName[mb_strtolower(trim((string) $accessoryName))] ?? null;
                     if ($itemId && $imageUrl) {
                         $this->addImages($db, [$imageUrl], 'catalog_toy_items', $itemId);
+                    }
+                }
+
+                foreach ($accessoryMatches as $match) {
+                    $existingItemId = (int) ($match['existingItemId'] ?? 0);
+                    $imageUrl = (string) ($match['imageUrl'] ?? '');
+                    if ($existingItemId && $imageUrl) {
+                        $this->addImages($db, [$imageUrl], 'catalog_toy_items', $existingItemId);
                     }
                 }
 
