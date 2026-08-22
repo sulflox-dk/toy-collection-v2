@@ -49,39 +49,138 @@ class GalacticFiguresDriver extends AbstractSiteDriver
         parse_str(parse_url($url, PHP_URL_QUERY) ?? '', $params);
         $dto->externalId = $params['id'] ?? md5($url);
 
-        $dto->name = $this->getText($xpath, "//h1") ?: 'Unknown Toy';
-        $dto->year = $this->getText($xpath, "//span[@id='yearLabel']");
-        $dto->manufacturer = $this->getText($xpath, "//span[@id='manufacturerLabel']");
+        // The full figure name (with variant, e.g. "Luke Skywalker (Bespin Fatigues)")
+        // lives in the last breadcrumb crumb, not the <h1> (which is just the bare
+        // character name). Fall back to the <h1> if the breadcrumb isn't there.
+        $dto->name = $this->getText($xpath, "//ol[contains(@class,'BreadCrumb')]/li[last()]/strong")
+            ?: $this->getText($xpath, "//h1")
+            ?: 'Unknown Toy';
 
-        $dto->toyLine = $this->getText($xpath, "//a[@id='toyLineLink']");
-        if (!$dto->toyLine) {
-            $dto->toyLine = $this->getText($xpath, "//span[@id='toyLineLabel']");
-        }
+        // Manufacturer and toy line are breadcrumb links, not labeled spans.
+        $dto->manufacturer = $this->getText($xpath, "//ol[contains(@class,'BreadCrumb')]/li/a[contains(@href,'/brands.aspx')]");
+        $dto->toyLine = $this->getText($xpath, "//ol[contains(@class,'BreadCrumb')]/li/a[contains(@href,'type=toyline')]");
 
-        $dto->assortmentSku = $this->getText($xpath, "//span[@id='collectionNumberLabel']");
+        // The structured "Details" list is far more reliable than the loosely
+        // formatted header line, so pull year/accessories from there.
+        $dto->year = $this->detailValue($xpath, 'Released') ?: $this->detailValue($xpath, 'Year Imprinted');
 
-        // Accessories
-        $accessoriesText = $this->getText($xpath, "//*[@id='accessoriesLabel']");
+        // The wave/assortment code (e.g. "VC4") sits as bare text between the toy-line
+        // link and the year in the header, with no element of its own to target.
+        $dto->wave = $this->extractWaveFromHeader($xpath);
+
+        // Accessories: "Accessory Details: 1 Blaster, 1 Lightsaber Hilt, ..."
+        $accessoriesText = $this->detailValue($xpath, 'Accessory Details');
         if ($accessoriesText) {
             foreach (explode(',', $accessoriesText) as $item) {
-                $clean = trim($item);
+                $clean = trim(preg_replace('/^1\s+/', '', trim($item)));
                 if ($clean !== '') {
                     $dto->items[] = $clean;
                 }
             }
         }
 
-        // Images
-        $imgNodes = $xpath->query("//img[@id='mainImage']");
-        foreach ($imgNodes as $node) {
-            if ($node instanceof \DOMElement) {
-                $dto->images[] = $this->fixRelativeUrl(
-                    $node->getAttribute('src'),
-                    'https://galacticfigures.com'
-                );
+        // The site's own write-up doubles nicely as a description.
+        $dto->description = $this->getText($xpath, "//div[contains(@class,'figure-more-info-content')]/p[1]");
+
+        $dto->images = $this->extractImages($xpath);
+
+        return $dto;
+    }
+
+    /**
+     * Read a "<strong>Label:</strong> value" row out of the Details list
+     * (ul.gf-sci-bullets), matching the label loosely (site sometimes wraps
+     * it across lines).
+     */
+    private function detailValue(\DOMXPath $xpath, string $label): string
+    {
+        $nodes = $xpath->query(
+            "//ul[contains(@class,'gf-sci-bullets')]//li[strong[contains(normalize-space(.), '{$label}:')]]"
+        );
+        if (!$nodes || $nodes->length === 0) {
+            return '';
+        }
+
+        $li = $nodes->item(0);
+        $strongText = '';
+        foreach ($li->childNodes as $child) {
+            if ($child instanceof \DOMElement && strtolower($child->nodeName) === 'strong') {
+                $strongText = $child->textContent;
+                break;
             }
         }
 
-        return $dto;
+        $full = trim(preg_replace('/\s+/', ' ', $li->textContent));
+        $labelText = trim(preg_replace('/\s+/', ' ', $strongText));
+
+        return trim(substr($full, strlen($labelText)));
+    }
+
+    /**
+     * The header line looks like:
+     *   [toy-line link] VC4 2010 [eBay link]
+     * "VC4" and "2010" are one bare text node between the toy-line link and
+     * the following <br>, with no markup of their own. Grab that text node
+     * and take its first non-year token as the wave/assortment code.
+     */
+    private function extractWaveFromHeader(\DOMXPath $xpath): string
+    {
+        $nodes = $xpath->query(
+            "//span[contains(@class,'figureHeader-meta')]/a[contains(@href,'type=toyline')]/following-sibling::text()[1]"
+        );
+        if (!$nodes || $nodes->length === 0) {
+            return '';
+        }
+
+        $tokens = preg_split('/\s+/', trim($nodes->item(0)->textContent), -1, PREG_SPLIT_NO_EMPTY);
+        foreach ($tokens as $token) {
+            if (!preg_match('/^\d{4}$/', $token)) {
+                return $token;
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * Every real product photo: the main image, the thumbnail strip (each
+     * carries the full-size URL in data-big), and the high-res gallery —
+     * excluding the "members only" placeholder thumbnail, which isn't a
+     * real photo of the figure.
+     */
+    private function extractImages(\DOMXPath $xpath): array
+    {
+        $images = [];
+        $base = 'https://galacticfigures.com';
+
+        foreach ($xpath->query("//img[@id='mainImage']") as $node) {
+            if ($node instanceof \DOMElement && $node->getAttribute('src')) {
+                $images[] = $this->fixRelativeUrl($node->getAttribute('src'), $base);
+            }
+        }
+
+        foreach ($xpath->query("//img[contains(@class,'figure-details-img-thumbnail')]") as $node) {
+            if (!$node instanceof \DOMElement) {
+                continue;
+            }
+            if (stripos($node->getAttribute('class'), 'member-only') !== false) {
+                continue;
+            }
+            if (stripos($node->getAttribute('alt'), 'members only') !== false) {
+                continue;
+            }
+            $src = $node->getAttribute('data-big') ?: $node->getAttribute('src');
+            if ($src && stripos($src, 'membersonly') === false) {
+                $images[] = $this->fixRelativeUrl($src, $base);
+            }
+        }
+
+        foreach ($xpath->query("//a[contains(@class,'figure-detail-highres-link')]") as $node) {
+            if ($node instanceof \DOMElement && $node->getAttribute('href')) {
+                $images[] = $this->fixRelativeUrl($node->getAttribute('href'), $base);
+            }
+        }
+
+        return array_values(array_unique($images));
     }
 }
