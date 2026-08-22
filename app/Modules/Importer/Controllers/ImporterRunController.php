@@ -343,7 +343,8 @@ class ImporterRunController extends Controller
                     $catalogToyId = $db->lastInsertId();
                 }
 
-                $this->addAccessories($db, $catalogToyId, $accessories);
+                $catalogUniverseId = $db->fetch("SELECT universe_id FROM catalog_toys WHERE id = ?", [$catalogToyId])['universe_id'] ?? null;
+                $this->addAccessories($db, $catalogToyId, $accessories, $catalogUniverseId ? (int) $catalogUniverseId : null);
                 $this->addImages($db, $catalogToyId, $images);
 
                 $importItemIds = [];
@@ -393,8 +394,15 @@ class ImporterRunController extends Controller
      * Find-or-create a meta_subjects row per accessory name and attach it to
      * the toy — skipping any name the toy already has, so this is safe to
      * call for both brand-new toys and top-ups of existing ones.
+     *
+     * A newly-created subject is stamped with the toy's own universe_id —
+     * the catalog wizard's subject dropdown filters by universe, so a
+     * subject left without one would be invisible to it (and get silently
+     * un-selected) even though its catalog_toy_items row is correct. A
+     * matched existing subject that's missing its universe_id is backfilled
+     * the same way, so legacy rows self-heal the next time they're touched.
      */
-    private function addAccessories(Database $db, int $catalogToyId, array $accessoryNames): void
+    private function addAccessories(Database $db, int $catalogToyId, array $accessoryNames, ?int $universeId = null): void
     {
         if (empty($accessoryNames)) return;
 
@@ -411,17 +419,20 @@ class ImporterRunController extends Controller
                 continue;
             }
 
-            $subject = $db->fetch("SELECT id FROM meta_subjects WHERE name = ? LIMIT 1", [$accessoryName]);
+            $subject = $db->fetch("SELECT id, universe_id FROM meta_subjects WHERE name = ? LIMIT 1", [$accessoryName]);
 
             if ($subject) {
                 $subjectId = (int) $subject['id'];
+                if ($universeId && !$subject['universe_id']) {
+                    $db->execute("UPDATE meta_subjects SET universe_id = ? WHERE id = ?", [$universeId, $subjectId]);
+                }
             } else {
                 $subjectSlug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $accessoryName), '-'))
                     . '-' . time() . '-' . mt_rand(100, 999);
 
                 $db->execute(
-                    "INSERT INTO meta_subjects (name, slug, type) VALUES (?, ?, 'Accessory')",
-                    [$accessoryName, $subjectSlug]
+                    "INSERT INTO meta_subjects (name, slug, type, universe_id) VALUES (?, ?, 'Accessory', ?)",
+                    [$accessoryName, $subjectSlug, $universeId]
                 );
                 $subjectId = $db->lastInsertId();
             }
