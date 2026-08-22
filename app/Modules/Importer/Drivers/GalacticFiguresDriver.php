@@ -64,9 +64,13 @@ class GalacticFiguresDriver extends AbstractSiteDriver
         // formatted header line, so pull year/accessories from there.
         $dto->year = $this->detailValue($xpath, 'Released') ?: $this->detailValue($xpath, 'Year Imprinted');
 
-        // The wave/assortment code (e.g. "VC4") sits as bare text between the toy-line
-        // link and the year in the header, with no element of its own to target.
-        $dto->wave = $this->extractWaveFromHeader($xpath);
+        // The assortment/figure-number code (e.g. "VC4") sits as bare text between
+        // the toy-line link and the year in the header, with no element of its own
+        // to target. This site doesn't separately expose a wave number anywhere on
+        // the page (confirmed against Action Figure 411's page for the same figure,
+        // which lists "VC 04" as its Figure Number and "1" as a distinct Wave) —
+        // wave stays unset here rather than reusing this value for the wrong field.
+        $dto->assortmentSku = $this->extractAssortmentCodeFromHeader($xpath);
 
         // Accessories: "Accessory Details: 1 Blaster, 1 Lightsaber Hilt, ..."
         $accessoriesText = $this->detailValue($xpath, 'Accessory Details');
@@ -121,9 +125,9 @@ class GalacticFiguresDriver extends AbstractSiteDriver
      *   [toy-line link] VC4 2010 [eBay link]
      * "VC4" and "2010" are one bare text node between the toy-line link and
      * the following <br>, with no markup of their own. Grab that text node
-     * and take its first non-year token as the wave/assortment code.
+     * and take its first non-year token as the assortment/figure-number code.
      */
-    private function extractWaveFromHeader(\DOMXPath $xpath): string
+    private function extractAssortmentCodeFromHeader(\DOMXPath $xpath): string
     {
         $nodes = $xpath->query(
             "//span[contains(@class,'figureHeader-meta')]/a[contains(@href,'type=toyline')]/following-sibling::text()[1]"
