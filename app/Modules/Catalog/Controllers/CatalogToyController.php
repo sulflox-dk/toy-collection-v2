@@ -167,25 +167,26 @@ class CatalogToyController extends Controller
         $wave = trim($request->input('wave', ''));
         $assortmentSku = trim($request->input('assortment_sku', ''));
         $upc = trim($request->input('upc', ''));
-        
+        $description = trim($request->input('description', ''));
+
         $items = $request->input('items', []);
 
         try {
             $db->beginTransaction();
 
             if ($id > 0) {
-                $sql = "UPDATE catalog_toys SET 
-                        universe_id = ?, manufacturer_id = ?, toy_line_id = ?, product_type_id = ?, 
-                        entertainment_source_id = ?, name = ?, year_released = ?, wave = ?, 
-                        assortment_sku = ?, upc = ?
+                $sql = "UPDATE catalog_toys SET
+                        universe_id = ?, manufacturer_id = ?, toy_line_id = ?, product_type_id = ?,
+                        entertainment_source_id = ?, name = ?, year_released = ?, wave = ?,
+                        assortment_sku = ?, upc = ?, description = ?
                         WHERE id = ?";
-                $db->query($sql, [$universeId, $manufacturerId, $toyLineId, $productTypeId, $entertainmentSourceId, $name, $yearReleased, $wave, $assortmentSku, $upc, $id]);
+                $db->query($sql, [$universeId, $manufacturerId, $toyLineId, $productTypeId, $entertainmentSourceId, $name, $yearReleased, $wave, $assortmentSku, $upc, $description, $id]);
             } else {
                 $slug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $name), '-')) . '-' . time();
-                $sql = "INSERT INTO catalog_toys 
-                        (universe_id, manufacturer_id, toy_line_id, product_type_id, entertainment_source_id, name, slug, year_released, wave, assortment_sku, upc) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-                $db->query($sql, [$universeId, $manufacturerId, $toyLineId, $productTypeId, $entertainmentSourceId, $name, $slug, $yearReleased, $wave, $assortmentSku, $upc]);
+                $sql = "INSERT INTO catalog_toys
+                        (universe_id, manufacturer_id, toy_line_id, product_type_id, entertainment_source_id, name, slug, year_released, wave, assortment_sku, upc, description)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                $db->query($sql, [$universeId, $manufacturerId, $toyLineId, $productTypeId, $entertainmentSourceId, $name, $slug, $yearReleased, $wave, $assortmentSku, $upc, $description]);
                 $id = $db->lastInsertId();
             }
 
