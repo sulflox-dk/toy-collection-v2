@@ -114,6 +114,10 @@ document.addEventListener('DOMContentLoaded', () => {
 			currentToyData: null,
 			searchOpen: false,
 			searchResults: [],
+			// Every found photo is included by default — this tracks the
+			// ones the user has unchecked, keyed by URL (not index) so it
+			// stays valid as more sources get added to the group.
+			excludedImages: new Set(),
 		};
 		recomputeMerge(g);
 		autoDetectTarget(g);
@@ -490,13 +494,35 @@ document.addEventListener('DOMContentLoaded', () => {
 			.join('');
 	}
 
+	// Every found photo is checked (included) by default — unchecking one
+	// just marks it excluded, it's never removed from the underlying list,
+	// so re-checking it later is a one-click undo.
+	function renderPhotosSection(g) {
+		if (g.images.length === 0) {
+			return '<span class="text-muted fst-italic small">None detected</span>';
+		}
+
+		return g.images
+			.map((url) => {
+				const included = !g.excludedImages.has(url);
+				return `
+					<label class="position-relative d-inline-block img-check-wrap" style="cursor:pointer;" title="${included ? 'Uncheck to skip this photo' : 'Excluded — click to include'}">
+						<img src="${esc(url)}" class="rounded border" style="width:64px;height:64px;object-fit:cover;opacity:${included ? '1' : '0.35'};">
+						<input type="checkbox" class="form-check-input img-include-toggle position-absolute" style="top:4px;left:4px;box-shadow:0 0 0 1px rgba(0,0,0,.3);" data-url="${esc(url)}" ${included ? 'checked' : ''}>
+					</label>
+				`;
+			})
+			.join('');
+	}
+
 	function renderGroupCard(g) {
 		const isUpdate = g.target.mode === 'update';
 		const badge = isUpdate
 			? `<span class="badge bg-info">UPDATE EXISTING</span>`
 			: `<span class="badge bg-success">NEW</span>`;
 
-		const firstImg = g.images[0];
+		const includedImages = g.images.filter((url) => !g.excludedImages.has(url));
+		const firstImg = includedImages[0];
 		const imgHtml = firstImg
 			? `<img src="${esc(firstImg)}" class="img-fluid rounded-start h-100" style="object-fit: contain; max-height: 220px; width: 100%; background: #f8f9fa;">`
 			: `<div class="d-flex align-items-center justify-content-center bg-light h-100" style="min-height: 140px;"><span class="text-muted"><i class="fa-solid fa-image fa-2x"></i></span></div>`;
@@ -545,6 +571,11 @@ document.addEventListener('DOMContentLoaded', () => {
 							<div class="mt-2 pt-2 border-top">
 								<small class="text-uppercase text-muted fw-bold">Accessories detected</small>
 								<div class="mt-1">${accessoriesHtml}</div>
+							</div>
+
+							<div class="mt-2 pt-2 border-top">
+								<small class="text-uppercase text-muted fw-bold">Photos found (${includedImages.length}/${g.images.length} selected)</small>
+								<div class="d-flex flex-wrap gap-2 mt-1">${renderPhotosSection(g)}</div>
 							</div>
 						</div>
 					</div>
@@ -638,6 +669,16 @@ document.addEventListener('DOMContentLoaded', () => {
 		if (e.target.classList.contains('group-include')) {
 			g.included = e.target.checked;
 		}
+
+		if (e.target.classList.contains('img-include-toggle')) {
+			const url = e.target.dataset.url;
+			if (e.target.checked) {
+				g.excludedImages.delete(url);
+			} else {
+				g.excludedImages.add(url);
+			}
+			renderAll();
+		}
 	});
 
 	queueEl.addEventListener(
@@ -690,6 +731,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			externalId: r.externalId,
 			externalUrl: r.externalUrl,
 		}));
+		const includedImages = g.images.filter((url) => !g.excludedImages.has(url));
 
 		if (g.target.mode === 'update') {
 			// compare-row field keys are DB column names; g.merged keys are
@@ -730,7 +772,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				fields: { name: fields.name || g.merged.name, ...fields },
 				accessories: newAccessories,
 				accessoryMatches,
-				images: g.images,
+				images: includedImages,
 				itemImages: g.itemImages,
 				sources,
 			};
@@ -759,7 +801,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				description: val('.field-description'),
 			},
 			accessories: g.accessories,
-			images: g.images,
+			images: includedImages,
 			itemImages: g.itemImages,
 			sources,
 		};
