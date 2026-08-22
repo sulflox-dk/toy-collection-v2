@@ -83,8 +83,9 @@ class GalacticFiguresDriver extends AbstractSiteDriver
             }
         }
 
-        // The site's own write-up doubles nicely as a description.
-        $dto->description = $this->getText($xpath, "//div[contains(@class,'figure-more-info-content')]/p[1]");
+        // The site's own write-up doubles nicely as a description — it's usually
+        // several paragraphs, not just the first one.
+        $dto->description = $this->extractDescription($xpath);
 
         $dto->images = $this->extractImages($xpath);
 
@@ -118,6 +119,22 @@ class GalacticFiguresDriver extends AbstractSiteDriver
         $labelText = trim(preg_replace('/\s+/', ' ', $strongText));
 
         return trim(substr($full, strlen($labelText)));
+    }
+
+    /**
+     * The site's write-up is usually several <p> tags long — join all of
+     * them, not just the first, so the full piece comes through.
+     */
+    private function extractDescription(\DOMXPath $xpath): string
+    {
+        $paragraphs = [];
+        foreach ($xpath->query("//div[contains(@class,'figure-more-info-content')]/p") as $node) {
+            $text = trim(preg_replace('/\s+/', ' ', $node->textContent));
+            if ($text !== '') {
+                $paragraphs[] = $text;
+            }
+        }
+        return implode("\n\n", $paragraphs);
     }
 
     /**
