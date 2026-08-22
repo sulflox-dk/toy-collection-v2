@@ -74,6 +74,8 @@ class ImporterRunController extends Controller
         $batchUniverseId = (int) $request->input('universe_id', 0) ?: null;
         $batchManufacturerId = (int) $request->input('manufacturer_id', 0) ?: null;
         $batchToyLineId = (int) $request->input('toy_line_id', 0) ?: null;
+        $batchProductTypeId = (int) $request->input('product_type_id', 0) ?: null;
+        $batchEntertainmentSourceId = (int) $request->input('entertainment_source_id', 0) ?: null;
 
         if ($url === '') {
             $this->json(['error' => 'Please enter a URL'], 400);
@@ -145,30 +147,33 @@ class ImporterRunController extends Controller
                     }
                 }
 
+                // Batch defaults are a fallback, not an override: whatever the
+                // page itself tells us (matched by exact name) always wins,
+                // since it's more specific than a blanket setting for the
+                // whole session. Universe/product type/entertainment source
+                // are never scraped from any site, so the batch default (if
+                // any) is simply the only value there is for those.
                 $item['universe_id'] = $batchUniverseId;
+                $item['product_type_id'] = $batchProductTypeId;
+                $item['entertainment_source_id'] = $batchEntertainmentSourceId;
 
-                if ($batchManufacturerId) {
+                $item['manufacturer_id'] = null;
+                if (!empty($item['manufacturer'])) {
+                    $mfg = $db->fetch("SELECT id FROM meta_manufacturers WHERE name = ? LIMIT 1", [$item['manufacturer']]);
+                    if ($mfg) $item['manufacturer_id'] = (int) $mfg['id'];
+                }
+                if (!$item['manufacturer_id'] && $batchManufacturerId) {
                     $item['manufacturer_id'] = $batchManufacturerId;
-                } else {
-                    $item['manufacturer_id'] = null;
-                    if (!empty($item['manufacturer'])) {
-                        $mfg = $db->fetch("SELECT id FROM meta_manufacturers WHERE name = ? LIMIT 1", [$item['manufacturer']]);
-                        if ($mfg) $item['manufacturer_id'] = (int) $mfg['id'];
-                    }
                 }
 
-                if ($batchToyLineId) {
+                $item['toy_line_id'] = null;
+                if (!empty($item['toyLine'])) {
+                    $tl = $db->fetch("SELECT id FROM meta_toy_lines WHERE name = ? LIMIT 1", [$item['toyLine']]);
+                    if ($tl) $item['toy_line_id'] = (int) $tl['id'];
+                }
+                if (!$item['toy_line_id'] && $batchToyLineId) {
                     $item['toy_line_id'] = $batchToyLineId;
-                } else {
-                    $item['toy_line_id'] = null;
-                    if (!empty($item['toyLine'])) {
-                        $tl = $db->fetch("SELECT id FROM meta_toy_lines WHERE name = ? LIMIT 1", [$item['toyLine']]);
-                        if ($tl) $item['toy_line_id'] = (int) $tl['id'];
-                    }
                 }
-
-                $item['product_type_id'] = null;
-                $item['entertainment_source_id'] = null;
                 $item['source_id'] = (int) $source['id'];
                 $item['source_name'] = $source['name'];
                 $results[] = $item;
