@@ -17,6 +17,7 @@ class MediaFileController extends Controller
         'universes',
         'manufacturers',
         'toy_lines',
+        'entertainment_sources',
         'sources',
     ];
     public function index(Request $request): void

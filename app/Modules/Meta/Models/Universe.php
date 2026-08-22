@@ -16,9 +16,12 @@ class Universe extends BaseModel
         $whereConditions = [];
 
         $sql = "
-            SELECT 
-                u.*, 
-                COUNT(l.id) as lines_count 
+            SELECT
+                u.*,
+                COUNT(l.id) as lines_count,
+                (SELECT f.filepath FROM media_links ml JOIN media_files f ON ml.media_file_id = f.id
+                 WHERE ml.entity_type = 'universes' AND ml.entity_id = u.id
+                 ORDER BY ml.is_featured DESC, ml.sort_order ASC LIMIT 1) AS image_path
             FROM " . static::$table . " u
             LEFT JOIN meta_toy_lines l ON u.id = l.universe_id
         ";

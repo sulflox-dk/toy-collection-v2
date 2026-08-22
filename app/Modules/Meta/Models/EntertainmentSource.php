@@ -29,9 +29,12 @@ class EntertainmentSource extends BaseModel
 
         // Select main columns + Universe Name
         $sql = "
-            SELECT 
+            SELECT
                 e.*,
-                u.name as universe_name
+                u.name as universe_name,
+                (SELECT f.filepath FROM media_links ml JOIN media_files f ON ml.media_file_id = f.id
+                 WHERE ml.entity_type = 'entertainment_sources' AND ml.entity_id = e.id
+                 ORDER BY ml.is_featured DESC, ml.sort_order ASC LIMIT 1) AS image_path
             FROM " . static::$table . " e
             LEFT JOIN meta_universes u ON e.universe_id = u.id
         ";

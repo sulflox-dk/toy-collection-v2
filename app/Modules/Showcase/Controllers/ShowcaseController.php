@@ -30,6 +30,9 @@ class ShowcaseController extends Controller
                 cat.name AS toy_name, cat.slug AS toy_slug, cat.year_released, cat.wave,
                 cat.assortment_sku, cat.description,
                 u.name AS universe_name, u.slug AS universe_slug, u.description AS universe_description,
+                (SELECT f.filepath FROM media_links ml JOIN media_files f ON ml.media_file_id = f.id
+                 WHERE ml.entity_type = 'universes' AND ml.entity_id = u.id
+                 ORDER BY ml.is_featured DESC, ml.sort_order ASC LIMIT 1) AS universe_image_path,
                 m.name AS manufacturer_name,
                 tl.name AS toy_line_name,
                 pt.name AS product_type_name
@@ -90,6 +93,7 @@ class ShowcaseController extends Controller
                     'slug' => $slug,
                     'name' => $t['universe_name'] ?? 'Uncategorized',
                     'description' => $t['universe_description'] ?: null,
+                    'image' => $t['universe_image_path'] ? $baseUrl . ltrim($t['universe_image_path'], '/') : null,
                     'years' => [],
                     'count' => 0,
                 ];
@@ -144,6 +148,7 @@ class ShowcaseController extends Controller
                 'slug' => $u['slug'],
                 'name' => $u['name'],
                 'blurb' => $blurb,
+                'image' => $u['image'],
             ];
         }
         usort($universeList, static fn($a, $b) => strcmp($a['name'], $b['name']));

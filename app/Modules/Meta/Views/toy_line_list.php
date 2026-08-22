@@ -1,5 +1,6 @@
 <?= $this->renderPartial('common/table_list', [
     'headers' => [
+        'Photo' =>        ['width' => '60px', 'class' => 'text-center'],
         'Name' =>         ['width' => '25%', 'class' => 'ps-3 fw-bold'], // Bold header? Sure!
         'Manufacturer' => ['width' => '20%', 'class' => ''],
         'Universe' =>     ['width' => '20%', 'class' => ''],

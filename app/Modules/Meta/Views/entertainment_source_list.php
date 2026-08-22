@@ -1,5 +1,6 @@
 <?= $this->renderPartial('common/table_list', [
     'headers' => [
+        'Photo' => ['width' => '60px', 'class' => 'text-center'],
         'Name / Slug' => ['width' => '30%', 'class' => 'ps-3'],
         'Type / Year' => ['width' => '20%', 'class' => ''],
         'Universe'    => ['width' => '30%', 'class' => ''],

@@ -16,9 +16,12 @@ class Manufacturer extends BaseModel
         $whereConditions = [];
 
         $sql = "
-            SELECT 
-                m.*, 
-                COUNT(l.id) as lines_count 
+            SELECT
+                m.*,
+                COUNT(l.id) as lines_count,
+                (SELECT f.filepath FROM media_links ml JOIN media_files f ON ml.media_file_id = f.id
+                 WHERE ml.entity_type = 'manufacturers' AND ml.entity_id = m.id
+                 ORDER BY ml.is_featured DESC, ml.sort_order ASC LIMIT 1) AS image_path
             FROM " . static::$table . " m
             LEFT JOIN meta_toy_lines l ON m.id = l.manufacturer_id
         ";

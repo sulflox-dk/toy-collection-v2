@@ -109,10 +109,12 @@ echo $this->renderPartial('common/index_header', [
     </div>
 </div>
 
+<?= $this->renderPartial('common/entity_photo_modal') ?>
+
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     // FIX: Moved UI selectors into the 'ui' object
-    new EntityManager('source', {
+    window.currentEntityManager = new EntityManager('source', {
         mode: 'html',
         endpoint: '/entertainment-source',
         listUrl: '/entertainment-source/list',
