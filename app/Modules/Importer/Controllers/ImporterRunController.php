@@ -18,7 +18,7 @@ class ImporterRunController extends Controller
 {
     /** Columns on catalog_toys an import is allowed to write. */
     private const WRITABLE_FIELDS = [
-        'name', 'year_released', 'wave', 'assortment_sku', 'description',
+        'name', 'year_released', 'wave', 'assortment_sku', 'upc', 'description',
         'universe_id', 'manufacturer_id', 'toy_line_id',
         'product_type_id', 'entertainment_source_id',
     ];

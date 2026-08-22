@@ -12,6 +12,7 @@ class ScrapedToyDTO
     public string $toyLine = '';
     public string $wave = '';
     public string $assortmentSku = '';
+    public string $upc = '';
     public array $items = [];
     public array $images = [];
 
@@ -27,6 +28,7 @@ class ScrapedToyDTO
             'toyLine' => $this->toyLine,
             'wave' => $this->wave,
             'assortmentSku' => $this->assortmentSku,
+            'upc' => $this->upc,
             'items' => $this->items,
             'images' => $this->images,
         ];

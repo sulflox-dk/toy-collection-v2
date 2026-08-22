@@ -129,6 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			{ key: 'year', label: 'Year' },
 			{ key: 'wave', label: 'Wave' },
 			{ key: 'assortmentSku', label: 'SKU' },
+			{ key: 'upc', label: 'UPC' },
 			{ key: 'manufacturer_id', label: 'Manufacturer', lookup: 'manufacturers' },
 			{ key: 'toy_line_id', label: 'Toy Line', lookup: 'toyLines' },
 		];
@@ -314,15 +315,20 @@ document.addEventListener('DOMContentLoaded', () => {
 					<input type="text" class="form-control form-control-sm field-year" value="${esc(g.merged.year)}">
 					${conflictBadge(g, 'year')}
 				</div>
-				<div class="col-md-4">
+				<div class="col-md-3">
 					<label class="form-label small text-muted mb-0">Wave</label>
 					<input type="text" class="form-control form-control-sm field-wave" value="${esc(g.merged.wave)}">
 					${conflictBadge(g, 'wave')}
 				</div>
-				<div class="col-md-5">
+				<div class="col-md-3">
 					<label class="form-label small text-muted mb-0">SKU</label>
 					<input type="text" class="form-control form-control-sm field-sku" value="${esc(g.merged.assortmentSku)}">
 					${conflictBadge(g, 'assortmentSku')}
+				</div>
+				<div class="col-md-3">
+					<label class="form-label small text-muted mb-0">UPC</label>
+					<input type="text" class="form-control form-control-sm field-upc" value="${esc(g.merged.upc)}">
+					${conflictBadge(g, 'upc')}
 				</div>
 				<div class="col-md-4">
 					<label class="form-label small text-muted mb-0">Universe</label>
@@ -389,6 +395,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			compareRow('year_released', 'Year', cur.year_released, g.merged.year, !!g.conflicts.year, g),
 			compareRow('wave', 'Wave', cur.wave, g.merged.wave, !!g.conflicts.wave, g),
 			compareRow('assortment_sku', 'SKU', cur.assortment_sku, g.merged.assortmentSku, !!g.conflicts.assortmentSku, g),
+			compareRow('upc', 'UPC', cur.upc, g.merged.upc, !!g.conflicts.upc, g),
 			compareRow('manufacturer_id', 'Manufacturer', lookupName(IMPORTER_LOOKUPS.manufacturers, cur.manufacturer_id), lookupName(IMPORTER_LOOKUPS.manufacturers, g.merged.manufacturer_id), !!g.conflicts.manufacturer_id, g),
 			compareRow('toy_line_id', 'Toy Line', lookupName(IMPORTER_LOOKUPS.toyLines, cur.toy_line_id), lookupName(IMPORTER_LOOKUPS.toyLines, g.merged.toy_line_id), !!g.conflicts.toy_line_id, g),
 			compareRow('universe_id', 'Universe', lookupName(IMPORTER_LOOKUPS.universes, cur.universe_id), lookupName(IMPORTER_LOOKUPS.universes, g.merged.universe_id), false, g),
@@ -654,6 +661,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				year_released: pickVal('year', val('.field-year')),
 				wave: pickVal('wave', val('.field-wave')),
 				assortment_sku: pickVal('assortmentSku', val('.field-sku')),
+				upc: pickVal('upc', val('.field-upc')),
 				universe_id: val('.field-universe') || null,
 				manufacturer_id: pickVal('manufacturer_id', val('.field-manufacturer')) || null,
 				toy_line_id: pickVal('toy_line_id', val('.field-toy-line')) || null,
