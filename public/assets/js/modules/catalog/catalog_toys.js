@@ -150,7 +150,7 @@ const CatalogWizard = {
 		manfSelect.disabled = univId === 0;
 
 		// 3. Sync Item Subject dropdowns if any exist
-		this.updateItemSubjects();
+		this.updateItemSubjects(isInit);
 
 		// 4. Cascade to Manufacturer change
 		this.handleManufacturerChange(isInit);
@@ -199,7 +199,13 @@ const CatalogWizard = {
 	},
 
 	// --- ITEM & SUBJECT LOGIC ---
-	updateItemSubjects() {
+	updateItemSubjects(isInit = false) {
+		// On initial load, the server already rendered each item's correct
+		// subject from the DB — trust it as-is. Only re-validate (clearing
+		// selections that no longer belong) once the user actually changes
+		// the universe, since that's the only thing that can make a
+		// previously-valid selection stale.
+		if (isInit) return;
 		SearchableDropdown.validateSelections('subjects');
 	},
 
