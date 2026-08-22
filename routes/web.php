@@ -197,9 +197,11 @@ $router->post('/importer-source',       [ImporterSourceController::class, 'store
 $router->put('/importer-source/{id}',   [ImporterSourceController::class, 'update']);
 $router->delete('/importer-source/{id}',[ImporterSourceController::class, 'destroy']);
 
-$router->get('/importer-run',           [ImporterRunController::class, 'index']);
-$router->post('/importer-run/preview',  [ImporterRunController::class, 'preview']);
-$router->post('/importer-run/import',   [ImporterRunController::class, 'runImport']);
+$router->get('/importer-run',                    [ImporterRunController::class, 'index']);
+$router->post('/importer-run/analyze-url',       [ImporterRunController::class, 'analyzeUrl']);
+$router->get('/importer-run/search-catalog',     [ImporterRunController::class, 'searchCatalog']);
+$router->get('/importer-run/catalog-toy/{id}',   [ImporterRunController::class, 'getCatalogToy']);
+$router->post('/importer-run/import',            [ImporterRunController::class, 'runImport']);
 
 $router->get('/importer-log',           [ImporterLogController::class, 'index']);
 $router->get('/importer-log/list',      [ImporterLogController::class, 'list']);

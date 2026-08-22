@@ -1,7 +1,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h1 class="h3 mb-0 text-gray-800">Importer / Run Import</h1>
-        <p class="text-muted small mb-0">Paste a URL from a supported source to import catalog data.</p>
+        <p class="text-muted small mb-0">Paste a URL from a supported source to import catalog data. Add more than one URL for the same toy to combine data from several sites.</p>
     </div>
 </div>
 
@@ -40,40 +40,101 @@
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-header bg-white">
         <i class="fa-solid fa-cloud-download-alt me-2 text-primary"></i>
-        <strong>Analyze URL</strong>
+        <strong>Add Sources</strong>
     </div>
     <div class="card-body">
-        <form id="importForm" onsubmit="return false;">
-            <?= $csrfField() ?>
-            <div class="input-group input-group-lg">
-                <input type="text" id="importUrl" class="form-control" placeholder="Paste URL here (overview or single detail page)" required>
-                <button class="btn btn-primary" type="button" id="btnPreview">
-                    <i class="fa-solid fa-search me-2"></i> Analyze
+        <?= $csrfField() ?>
+        <div class="row g-2">
+            <div class="col-md-7">
+                <input type="text" id="importUrl" class="form-control form-control-lg" placeholder="Paste a URL here (listing page or single detail page)">
+            </div>
+            <div class="col-md-2">
+                <input type="number" min="0" step="20" class="form-control form-control-lg" id="importOffset" value="0" title="Offset (for listing pages with more than 20 items)">
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-primary btn-lg w-100" type="button" id="btnAddSource">
+                    <i class="fa-solid fa-plus me-2"></i> Add
                 </button>
             </div>
-            <div class="form-text">Paste a URL from any active source. Overview pages import multiple items; detail pages import a single item.</div>
-        </form>
+        </div>
+        <div class="form-text">
+            A single detail page adds one item below. A listing page adds up to 20 at once (use Offset to fetch the
+            next 20, and so on). Each item below is its own toy — use "Add source" on any of them afterward to
+            combine in data from another site for that specific toy.
+        </div>
+        <div id="addSourceStatus" class="small ms-1 mt-1"></div>
+
+        <div class="row g-2 align-items-end mt-2 pt-2 border-top">
+            <div class="col-md-4">
+                <label class="form-label small text-muted mb-1">Batch Universe</label>
+                <select class="form-select form-select-sm" id="batchUniverse">
+                    <option value="">Auto-detect / none</option>
+                    <?php foreach ($universes as $u): ?>
+                        <option value="<?= $e($u['id']) ?>"><?= $e($u['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted mb-1">Batch Manufacturer</label>
+                <select class="form-select form-select-sm" id="batchManufacturer">
+                    <option value="">Auto-detect from page</option>
+                    <?php foreach ($manufacturers as $m): ?>
+                        <option value="<?= $e($m['id']) ?>"><?= $e($m['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted mb-1">Batch Toy Line</label>
+                <select class="form-select form-select-sm" id="batchToyLine">
+                    <option value="">Auto-detect from page</option>
+                    <?php foreach ($toyLines as $tl): ?>
+                        <option value="<?= $e($tl['id']) ?>">
+                            <?= $e($tl['name']) ?><?= $tl['manufacturer_name'] ? ' (' . $e($tl['manufacturer_name']) . ')' : '' ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+        </div>
+        <div class="form-text">
+            Set these when you already know what a page contains (e.g. "this whole page is Hasbro Vintage
+            Collection") — they apply to everything you add next, and outrank auto-detection, which only matches
+            on an exact name. Still editable per item below.
+        </div>
     </div>
 </div>
 
-<div id="importResults" class="d-none">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <div>
-            <h4 class="mb-0">Found Items <span id="itemCount" class="badge bg-secondary ms-1">0</span></h4>
-            <small class="text-muted" id="sourceName"></small>
-        </div>
-        <div>
-            <button id="btnSelectAll" class="btn btn-outline-secondary btn-sm me-2">
-                <i class="fa-solid fa-check-double me-1"></i> Select All
-            </button>
-            <button id="btnDeselectAll" class="btn btn-outline-secondary btn-sm me-2">
-                <i class="fa-solid fa-xmark me-1"></i> Deselect All
-            </button>
-            <button id="btnRunImport" class="btn btn-success">
-                <i class="fa-solid fa-file-import me-2"></i> Import Selected
-            </button>
-        </div>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0">Import Queue <span id="itemCount" class="badge bg-secondary ms-1"><?= 0 ?></span></h4>
+    <div>
+        <button id="btnSelectAll" class="btn btn-outline-secondary btn-sm me-2">
+            <i class="fa-solid fa-check-double me-1"></i> Select All
+        </button>
+        <button id="btnDeselectAll" class="btn btn-outline-secondary btn-sm me-2">
+            <i class="fa-solid fa-xmark me-1"></i> Deselect All
+        </button>
+        <button id="btnRunImport" class="btn btn-success">
+            <i class="fa-solid fa-file-import me-2"></i> Import Selected
+        </button>
     </div>
-
-    <div id="resultsGrid"></div>
 </div>
+
+<div id="importQueueEmpty" class="alert alert-light border text-muted text-center py-4">
+    <i class="fa-solid fa-inbox fa-2x mb-2 d-block"></i>
+    Nothing queued yet — add a source above to get started.
+</div>
+<div id="importQueue"></div>
+
+<script>
+    // Lookup lists for the per-item editable fields, and the group-size cap.
+    const IMPORTER_LOOKUPS = <?= json_encode([
+        'universes' => array_map(fn($u) => ['id' => (int) $u['id'], 'name' => $u['name']], $universes),
+        'manufacturers' => array_map(fn($m) => ['id' => (int) $m['id'], 'name' => $m['name']], $manufacturers),
+        'toyLines' => array_map(fn($tl) => [
+            'id' => (int) $tl['id'],
+            'name' => $tl['name'] . ($tl['manufacturer_name'] ? ' (' . $tl['manufacturer_name'] . ')' : ''),
+        ], $toyLines),
+        'productTypes' => array_map(fn($pt) => ['id' => (int) $pt['id'], 'name' => $pt['name']], $productTypes),
+        'entertainmentSources' => array_map(fn($es) => ['id' => (int) $es['id'], 'name' => $es['name']], $entertainmentSources),
+    ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
+    const IMPORTER_MAX_SOURCES_PER_GROUP = <?= (int) $maxSourcesPerGroup ?>;
+</script>
