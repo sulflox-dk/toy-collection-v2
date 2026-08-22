@@ -204,10 +204,23 @@ document.addEventListener('DOMContentLoaded', () => {
 			});
 		});
 
+		// Per-accessory photos (only some sites have these) — keyed by the
+		// same lowercased name used above, first source to supply one wins.
+		const itemImages = {};
+		g.urlResults.forEach((r) => {
+			Object.entries(r.itemImages || {}).forEach(([name, url]) => {
+				const key = name.trim().toLowerCase();
+				if (key && url && !itemImages[key]) {
+					itemImages[key] = url;
+				}
+			});
+		});
+
 		g.merged = merged;
 		g.conflicts = conflicts;
 		g.accessories = accessories;
 		g.images = images;
+		g.itemImages = itemImages;
 	}
 
 	// If any contributing URL matched an existing toy, suggest that as the
@@ -437,7 +450,15 @@ document.addEventListener('DOMContentLoaded', () => {
 			.join('');
 
 		const accessoriesHtml = g.accessories.length
-			? g.accessories.map((a) => `<span class="badge bg-light text-dark border me-1 mb-1">${esc(a)}</span>`).join('')
+			? g.accessories
+					.map((a) => {
+						const imgUrl = g.itemImages[a.trim().toLowerCase()];
+						const thumb = imgUrl
+							? `<img src="${esc(imgUrl)}" class="rounded me-1" style="width:18px;height:18px;object-fit:contain;">`
+							: '';
+						return `<span class="badge bg-light text-dark border me-1 mb-1 d-inline-flex align-items-center">${thumb}${esc(a)}</span>`;
+					})
+					.join('')
 			: '<span class="text-muted fst-italic small">None detected</span>';
 
 		const atCap = g.urlResults.length >= MAX_SOURCES_PER_GROUP;
@@ -643,6 +664,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				fields: { name: fields.name || g.merged.name, ...fields },
 				accessories: g.accessories,
 				images: g.images,
+				itemImages: g.itemImages,
 				sources,
 			};
 		}
@@ -671,6 +693,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			},
 			accessories: g.accessories,
 			images: g.images,
+			itemImages: g.itemImages,
 			sources,
 		};
 	}
