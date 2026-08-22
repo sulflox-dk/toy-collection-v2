@@ -9,9 +9,12 @@ class ImporterGuideController extends Controller
 {
     public function index(Request $request): void
     {
+        $activeSources = ImporterSource::allActive();
+
         $this->render('importer_guide_index', [
             'title' => 'Importer Guide',
-            'sources' => ImporterSource::allActive(),
+            'sources' => $activeSources,
+            'maxSourcesPerGroup' => max(1, count($activeSources)),
         ]);
     }
 }

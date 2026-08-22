@@ -41,18 +41,13 @@
                 </div>
                 <p class="small text-muted mb-0">
                     This is the page you'll actually use. Optionally set a batch Universe/Manufacturer/Toy
-                    Line above the URL box first — useful when you know everything on a page is, say,
-                    Hasbro's Vintage Collection, since auto-detection only matches on an exact name and
-                    is often blank. Paste a URL, click <strong>Analyze</strong>. Each result in the preview
-                    is flagged <span class="badge bg-success-subtle text-success">New</span>,
-                    <span class="badge bg-warning-subtle text-warning">Conflict</span> (name already
-                    exists in your catalog), or <span class="badge bg-secondary-subtle text-secondary">Linked</span>
-                    (already imported before) — and every field (name, year, wave, SKU, universe,
-                    manufacturer, toy line, product type, entertainment source) is editable right there
-                    before you commit to anything. Select the ones you want, click
-                    <strong>Import Selected</strong>. Nothing is written until that click. On a listing
-                    page with more than 20 items, re-run Analyze with a higher Offset (20, then 40, ...)
-                    to work through the rest.
+                    Line first — useful when you know everything you're about to add is, say, Hasbro's
+                    Vintage Collection, since auto-detection only matches on an exact name and is often
+                    blank. Paste a URL and click <strong>Add</strong>: a single detail page adds one item
+                    to the <strong>Import Queue</strong> below; a listing page adds up to 20 at once (use
+                    Offset to fetch the next 20, and so on — the same one-click bulk import as before).
+                    Every field on every queued item is editable before you commit to anything, and nothing
+                    is written until you click <strong>Import Selected</strong>.
                 </p>
             </div>
             <div class="col-md-4">
@@ -67,6 +62,54 @@
                 </p>
             </div>
         </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white fw-bold">Combining sources for one toy</div>
+    <div class="card-body">
+        <p class="small">
+            Data is scattered across these sites — one has the year, another has better photos. Every item
+            in the queue can pull from more than one source: paste its first URL into the main Add Sources
+            box like normal, then use the <strong>"Add source"</strong> box on that specific card to paste
+            a second (or third...) URL for the <em>same</em> toy from a different site. Fields every source
+            agrees on are used automatically; fields that disagree show a small picker naming which site
+            said what, defaulting to whichever value the most sources agree on. Photos and detected
+            accessories are never a "conflict" — they're simply pooled together from every source you add.
+        </p>
+        <p class="small mb-0">
+            This composes with bulk import too: a listing page still adds up to 20 separate items in one
+            click (there's no way to know in advance which URL on another site is the <em>same</em> figure,
+            so bulk-discovered items always start single-source) — but you can then go back and use "Add
+            source" on any of those 20 individually to enrich just the ones you care about, without
+            re-pasting the rest. One toy's sources are capped at <?= (int) ($maxSourcesPerGroup ?? 6) ?>
+            (the number of active sites) — you can't have more contributing sources than there are drivers
+            to scrape.
+        </p>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white fw-bold">Importing into a toy you already have</div>
+    <div class="card-body">
+        <p class="small">
+            If a scrape matches something already in your catalog — either because you've imported that
+            exact URL before, or its name matches an existing toy exactly — the item is automatically
+            offered as an update to that toy instead of a new one. You can also point any item at an
+            existing toy yourself: type into the <strong>"search your catalog"</strong> box on its card and
+            pick from the matches, which overrides the automatic match (or sets a target when there wasn't
+            one). An attached item shows a field-by-field comparison — current value versus what was just
+            found — with a per-field <strong>"Use new"</strong> switch. Nothing is overwritten unless you
+            flip it on; fields you've left empty default to on, fields you've already filled in default to
+            off.
+        </p>
+        <p class="small mb-0">
+            Photos and accessories are handled differently here: they're always <strong>added</strong>,
+            never a switch to flip. Existing photos are never removed or replaced, and any detected
+            accessory you don't already have on that toy gets attached alongside what's there — there's no
+            way to know an image found on a scrape is "the same" as one already saved, so nothing is ever
+            silently skipped or deduplicated on that basis.
+        </p>
     </div>
 </div>
 
