@@ -114,6 +114,10 @@ document.addEventListener('DOMContentLoaded', () => {
 			currentToyData: null,
 			searchOpen: false,
 			searchResults: [],
+			// Every found photo is included by default — this tracks the
+			// ones the user has unchecked, keyed by URL (not index) so it
+			// stays valid as more sources get added to the group.
+			excludedImages: new Set(),
 		};
 		recomputeMerge(g);
 		autoDetectTarget(g);
@@ -204,10 +208,23 @@ document.addEventListener('DOMContentLoaded', () => {
 			});
 		});
 
+		// Per-accessory photos (only some sites have these) — keyed by the
+		// same lowercased name used above, first source to supply one wins.
+		const itemImages = {};
+		g.urlResults.forEach((r) => {
+			Object.entries(r.itemImages || {}).forEach(([name, url]) => {
+				const key = name.trim().toLowerCase();
+				if (key && url && !itemImages[key]) {
+					itemImages[key] = url;
+				}
+			});
+		});
+
 		g.merged = merged;
 		g.conflicts = conflicts;
 		g.accessories = accessories;
 		g.images = images;
+		g.itemImages = itemImages;
 	}
 
 	// If any contributing URL matched an existing toy, suggest that as the
@@ -415,10 +432,87 @@ document.addEventListener('DOMContentLoaded', () => {
 			${rows}
 			<div class="small text-muted mt-2">
 				<i class="fa-solid fa-plus-circle me-1"></i>
-				${accCount} accessor${accCount === 1 ? 'y' : 'ies'} and ${imgCount} photo(s) found will be <strong>added</strong>
+				${imgCount} toy photo(s) found will be <strong>added</strong>; ${accCount} accessor${accCount === 1 ? 'y' : 'ies'} found below —
+				match any that are something you already have under a different name
 				(you have ${g.currentToyData.existingAccessories.length} accessory record(s) and ${g.currentToyData.existingImageCount} photo(s) already — nothing existing is removed).
 			</div>
 		`;
+	}
+
+	// For update-mode groups, a found accessory might just be something the
+	// toy already has under a different name from a different site — let
+	// the user say so instead of it silently creating a duplicate. Defaults
+	// to matching an existing accessory of the exact same name (which the
+	// backend would dedupe anyway), so the UI never hides what's about to
+	// happen.
+	function renderAccessoriesSection(g, isUpdate) {
+		if (!isUpdate) {
+			return g.accessories.length
+				? g.accessories
+						.map((a) => {
+							const imgUrl = g.itemImages[a.trim().toLowerCase()];
+							const thumb = imgUrl
+								? `<img src="${esc(imgUrl)}" class="rounded me-1" style="width:18px;height:18px;object-fit:contain;">`
+								: '';
+							return `<span class="badge bg-light text-dark border me-1 mb-1 d-inline-flex align-items-center">${thumb}${esc(a)}</span>`;
+						})
+						.join('')
+				: '<span class="text-muted fst-italic small">None detected</span>';
+		}
+
+		if (!g.currentToyData) {
+			return '<div class="text-muted small py-2"><i class="fa-solid fa-spinner fa-spin me-2"></i>Loading current accessories...</div>';
+		}
+
+		if (g.accessories.length === 0) {
+			return '<span class="text-muted fst-italic small">None detected</span>';
+		}
+
+		const existing = g.currentToyData.existingAccessories || [];
+
+		return g.accessories
+			.map((a) => {
+				const imgUrl = g.itemImages[a.trim().toLowerCase()];
+				const thumb = imgUrl
+					? `<img src="${esc(imgUrl)}" class="rounded me-2" style="width:24px;height:24px;object-fit:contain;">`
+					: '<span style="width:24px;display:inline-block;"></span>';
+				const exactMatchId = (existing.find((e) => e.name.trim().toLowerCase() === a.trim().toLowerCase()) || {}).id;
+				const options = existing
+					.map((e) => `<option value="${e.id}" ${e.id === exactMatchId ? 'selected' : ''}>Already have: ${esc(e.name)}</option>`)
+					.join('');
+				return `
+					<div class="d-flex align-items-center gap-2 mb-1 acc-match-row" data-name="${esc(a)}">
+						${thumb}
+						<span class="small flex-shrink-0" style="min-width:160px;">${esc(a)}</span>
+						<select class="form-select form-select-sm acc-match-select">
+							<option value="" ${exactMatchId ? '' : 'selected'}>+ Add as new accessory</option>
+							${options}
+						</select>
+					</div>
+				`;
+			})
+			.join('');
+	}
+
+	// Every found photo is checked (included) by default — unchecking one
+	// just marks it excluded, it's never removed from the underlying list,
+	// so re-checking it later is a one-click undo.
+	function renderPhotosSection(g) {
+		if (g.images.length === 0) {
+			return '<span class="text-muted fst-italic small">None detected</span>';
+		}
+
+		return g.images
+			.map((url) => {
+				const included = !g.excludedImages.has(url);
+				return `
+					<label class="position-relative d-inline-block img-check-wrap" style="cursor:pointer;" title="${included ? 'Uncheck to skip this photo' : 'Excluded — click to include'}">
+						<img src="${esc(url)}" class="rounded border" style="width:64px;height:64px;object-fit:cover;opacity:${included ? '1' : '0.35'};">
+						<input type="checkbox" class="form-check-input img-include-toggle position-absolute" style="top:4px;left:4px;box-shadow:0 0 0 1px rgba(0,0,0,.3);" data-url="${esc(url)}" ${included ? 'checked' : ''}>
+					</label>
+				`;
+			})
+			.join('');
 	}
 
 	function renderGroupCard(g) {
@@ -427,7 +521,8 @@ document.addEventListener('DOMContentLoaded', () => {
 			? `<span class="badge bg-info">UPDATE EXISTING</span>`
 			: `<span class="badge bg-success">NEW</span>`;
 
-		const firstImg = g.images[0];
+		const includedImages = g.images.filter((url) => !g.excludedImages.has(url));
+		const firstImg = includedImages[0];
 		const imgHtml = firstImg
 			? `<img src="${esc(firstImg)}" class="img-fluid rounded-start h-100" style="object-fit: contain; max-height: 220px; width: 100%; background: #f8f9fa;">`
 			: `<div class="d-flex align-items-center justify-content-center bg-light h-100" style="min-height: 140px;"><span class="text-muted"><i class="fa-solid fa-image fa-2x"></i></span></div>`;
@@ -436,9 +531,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			.map((r) => `<span class="badge bg-light text-dark border me-1">${esc(r.source_name)}</span>`)
 			.join('');
 
-		const accessoriesHtml = g.accessories.length
-			? g.accessories.map((a) => `<span class="badge bg-light text-dark border me-1 mb-1">${esc(a)}</span>`).join('')
-			: '<span class="text-muted fst-italic small">None detected</span>';
+		const accessoriesHtml = renderAccessoriesSection(g, isUpdate);
 
 		const atCap = g.urlResults.length >= MAX_SOURCES_PER_GROUP;
 
@@ -478,6 +571,11 @@ document.addEventListener('DOMContentLoaded', () => {
 							<div class="mt-2 pt-2 border-top">
 								<small class="text-uppercase text-muted fw-bold">Accessories detected</small>
 								<div class="mt-1">${accessoriesHtml}</div>
+							</div>
+
+							<div class="mt-2 pt-2 border-top">
+								<small class="text-uppercase text-muted fw-bold">Photos found (${includedImages.length}/${g.images.length} selected)</small>
+								<div class="d-flex flex-wrap gap-2 mt-1">${renderPhotosSection(g)}</div>
 							</div>
 						</div>
 					</div>
@@ -571,6 +669,16 @@ document.addEventListener('DOMContentLoaded', () => {
 		if (e.target.classList.contains('group-include')) {
 			g.included = e.target.checked;
 		}
+
+		if (e.target.classList.contains('img-include-toggle')) {
+			const url = e.target.dataset.url;
+			if (e.target.checked) {
+				g.excludedImages.delete(url);
+			} else {
+				g.excludedImages.add(url);
+			}
+			renderAll();
+		}
 	});
 
 	queueEl.addEventListener(
@@ -623,6 +731,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			externalId: r.externalId,
 			externalUrl: r.externalUrl,
 		}));
+		const includedImages = g.images.filter((url) => !g.excludedImages.has(url));
 
 		if (g.target.mode === 'update') {
 			// compare-row field keys are DB column names; g.merged keys are
@@ -637,12 +746,34 @@ document.addEventListener('DOMContentLoaded', () => {
 				fields[fieldKey] = pick ? pick.value : g.merged[mergedKeyFor[fieldKey] || fieldKey];
 			});
 
+			// Split found accessories into "add as new" vs. "matched to
+			// something already on the toy" based on each row's select —
+			// only the new ones get created; a matched one just gets its
+			// photo (if any) attached to the existing item instead.
+			const newAccessories = [];
+			const accessoryMatches = [];
+			card.querySelectorAll('.acc-match-row').forEach((row) => {
+				const name = row.dataset.name;
+				const select = row.querySelector('.acc-match-select');
+				const matchedId = select ? select.value : '';
+				if (matchedId) {
+					const imageUrl = g.itemImages[name.trim().toLowerCase()];
+					if (imageUrl) {
+						accessoryMatches.push({ existingItemId: parseInt(matchedId, 10), imageUrl });
+					}
+				} else {
+					newAccessories.push(name);
+				}
+			});
+
 			return {
 				mode: 'update',
 				targetCatalogToyId: g.target.catalogToyId,
 				fields: { name: fields.name || g.merged.name, ...fields },
-				accessories: g.accessories,
-				images: g.images,
+				accessories: newAccessories,
+				accessoryMatches,
+				images: includedImages,
+				itemImages: g.itemImages,
 				sources,
 			};
 		}
@@ -670,7 +801,8 @@ document.addEventListener('DOMContentLoaded', () => {
 				description: val('.field-description'),
 			},
 			accessories: g.accessories,
-			images: g.images,
+			images: includedImages,
+			itemImages: g.itemImages,
 			sources,
 		};
 	}

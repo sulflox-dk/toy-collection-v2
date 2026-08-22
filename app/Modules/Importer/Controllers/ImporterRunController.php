@@ -241,11 +241,12 @@ class ImporterRunController extends Controller
             return;
         }
 
-        $accessoryNames = $db->query("
-            SELECT s.name FROM catalog_toy_items cti
+        $existingAccessories = $db->query("
+            SELECT cti.id, s.name FROM catalog_toy_items cti
             JOIN meta_subjects s ON cti.subject_id = s.id
             WHERE cti.catalog_toy_id = ?
-        ", [$id])->fetchAll(\PDO::FETCH_COLUMN);
+            ORDER BY s.name ASC
+        ", [$id])->fetchAll(\PDO::FETCH_ASSOC);
 
         $imageCount = (int) $db->query(
             "SELECT COUNT(*) FROM media_links WHERE entity_type = 'catalog_toys' AND entity_id = ?",
@@ -255,7 +256,7 @@ class ImporterRunController extends Controller
         $this->json([
             'success' => true,
             'toy' => $toy,
-            'existingAccessories' => $accessoryNames,
+            'existingAccessories' => $existingAccessories,
             'existingImageCount' => $imageCount,
         ]);
     }
@@ -288,6 +289,12 @@ class ImporterRunController extends Controller
                 $fields = is_array($group['fields'] ?? null) ? $group['fields'] : [];
                 $accessories = is_array($group['accessories'] ?? null) ? $group['accessories'] : [];
                 $images = is_array($group['images'] ?? null) ? $group['images'] : [];
+                $itemImages = is_array($group['itemImages'] ?? null) ? $group['itemImages'] : [];
+                // Found accessories the user matched to something they
+                // already have (instead of letting it create a duplicate
+                // under a different name) — just the photo, if any, still
+                // gets attached, to the existing item.
+                $accessoryMatches = is_array($group['accessoryMatches'] ?? null) ? $group['accessoryMatches'] : [];
                 $sources = is_array($group['sources'] ?? null) ? $group['sources'] : [];
 
                 if (empty($sources)) {
@@ -349,8 +356,23 @@ class ImporterRunController extends Controller
                 }
 
                 $catalogUniverseId = $db->fetch("SELECT universe_id FROM catalog_toys WHERE id = ?", [$catalogToyId])['universe_id'] ?? null;
-                $this->addAccessories($db, $catalogToyId, $accessories, $catalogUniverseId ? (int) $catalogUniverseId : null);
-                $this->addImages($db, $catalogToyId, $images);
+                $itemIdsByName = $this->addAccessories($db, $catalogToyId, $accessories, $catalogUniverseId ? (int) $catalogUniverseId : null);
+                $this->addImages($db, $images, 'catalog_toys', $catalogToyId);
+
+                foreach ($itemImages as $accessoryName => $imageUrl) {
+                    $itemId = $itemIdsByName[mb_strtolower(trim((string) $accessoryName))] ?? null;
+                    if ($itemId && $imageUrl) {
+                        $this->addImages($db, [$imageUrl], 'catalog_toy_items', $itemId);
+                    }
+                }
+
+                foreach ($accessoryMatches as $match) {
+                    $existingItemId = (int) ($match['existingItemId'] ?? 0);
+                    $imageUrl = (string) ($match['imageUrl'] ?? '');
+                    if ($existingItemId && $imageUrl) {
+                        $this->addImages($db, [$imageUrl], 'catalog_toy_items', $existingItemId);
+                    }
+                }
 
                 $importItemIds = [];
                 foreach ($sources as $src) {
@@ -398,7 +420,10 @@ class ImporterRunController extends Controller
     /**
      * Find-or-create a meta_subjects row per accessory name and attach it to
      * the toy — skipping any name the toy already has, so this is safe to
-     * call for both brand-new toys and top-ups of existing ones.
+     * call for both brand-new toys and top-ups of existing ones. Returns
+     * every accessory name (lowercased) mapped to its catalog_toy_items id,
+     * whether newly created here or already present, so a caller can attach
+     * a per-accessory photo to the right item either way.
      *
      * A newly-created subject is stamped with the toy's own universe_id —
      * the catalog wizard's subject dropdown filters by universe, so a
@@ -407,20 +432,25 @@ class ImporterRunController extends Controller
      * matched existing subject that's missing its universe_id is backfilled
      * the same way, so legacy rows self-heal the next time they're touched.
      */
-    private function addAccessories(Database $db, int $catalogToyId, array $accessoryNames, ?int $universeId = null): void
+    private function addAccessories(Database $db, int $catalogToyId, array $accessoryNames, ?int $universeId = null): array
     {
-        if (empty($accessoryNames)) return;
-
-        $existing = $db->query("
-            SELECT s.name FROM catalog_toy_items cti
+        $existingRows = $db->query("
+            SELECT cti.id AS item_id, s.name FROM catalog_toy_items cti
             JOIN meta_subjects s ON cti.subject_id = s.id
             WHERE cti.catalog_toy_id = ?
-        ", [$catalogToyId])->fetchAll(\PDO::FETCH_COLUMN);
-        $existingLower = array_map('mb_strtolower', $existing);
+        ", [$catalogToyId])->fetchAll(\PDO::FETCH_ASSOC);
+
+        $itemIdsByName = [];
+        foreach ($existingRows as $row) {
+            $itemIdsByName[mb_strtolower($row['name'])] = (int) $row['item_id'];
+        }
+
+        if (empty($accessoryNames)) return $itemIdsByName;
 
         foreach (array_unique($accessoryNames) as $accessoryName) {
             $accessoryName = trim($accessoryName);
-            if ($accessoryName === '' || in_array(mb_strtolower($accessoryName), $existingLower, true)) {
+            $key = mb_strtolower($accessoryName);
+            if ($accessoryName === '' || isset($itemIdsByName[$key])) {
                 continue;
             }
 
@@ -446,17 +476,21 @@ class ImporterRunController extends Controller
                 "INSERT INTO catalog_toy_items (catalog_toy_id, subject_id, description) VALUES (?, ?, NULL)",
                 [$catalogToyId, $subjectId]
             );
+            $itemIdsByName[$key] = (int) $db->lastInsertId();
         }
+
+        return $itemIdsByName;
     }
 
     /**
-     * Download every scraped image URL and attach it to the toy. Always
+     * Download every scraped image URL and attach it to the given entity
+     * (a catalog toy, or one of its accessories/catalog_toy_items). Always
      * additive — existing photos are never touched or replaced, and (per
      * product decision) no attempt is made to detect a duplicate of an
      * already-imported image, since nothing tracks which image came from
      * which URL.
      */
-    private function addImages(Database $db, int $catalogToyId, array $imageUrls): void
+    private function addImages(Database $db, array $imageUrls, string $entityType, int $entityId): void
     {
         if (empty($imageUrls)) return;
 
@@ -526,8 +560,8 @@ class ImporterRunController extends Controller
 
                 if ($mediaFileId) {
                     $db->execute(
-                        "INSERT IGNORE INTO media_links (media_file_id, entity_type, entity_id) VALUES (?, 'catalog_toys', ?)",
-                        [$mediaFileId, $catalogToyId]
+                        "INSERT IGNORE INTO media_links (media_file_id, entity_type, entity_id) VALUES (?, ?, ?)",
+                        [$mediaFileId, $entityType, $entityId]
                     );
                 }
             } catch (\Exception $e) {

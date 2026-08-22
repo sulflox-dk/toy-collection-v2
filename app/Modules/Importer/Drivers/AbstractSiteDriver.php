@@ -45,11 +45,46 @@ abstract class AbstractSiteDriver implements SiteDriverInterface
         return '';
     }
 
+    /**
+     * Resolve a scraped src/href against the page it came from. $baseUrl is
+     * usually just a bare "https://site.com" (root-relative paths are the
+     * common case and don't need more), but a document-relative path like
+     * "../img/x.png" needs the base's own path to resolve against — pass
+     * the actual page URL when a site uses those, not just its domain.
+     */
     protected function fixRelativeUrl(string $src, string $baseUrl): string
     {
         if (strpos($src, 'http') === 0) {
             return $src;
         }
-        return rtrim($baseUrl, '/') . '/' . ltrim($src, '/');
+
+        $baseParts = parse_url($baseUrl);
+        $scheme = $baseParts['scheme'] ?? 'https';
+        $host = $baseParts['host'] ?? '';
+        if (!empty($baseParts['port'])) {
+            $host .= ':' . $baseParts['port'];
+        }
+        $basePath = $baseParts['path'] ?? '/';
+
+        if (strpos($src, '/') === 0) {
+            $path = $src;
+        } else {
+            $path = rtrim(dirname($basePath), '/') . '/' . $src;
+        }
+
+        // Collapse "." and ".." segments the way a browser would.
+        $segments = [];
+        foreach (explode('/', $path) as $segment) {
+            if ($segment === '' || $segment === '.') {
+                continue;
+            }
+            if ($segment === '..') {
+                array_pop($segments);
+                continue;
+            }
+            $segments[] = $segment;
+        }
+
+        return "{$scheme}://{$host}/" . implode('/', $segments);
     }
 }

@@ -15,6 +15,8 @@ class ScrapedToyDTO
     public string $upc = '';
     public array $items = [];
     public array $images = [];
+    /** Accessory name => its own image URL, for sites that photograph each included item separately. */
+    public array $itemImages = [];
 
     public function toArray(): array
     {
@@ -31,6 +33,7 @@ class ScrapedToyDTO
             'upc' => $this->upc,
             'items' => $this->items,
             'images' => $this->images,
+            'itemImages' => $this->itemImages,
         ];
     }
 }
