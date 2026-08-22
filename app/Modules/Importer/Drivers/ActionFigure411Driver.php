@@ -38,65 +38,77 @@ class ActionFigure411Driver extends AbstractSiteDriver
         $dto = new ScrapedToyDTO();
         $dto->externalUrl = $url;
 
-        // ID from URL
-        $parts = explode('/', rtrim($url, '/'));
-        $lastPart = end($parts);
-        $dto->externalId = str_replace('.php', '', $lastPart);
+        // The site's own numeric figure id (also used in its own links, e.g.
+        // add-remove-item.php?m=2265) is more stable than the full slug.
+        $dto->externalId = preg_match('/-(\d+)\.php/', $url, $m)
+            ? $m[1]
+            : str_replace('.php', '', basename(parse_url($url, PHP_URL_PATH) ?: ''));
 
-        // Name
-        $rawName = $this->getText($xpath, "//h1");
-        $dto->name = trim(str_replace(['Star Wars ', 'Action Figure'], '', $rawName));
-
-        // Year
-        if (preg_match('/Year:.*?(\d{4})/is', $html, $m)) {
-            $dto->year = $m[1];
+        // The full figure name (with variant) lives in the last breadcrumb
+        // crumb, trailing a " - [Group Name]" suffix to strip off. The <h1>
+        // is the same text but without a clean way to drop the toy-line
+        // prefix, so prefer the breadcrumb.
+        $breadcrumbName = $this->getText($xpath, "//li[contains(@class,'breadcrumb-item') and contains(@class,'active')]");
+        if ($breadcrumbName !== '') {
+            $dto->name = trim(preg_replace('/\s*-\s*\[.*\]\s*$/s', '', $breadcrumbName));
+        }
+        if ($dto->name === '') {
+            $dto->name = $this->getText($xpath, "//h1") ?: 'Unknown Toy';
         }
 
-        // Series
-        if (preg_match('/Series:.*?>(.*?)<(\/a|br|\/div)/is', $html, $m)) {
-            $dto->toyLine = trim(strip_tags($m[1]));
-        }
+        // "Figure Number" (e.g. "VC 04") is this site's assortment/collection
+        // number; "Wave" is a separate, purely numeric field — they are NOT
+        // the same thing here, unlike some other sites.
+        $dto->assortmentSku = $this->labelValue($xpath, 'Figure Number');
+        $dto->wave = $this->labelValue($xpath, 'Wave');
+        $dto->year = $this->labelValue($xpath, 'Year');
+        $dto->toyLine = $this->labelValue($xpath, 'Series');
+        $dto->manufacturer = $this->labelValue($xpath, 'Manufacturer');
 
-        // Wave
-        if (preg_match('/Wave:.*?>(.*?)<(\/a|br|\/div)/is', $html, $m)) {
-            $dto->wave = trim(strip_tags($m[1]));
-        }
+        $dto->description = $this->getText($xpath, "//meta[@property='og:description']/@content")
+            ?: $this->getText($xpath, "//meta[@name='description']/@content");
 
-        // Manufacturer
-        if (preg_match('/Manufacturer:.*?>(.*?)<(\/a|br|\/div)/is', $html, $m)) {
-            $dto->manufacturer = trim(strip_tags($m[1]));
-        }
-        if (empty($dto->manufacturer)) {
-            if (stripos($html, 'Hasbro') !== false) {
-                $dto->manufacturer = 'Hasbro';
-            } elseif (stripos($html, 'Kenner') !== false) {
-                $dto->manufacturer = 'Kenner';
+        // Only this figure's own photo — the page also carries thumbnails
+        // for "Similar Items", the "Other figures in group" carousel, and
+        // eBay listing photos, none of which belong to this toy.
+        $mainImage = $xpath->query("//div[contains(@class,'img-container-bigger-icon')][1]//a[@data-fancybox]");
+        if ($mainImage && $mainImage->length > 0 && $mainImage->item(0) instanceof \DOMElement) {
+            $href = $mainImage->item(0)->getAttribute('href');
+            if ($href) {
+                $dto->images[] = $this->fixRelativeUrl($href, 'https://www.actionfigure411.com');
             }
         }
-
-        // UPC as SKU
-        if (preg_match('/UPC:.*?(\d{10,13})/is', $html, $m)) {
-            $dto->assortmentSku = $m[1];
-        }
-
-        // Images
-        $imgNodes = $xpath->query("//img");
-        foreach ($imgNodes as $node) {
-            if (!($node instanceof \DOMElement)) continue;
-            $src = $node->getAttribute('src');
-
-            if (strpos($src, 'actionfigure411-logo') !== false || strpos($src, 'facebook') !== false) {
-                continue;
-            }
-
-            if (strpos($src, '/images/') !== false || strpos($src, 'actionFigures') !== false) {
-                $src = $this->fixRelativeUrl($src, 'https://www.actionfigure411.com');
-                if (!in_array($src, $dto->images)) {
-                    $dto->images[] = $src;
-                }
+        if (empty($dto->images)) {
+            $ogImage = $this->getText($xpath, "//meta[@property='og:image']/@content");
+            if ($ogImage) {
+                $dto->images[] = $ogImage;
             }
         }
 
         return $dto;
+    }
+
+    /**
+     * Read a "<b>Label</b>: value" or "<b>Label:</b> value" field out of the
+     * figure's info list — the colon sometimes sits inside the <b>, sometimes
+     * outside, and the field is sometimes wrapped in an inline <h2>, so match
+     * on the label text with any colon stripped and just take the next text
+     * node in document order.
+     */
+    private function labelValue(\DOMXPath $xpath, string $label): string
+    {
+        $nodes = $xpath->query(
+            "//li[contains(@class,'list-group-item')]//b[translate(normalize-space(.), ':', '') = '{$label}']"
+        );
+        if (!$nodes || $nodes->length === 0) {
+            return '';
+        }
+
+        $sibling = $xpath->query('following-sibling::text()[1]', $nodes->item(0));
+        if (!$sibling || $sibling->length === 0) {
+            return '';
+        }
+
+        return trim($sibling->item(0)->textContent, " :\t\n\r\0\x0B");
     }
 }
