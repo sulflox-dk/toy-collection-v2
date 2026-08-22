@@ -25,6 +25,7 @@ use App\Modules\Importer\Controllers\ImporterSourceController;
 use App\Modules\Importer\Controllers\ImporterRunController;
 use App\Modules\Importer\Controllers\ImporterLogController;
 use App\Modules\Importer\Controllers\ImporterGuideController;
+use App\Modules\Showcase\Controllers\ShowcaseController;
 
 
 /** @var Router $router */
@@ -34,6 +35,10 @@ $router->guest('/login');
 $router->get('/login',  [LoginController::class, 'showLoginForm']);
 $router->post('/login', [LoginController::class, 'login']);
 $router->post('/logout', [LoginController::class, 'logout']);
+
+// ── Showcase: public, read-only front end — no login required to browse ──
+$router->guest('/showcase');
+$router->get('/showcase', [ShowcaseController::class, 'index']);
 
 // ── Admin: User Management ──────────────────────────────
 $router->admin('/user');

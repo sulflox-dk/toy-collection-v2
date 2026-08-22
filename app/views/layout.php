@@ -40,6 +40,13 @@ $baseUrl = rtrim(Config::get('app.url', ''), '/') . '/';
             </li>
 
             <li class="nav-item">
+                <a href="<?= $baseUrl ?>showcase" class="nav-link text-white" target="_blank" rel="noopener">
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                    View Showcase
+                </a>
+            </li>
+
+            <li class="nav-item">
                 <a class="nav-link btn-toggle-nav collapsed" data-bs-toggle="collapse" href="#menu-collection" role="button" aria-expanded="false">
                     <i class="fa-solid fa-boxes-stacked"></i> My Collection
                 </a>

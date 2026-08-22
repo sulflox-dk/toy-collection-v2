@@ -85,7 +85,7 @@ $jsonSubjects = json_encode($subjects ?? [], JSON_HEX_APOS | JSON_HEX_QUOT);
                         </div>
                     </div>
 
-                    <div class="row g-3">
+                    <div class="row g-3 mb-3">
                         <div class="col-md-4">
                             <label class="form-label small text-muted mb-1">Wave</label>
                             <input type="text" class="form-control" name="wave" value="<?= htmlspecialchars($toy['wave'] ?? '') ?>" placeholder="e.g. Wave 1">
@@ -97,6 +97,13 @@ $jsonSubjects = json_encode($subjects ?? [], JSON_HEX_APOS | JSON_HEX_QUOT);
                         <div class="col-md-4">
                             <label class="form-label small text-muted mb-1">UPC</label>
                             <input type="text" class="form-control" name="upc" value="<?= htmlspecialchars($toy['upc'] ?? '') ?>" placeholder="Barcode">
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label small text-muted mb-1">Description</label>
+                            <textarea class="form-control" name="description" rows="2" placeholder="A line or two describing this toy..."><?= htmlspecialchars($toy['description'] ?? '') ?></textarea>
                         </div>
                     </div>
                 </div>
