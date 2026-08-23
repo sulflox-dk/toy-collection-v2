@@ -82,7 +82,14 @@ class CatalogToyController extends Controller
     public function createStep1(Request $request): void
     {
         $db = Database::getInstance();
-        $universes = $db->query("SELECT id, name, slug FROM meta_universes ORDER BY name ASC")->fetchAll(\PDO::FETCH_ASSOC);
+        $universes = $db->query("
+            SELECT id, name, slug,
+                (SELECT f.filepath FROM media_links ml
+                 JOIN media_files f ON ml.media_file_id = f.id
+                 WHERE ml.entity_type = 'universes' AND ml.entity_id = meta_universes.id
+                 ORDER BY ml.is_featured DESC, ml.sort_order ASC LIMIT 1) AS image_path
+            FROM meta_universes ORDER BY name ASC
+        ")->fetchAll(\PDO::FETCH_ASSOC);
 
         $baseUrl = rtrim(Config::get('app.url', ''), '/') . '/';
 
