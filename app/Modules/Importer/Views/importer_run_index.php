@@ -113,7 +113,21 @@
                 </select>
             </div>
             <div class="col-md-4">
-                <button class="btn btn-outline-secondary btn-sm w-100" type="button" id="btnResetBatchDefaults">
+                <label class="form-label small text-muted mb-1">Default Subject</label>
+                <select class="form-select form-select-sm" id="batchSubject">
+                    <option value="">None — try to match by name</option>
+                    <?php foreach ($subjects as $s): ?>
+                        <?php if (in_array($s['type'], $mainSubjectTypes, true)): ?>
+                            <option value="<?= $e($s['id']) ?>"><?= $e($s['name']) ?> (<?= $e($s['type']) ?>)</option>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
+                </select>
+                <div class="form-text mb-0">
+                    E.g. importing a run of Luke Skywalker figures — set this once instead of picking it per item.
+                </div>
+            </div>
+            <div class="col-md-4 align-self-start">
+                <button class="btn btn-outline-secondary btn-sm w-100 mt-4" type="button" id="btnResetBatchDefaults">
                     <i class="fa-solid fa-rotate-left me-1"></i> Reset defaults
                 </button>
             </div>
@@ -122,7 +136,9 @@
             Set these when you're about to import a batch that's mostly the same (e.g. "this whole session is
             Hasbro Vintage Collection") — they're remembered across visits and applied to everything you add,
             <strong>unless</strong> the importer finds a more specific value on the page itself, which always wins.
-            Still editable per item below.
+            Still editable per item below. With no default Subject set, the importer tries to match an existing
+            one by name (e.g. "Luke Skywalker" found inside the toy's title) but never creates a new one on its
+            own — an unmatched toy is just left without a subject for you to set manually.
         </div>
     </div>
 </div>
@@ -159,6 +175,8 @@
         ], $toyLines),
         'productTypes' => array_map(fn($pt) => ['id' => (int) $pt['id'], 'name' => $pt['name']], $productTypes),
         'entertainmentSources' => array_map(fn($es) => ['id' => (int) $es['id'], 'name' => $es['name']], $entertainmentSources),
+        'subjects' => array_map(fn($s) => ['id' => (int) $s['id'], 'name' => $s['name'], 'type' => $s['type']], $subjects),
+        'mainSubjectTypes' => $mainSubjectTypes,
     ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
     const IMPORTER_MAX_SOURCES_PER_GROUP = <?= (int) $maxSourcesPerGroup ?>;
 </script>
