@@ -121,6 +121,12 @@ document.addEventListener('DOMContentLoaded', () => {
 			// ones the user has unchecked, keyed by URL (not index) so it
 			// stays valid as more sources get added to the group.
 			excludedImages: new Set(),
+			// Same idea for detected accessories — combining sources often
+			// finds the same physical accessory under different names (e.g.
+			// "Blaster Pistol" on one site, "Laser Pistol" on another), so
+			// this lets the user drop the ones that turned out to be
+			// duplicates instead of importing all of them as separate items.
+			excludedAccessories: new Set(),
 		};
 		recomputeMerge(g);
 		autoDetectTarget(g);
@@ -478,17 +484,13 @@ document.addEventListener('DOMContentLoaded', () => {
 		`;
 	}
 
-	// For update-mode groups, a found accessory might just be something the
-	// toy already has under a different name from a different site — let
-	// the user say so instead of it silently creating a duplicate. Defaults
-	// to matching an existing accessory of the exact same name (which the
-	// backend would dedupe anyway), so the UI never hides what's about to
-	// happen.
 	// Shows, per detected accessory, exactly what importing will do: connect
 	// to an existing subject (defaulting to an exact name match against the
 	// GLOBAL subject library, not just this toy's own items) or create a
 	// new one — either way overridable via the dropdown. Same treatment for
-	// both brand-new toys and updates to an existing one.
+	// both brand-new toys and updates to an existing one. Also lets the user
+	// drop an accessory entirely (unchecked) — useful when combining
+	// sources finds the same physical accessory under two different names.
 	function renderAccessoriesSection(g) {
 		if (g.accessories.length === 0) {
 			return '<span class="text-muted fst-italic small">None detected</span>';
@@ -496,6 +498,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 		return g.accessories
 			.map((a) => {
+				const included = !g.excludedAccessories.has(a);
 				const imgUrl = g.itemImages[a.trim().toLowerCase()];
 				const thumb = imgUrl
 					? `<img src="${esc(imgUrl)}" class="rounded me-2" style="width:24px;height:24px;object-fit:contain;">`
@@ -508,11 +511,14 @@ document.addEventListener('DOMContentLoaded', () => {
 					? `<span class="badge bg-info-subtle text-info-emphasis"><i class="fa-solid fa-link me-1"></i>Connects to existing</span>`
 					: `<span class="badge bg-warning-subtle text-warning-emphasis"><i class="fa-solid fa-plus me-1"></i>Will create new</span>`;
 				return `
-					<div class="d-flex align-items-center gap-2 mb-1 acc-match-row" data-name="${esc(a)}">
+					<div class="d-flex align-items-center gap-2 mb-1 acc-match-row" data-name="${esc(a)}" style="opacity:${included ? '1' : '0.45'};">
+						<div class="form-check mb-0" title="${included ? 'Uncheck to skip this accessory' : 'Skipped — check to include'}">
+							<input class="form-check-input acc-include-toggle" type="checkbox" data-name="${esc(a)}" ${included ? 'checked' : ''}>
+						</div>
 						${thumb}
 						<span class="small flex-shrink-0" style="min-width:160px;">${esc(a)}</span>
-						${statusHtml}
-						<select class="form-select form-select-sm acc-subject-select">
+						${included ? statusHtml : '<span class="badge bg-secondary-subtle text-secondary-emphasis"><i class="fa-solid fa-ban me-1"></i>Skipped</span>'}
+						<select class="form-select form-select-sm acc-subject-select" ${included ? '' : 'disabled'}>
 							<option value="" ${exactMatch ? '' : 'selected'}>+ Create new subject: "${esc(a)}"</option>
 							${options}
 						</select>
@@ -707,6 +713,16 @@ document.addEventListener('DOMContentLoaded', () => {
 			}
 			renderAll();
 		}
+
+		if (e.target.classList.contains('acc-include-toggle')) {
+			const name = e.target.dataset.name;
+			if (e.target.checked) {
+				g.excludedAccessories.delete(name);
+			} else {
+				g.excludedAccessories.add(name);
+			}
+			renderAll();
+		}
 	});
 
 	queueEl.addEventListener(
@@ -758,10 +774,11 @@ document.addEventListener('DOMContentLoaded', () => {
 	// override), so it's sent as-is; "+ Create new subject" is the empty
 	// value, meaning no override at all (the server does its own
 	// exact-name-match-or-create for that one, same as always).
-	function collectAccessoryOverrides(card) {
+	function collectAccessoryOverrides(card, g) {
 		const overrides = {};
 		card.querySelectorAll('.acc-match-row').forEach((row) => {
 			const name = row.dataset.name;
+			if (g.excludedAccessories.has(name)) return;
 			const select = row.querySelector('.acc-subject-select');
 			const val = select ? select.value : '';
 			if (val) overrides[name.trim().toLowerCase()] = parseInt(val, 10);
@@ -777,7 +794,8 @@ document.addEventListener('DOMContentLoaded', () => {
 			externalUrl: r.externalUrl,
 		}));
 		const includedImages = g.images.filter((url) => !g.excludedImages.has(url));
-		const accessoryOverrides = collectAccessoryOverrides(card);
+		const includedAccessories = g.accessories.filter((a) => !g.excludedAccessories.has(a));
+		const accessoryOverrides = collectAccessoryOverrides(card, g);
 
 		if (g.target.mode === 'update') {
 			// compare-row field keys are DB column names; g.merged keys are
@@ -796,7 +814,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				mode: 'update',
 				targetCatalogToyId: g.target.catalogToyId,
 				fields: { name: fields.name || g.merged.name, ...fields },
-				accessories: g.accessories,
+				accessories: includedAccessories,
 				accessoryOverrides,
 				images: includedImages,
 				itemImages: g.itemImages,
@@ -827,7 +845,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				entertainment_source_id: val('.field-entertainment-source') || null,
 				description: val('.field-description'),
 			},
-			accessories: g.accessories,
+			accessories: includedAccessories,
 			accessoryOverrides,
 			images: includedImages,
 			itemImages: g.itemImages,
