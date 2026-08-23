@@ -46,6 +46,12 @@ function openEntityPhotoModal(entityType, entityId, entityName) {
 document.addEventListener('DOMContentLoaded', () => {
     const modalEl = document.getElementById('entity-photo-modal');
     if (!modalEl) return;
+
+    // Without this, dropping a file onto #mediaDropZone never gets a
+    // preventDefault() — the browser falls back to its default "open this
+    // file" behavior instead of triggering the upload.
+    MediaPicker.initDragAndDrop();
+
     // The row's own thumbnail is rendered server-side at list-load time,
     // so it won't reflect a photo added/removed inside this modal until
     // the list is reloaded — do that whenever the modal closes.
