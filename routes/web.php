@@ -141,15 +141,20 @@ $router->get('/grading-company/migrate-on-delete-options', [GradingCompanyContro
 $router->get('/media-file',        [MediaFileController::class, 'index']);
 $router->get('/media-file/list',   [MediaFileController::class, 'list']);
 $router->post('/media-file',       [MediaFileController::class, 'store']); // Handles Uploads globally
-$router->put('/media-file/{id}',   [MediaFileController::class, 'update']);
-$router->post('/media-file/{id}',  [MediaFileController::class, 'update']);
-$router->delete('/media-file/{id}',[MediaFileController::class, 'destroy']);
 $router->get('/media-file/migrate-on-delete-options', [MediaFileController::class, 'migrateOnDeleteOptions']);
 
 $router->get('/media-file/search-json', [MediaFileController::class, 'searchJson']);
 $router->post('/media-file/link',       [MediaFileController::class, 'link']);
 $router->post('/media-file/unlink', [MediaFileController::class, 'unlink']);
 $router->get('/media-file/thumbnails',  [MediaFileController::class, 'getThumbnails']);
+
+// These {id} wildcards must stay below every literal /media-file/... route
+// above — the router matches in registration order and {id} greedily
+// matches any non-slash segment (including "link", "unlink", etc.), so a
+// wildcard route registered first would swallow those literal routes.
+$router->put('/media-file/{id}',   [MediaFileController::class, 'update']);
+$router->post('/media-file/{id}',  [MediaFileController::class, 'update']);
+$router->delete('/media-file/{id}',[MediaFileController::class, 'destroy']);
 
 $router->get('/media-tag',        [MediaTagController::class, 'index']);
 $router->get('/media-tag/list',   [MediaTagController::class, 'list']);
