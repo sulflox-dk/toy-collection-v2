@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	const batchToyLine = document.getElementById('batchToyLine');
 	const batchProductType = document.getElementById('batchProductType');
 	const batchEntertainmentSource = document.getElementById('batchEntertainmentSource');
+	const batchSubject = document.getElementById('batchSubject');
 	const btnResetBatchDefaults = document.getElementById('btnResetBatchDefaults');
 	const queueEl = document.getElementById('importQueue');
 	const queueEmpty = document.getElementById('importQueueEmpty');
@@ -34,6 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		toy_line_id: batchToyLine,
 		product_type_id: batchProductType,
 		entertainment_source_id: batchEntertainmentSource,
+		subject_id: batchSubject,
 	};
 
 	function readCookie(name) {
@@ -90,6 +92,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		if (batchToyLine.value) formData.append('toy_line_id', batchToyLine.value);
 		if (batchProductType.value) formData.append('product_type_id', batchProductType.value);
 		if (batchEntertainmentSource.value) formData.append('entertainment_source_id', batchEntertainmentSource.value);
+		if (batchSubject.value) formData.append('subject_id', batchSubject.value);
 		return ApiClient.post(baseUrl + 'importer-run/analyze-url', formData);
 	}
 
@@ -178,6 +181,9 @@ document.addEventListener('DOMContentLoaded', () => {
 		merged.universe_id = g.urlResults.find((r) => r.universe_id)?.universe_id || '';
 		merged.product_type_id = g.urlResults.find((r) => r.product_type_id)?.product_type_id || '';
 		merged.entertainment_source_id = g.urlResults.find((r) => r.entertainment_source_id)?.entertainment_source_id || '';
+		const subjectResult = g.urlResults.find((r) => r.subject_id);
+		merged.subject_id = subjectResult?.subject_id || '';
+		merged.subjectMatchReason = subjectResult?.subjectMatchReason || '';
 
 		// Free-text prose isn't worth a conflict picker if two sources
 		// disagree (they virtually always will) — just take the first
@@ -314,6 +320,33 @@ document.addEventListener('DOMContentLoaded', () => {
 		return html;
 	}
 
+	// Subjects that make sense as a toy's own "main" subject — never the
+	// Accessory/Packaging/Paperwork types, which describe what a toy comes
+	// WITH, not what it depicts.
+	function mainSubjectOptions() {
+		return IMPORTER_LOOKUPS.subjects
+			.filter((s) => IMPORTER_LOOKUPS.mainSubjectTypes.includes(s.type))
+			.map((s) => ({ id: s.id, name: `${s.name} (${s.type})` }));
+	}
+
+	function subjectMatchHint(reason) {
+		if (reason === 'default') {
+			return '<div class="small text-muted mt-1"><i class="fa-solid fa-thumbtack me-1"></i>From the default Subject set above</div>';
+		}
+		if (reason === 'name match') {
+			return '<div class="small text-info mt-1"><i class="fa-solid fa-wand-magic-sparkles me-1"></i>Auto-matched by name — check it\'s right</div>';
+		}
+		return '';
+	}
+
+	// Exact case-insensitive name match against the global subject library —
+	// used to default each detected accessory to "connect to the existing
+	// subject" instead of creating a duplicate under the same name.
+	function findSubjectByName(name) {
+		const key = name.trim().toLowerCase();
+		return IMPORTER_LOOKUPS.subjects.find((s) => s.name.trim().toLowerCase() === key);
+	}
+
 	function conflictBadge(g, fieldKey) {
 		if (!g.conflicts[fieldKey]) return '';
 		const opts = g.conflicts[fieldKey]
@@ -360,6 +393,11 @@ document.addEventListener('DOMContentLoaded', () => {
 					<label class="form-label small text-muted mb-0">Toy Line <span class="text-danger">*</span></label>
 					<select class="form-select form-select-sm field-toy-line">${selectOptionsHtml(IMPORTER_LOOKUPS.toyLines, g.merged.toy_line_id, '-- Select --')}</select>
 					${conflictBadge(g, 'toy_line_id')}
+				</div>
+				<div class="col-md-6">
+					<label class="form-label small text-muted mb-0">Subject</label>
+					<select class="form-select form-select-sm field-subject">${selectOptionsHtml(mainSubjectOptions(), g.merged.subject_id, '-- None --')}</select>
+					${subjectMatchHint(g.merged.subjectMatchReason)}
 				</div>
 				<div class="col-md-6">
 					<label class="form-label small text-muted mb-0">Product Type</label>
@@ -416,6 +454,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			compareRow('manufacturer_id', 'Manufacturer', lookupName(IMPORTER_LOOKUPS.manufacturers, cur.manufacturer_id), lookupName(IMPORTER_LOOKUPS.manufacturers, g.merged.manufacturer_id), !!g.conflicts.manufacturer_id, g),
 			compareRow('toy_line_id', 'Toy Line', lookupName(IMPORTER_LOOKUPS.toyLines, cur.toy_line_id), lookupName(IMPORTER_LOOKUPS.toyLines, g.merged.toy_line_id), !!g.conflicts.toy_line_id, g),
 			compareRow('universe_id', 'Universe', lookupName(IMPORTER_LOOKUPS.universes, cur.universe_id), lookupName(IMPORTER_LOOKUPS.universes, g.merged.universe_id), false, g),
+			compareRow('subject_id', 'Subject', lookupName(IMPORTER_LOOKUPS.subjects, cur.subject_id), lookupName(IMPORTER_LOOKUPS.subjects, g.merged.subject_id), false, g),
 			compareRow('description', 'Description', cur.description, g.merged.description, false, g),
 		].join('');
 
@@ -433,7 +472,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			<div class="small text-muted mt-2">
 				<i class="fa-solid fa-plus-circle me-1"></i>
 				${imgCount} toy photo(s) found will be <strong>added</strong>; ${accCount} accessor${accCount === 1 ? 'y' : 'ies'} found below —
-				match any that are something you already have under a different name
+				each shows which subject it'll connect to (yours to change)
 				(you have ${g.currentToyData.existingAccessories.length} accessory record(s) and ${g.currentToyData.existingImageCount} photo(s) already — nothing existing is removed).
 			</div>
 		`;
@@ -445,30 +484,15 @@ document.addEventListener('DOMContentLoaded', () => {
 	// to matching an existing accessory of the exact same name (which the
 	// backend would dedupe anyway), so the UI never hides what's about to
 	// happen.
-	function renderAccessoriesSection(g, isUpdate) {
-		if (!isUpdate) {
-			return g.accessories.length
-				? g.accessories
-						.map((a) => {
-							const imgUrl = g.itemImages[a.trim().toLowerCase()];
-							const thumb = imgUrl
-								? `<img src="${esc(imgUrl)}" class="rounded me-1" style="width:18px;height:18px;object-fit:contain;">`
-								: '';
-							return `<span class="badge bg-light text-dark border me-1 mb-1 d-inline-flex align-items-center">${thumb}${esc(a)}</span>`;
-						})
-						.join('')
-				: '<span class="text-muted fst-italic small">None detected</span>';
-		}
-
-		if (!g.currentToyData) {
-			return '<div class="text-muted small py-2"><i class="fa-solid fa-spinner fa-spin me-2"></i>Loading current accessories...</div>';
-		}
-
+	// Shows, per detected accessory, exactly what importing will do: connect
+	// to an existing subject (defaulting to an exact name match against the
+	// GLOBAL subject library, not just this toy's own items) or create a
+	// new one — either way overridable via the dropdown. Same treatment for
+	// both brand-new toys and updates to an existing one.
+	function renderAccessoriesSection(g) {
 		if (g.accessories.length === 0) {
 			return '<span class="text-muted fst-italic small">None detected</span>';
 		}
-
-		const existing = g.currentToyData.existingAccessories || [];
 
 		return g.accessories
 			.map((a) => {
@@ -476,16 +500,20 @@ document.addEventListener('DOMContentLoaded', () => {
 				const thumb = imgUrl
 					? `<img src="${esc(imgUrl)}" class="rounded me-2" style="width:24px;height:24px;object-fit:contain;">`
 					: '<span style="width:24px;display:inline-block;"></span>';
-				const exactMatchId = (existing.find((e) => e.name.trim().toLowerCase() === a.trim().toLowerCase()) || {}).id;
-				const options = existing
-					.map((e) => `<option value="${e.id}" ${e.id === exactMatchId ? 'selected' : ''}>Already have: ${esc(e.name)}</option>`)
+				const exactMatch = findSubjectByName(a);
+				const options = IMPORTER_LOOKUPS.subjects
+					.map((s) => `<option value="${s.id}" ${exactMatch && s.id === exactMatch.id ? 'selected' : ''}>${esc(s.name)} (${esc(s.type)})</option>`)
 					.join('');
+				const statusHtml = exactMatch
+					? `<span class="badge bg-info-subtle text-info-emphasis"><i class="fa-solid fa-link me-1"></i>Connects to existing</span>`
+					: `<span class="badge bg-warning-subtle text-warning-emphasis"><i class="fa-solid fa-plus me-1"></i>Will create new</span>`;
 				return `
 					<div class="d-flex align-items-center gap-2 mb-1 acc-match-row" data-name="${esc(a)}">
 						${thumb}
 						<span class="small flex-shrink-0" style="min-width:160px;">${esc(a)}</span>
-						<select class="form-select form-select-sm acc-match-select">
-							<option value="" ${exactMatchId ? '' : 'selected'}>+ Add as new accessory</option>
+						${statusHtml}
+						<select class="form-select form-select-sm acc-subject-select">
+							<option value="" ${exactMatch ? '' : 'selected'}>+ Create new subject: "${esc(a)}"</option>
 							${options}
 						</select>
 					</div>
@@ -531,7 +559,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			.map((r) => `<span class="badge bg-light text-dark border me-1">${esc(r.source_name)}</span>`)
 			.join('');
 
-		const accessoriesHtml = renderAccessoriesSection(g, isUpdate);
+		const accessoriesHtml = renderAccessoriesSection(g);
 
 		const atCap = g.urlResults.length >= MAX_SOURCES_PER_GROUP;
 
@@ -724,6 +752,23 @@ document.addEventListener('DOMContentLoaded', () => {
 	// submission-ready payload.
 	// ---------------------------------------------------------------
 
+	// Each accessory row's dropdown states, and lets the user pick, exactly
+	// which subject it connects to — a non-empty value is an explicit
+	// choice (whether that's the auto-matched default or a manual
+	// override), so it's sent as-is; "+ Create new subject" is the empty
+	// value, meaning no override at all (the server does its own
+	// exact-name-match-or-create for that one, same as always).
+	function collectAccessoryOverrides(card) {
+		const overrides = {};
+		card.querySelectorAll('.acc-match-row').forEach((row) => {
+			const name = row.dataset.name;
+			const select = row.querySelector('.acc-subject-select');
+			const val = select ? select.value : '';
+			if (val) overrides[name.trim().toLowerCase()] = parseInt(val, 10);
+		});
+		return overrides;
+	}
+
 	function collectGroupPayload(g) {
 		const card = queueEl.querySelector(`.import-group[data-group-id="${g.id}"]`);
 		const sources = g.urlResults.map((r) => ({
@@ -732,6 +777,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			externalUrl: r.externalUrl,
 		}));
 		const includedImages = g.images.filter((url) => !g.excludedImages.has(url));
+		const accessoryOverrides = collectAccessoryOverrides(card);
 
 		if (g.target.mode === 'update') {
 			// compare-row field keys are DB column names; g.merged keys are
@@ -746,32 +792,12 @@ document.addEventListener('DOMContentLoaded', () => {
 				fields[fieldKey] = pick ? pick.value : g.merged[mergedKeyFor[fieldKey] || fieldKey];
 			});
 
-			// Split found accessories into "add as new" vs. "matched to
-			// something already on the toy" based on each row's select —
-			// only the new ones get created; a matched one just gets its
-			// photo (if any) attached to the existing item instead.
-			const newAccessories = [];
-			const accessoryMatches = [];
-			card.querySelectorAll('.acc-match-row').forEach((row) => {
-				const name = row.dataset.name;
-				const select = row.querySelector('.acc-match-select');
-				const matchedId = select ? select.value : '';
-				if (matchedId) {
-					const imageUrl = g.itemImages[name.trim().toLowerCase()];
-					if (imageUrl) {
-						accessoryMatches.push({ existingItemId: parseInt(matchedId, 10), imageUrl });
-					}
-				} else {
-					newAccessories.push(name);
-				}
-			});
-
 			return {
 				mode: 'update',
 				targetCatalogToyId: g.target.catalogToyId,
 				fields: { name: fields.name || g.merged.name, ...fields },
-				accessories: newAccessories,
-				accessoryMatches,
+				accessories: g.accessories,
+				accessoryOverrides,
 				images: includedImages,
 				itemImages: g.itemImages,
 				sources,
@@ -796,11 +822,13 @@ document.addEventListener('DOMContentLoaded', () => {
 				universe_id: val('.field-universe') || null,
 				manufacturer_id: pickVal('manufacturer_id', val('.field-manufacturer')) || null,
 				toy_line_id: pickVal('toy_line_id', val('.field-toy-line')) || null,
+				subject_id: val('.field-subject') || null,
 				product_type_id: val('.field-product-type') || null,
 				entertainment_source_id: val('.field-entertainment-source') || null,
 				description: val('.field-description'),
 			},
 			accessories: g.accessories,
+			accessoryOverrides,
 			images: includedImages,
 			itemImages: g.itemImages,
 			sources,

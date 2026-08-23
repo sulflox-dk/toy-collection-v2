@@ -19,9 +19,16 @@ class ImporterRunController extends Controller
     /** Columns on catalog_toys an import is allowed to write. */
     private const WRITABLE_FIELDS = [
         'name', 'year_released', 'wave', 'assortment_sku', 'upc', 'description',
-        'universe_id', 'manufacturer_id', 'toy_line_id',
+        'universe_id', 'manufacturer_id', 'toy_line_id', 'subject_id',
         'product_type_id', 'entertainment_source_id',
     ];
+
+    /**
+     * meta_subjects.type values that make sense as a catalog toy's own
+     * "main" subject — never 'Accessory'/'Packaging'/'Paperwork', which
+     * describe what comes WITH a toy, not what the toy itself depicts.
+     */
+    private const MAIN_SUBJECT_TYPES = ['Character', 'Vehicle', 'Environment', 'Creature'];
 
     public function index(Request $request): void
     {
@@ -42,6 +49,8 @@ class ImporterRunController extends Controller
             "SELECT COUNT(*) FROM importer_sources WHERE is_active = 1"
         )->fetchColumn();
 
+        $subjects = $db->fetchAll("SELECT id, name, type, universe_id FROM meta_subjects ORDER BY name ASC");
+
         $this->render('importer_run_index', [
             'title'   => 'Run Import',
             'stats'   => $stats,
@@ -50,6 +59,8 @@ class ImporterRunController extends Controller
             'toyLines' => $toyLines,
             'productTypes' => ProductType::all(),
             'entertainmentSources' => EntertainmentSource::all(),
+            'subjects' => $subjects,
+            'mainSubjectTypes' => self::MAIN_SUBJECT_TYPES,
             // A single toy can't realistically have more contributing
             // sources than there are active drivers to scrape it from.
             'maxSourcesPerGroup' => max(1, $activeSourceCount),
@@ -76,6 +87,7 @@ class ImporterRunController extends Controller
         $batchToyLineId = (int) $request->input('toy_line_id', 0) ?: null;
         $batchProductTypeId = (int) $request->input('product_type_id', 0) ?: null;
         $batchEntertainmentSourceId = (int) $request->input('entertainment_source_id', 0) ?: null;
+        $batchSubjectId = (int) $request->input('subject_id', 0) ?: null;
 
         if ($url === '') {
             $this->json(['error' => 'Please enter a URL'], 400);
@@ -126,6 +138,16 @@ class ImporterRunController extends Controller
             $db = Database::getInstance();
             $results = [];
 
+            // Candidates for auto-matching a toy's own subject by name,
+            // longest name first so "Luke Skywalker" wins over a shorter
+            // "Luke" that happens to also be a substring of the toy's title.
+            $mainSubjectPlaceholders = implode(',', array_fill(0, count(self::MAIN_SUBJECT_TYPES), '?'));
+            $mainSubjectCandidates = $db->query("
+                SELECT id, name FROM meta_subjects
+                WHERE type IN ({$mainSubjectPlaceholders})
+                ORDER BY CHAR_LENGTH(name) DESC
+            ", self::MAIN_SUBJECT_TYPES)->fetchAll(\PDO::FETCH_ASSOC);
+
             foreach ($toysToProcess as $dto) {
                 $item = $dto->toArray();
 
@@ -156,6 +178,28 @@ class ImporterRunController extends Controller
                 $item['universe_id'] = $batchUniverseId;
                 $item['product_type_id'] = $batchProductTypeId;
                 $item['entertainment_source_id'] = $batchEntertainmentSourceId;
+
+                // Subject (the character/vehicle/etc this toy IS, as
+                // opposed to what it comes WITH). A default set for the
+                // whole batch always wins. Otherwise, try to match an
+                // EXISTING subject by name against the toy's title — but
+                // never create one here: an unmatched toy is just left
+                // unset rather than risk seeding the subject library with
+                // junk from a bad match or an odd title.
+                $item['subject_id'] = null;
+                $item['subjectMatchReason'] = null;
+                if ($batchSubjectId) {
+                    $item['subject_id'] = $batchSubjectId;
+                    $item['subjectMatchReason'] = 'default';
+                } elseif (!empty($item['name'])) {
+                    foreach ($mainSubjectCandidates as $candidate) {
+                        if (stripos($item['name'], $candidate['name']) !== false) {
+                            $item['subject_id'] = (int) $candidate['id'];
+                            $item['subjectMatchReason'] = 'name match';
+                            break;
+                        }
+                    }
+                }
 
                 $item['manufacturer_id'] = null;
                 if (!empty($item['manufacturer'])) {
@@ -290,11 +334,10 @@ class ImporterRunController extends Controller
                 $accessories = is_array($group['accessories'] ?? null) ? $group['accessories'] : [];
                 $images = is_array($group['images'] ?? null) ? $group['images'] : [];
                 $itemImages = is_array($group['itemImages'] ?? null) ? $group['itemImages'] : [];
-                // Found accessories the user matched to something they
-                // already have (instead of letting it create a duplicate
-                // under a different name) — just the photo, if any, still
-                // gets attached, to the existing item.
-                $accessoryMatches = is_array($group['accessoryMatches'] ?? null) ? $group['accessoryMatches'] : [];
+                // Per-accessory subject the user explicitly picked in the
+                // review UI (lowercased scraped name => meta_subjects id),
+                // overriding the default exact-name-match-or-create.
+                $accessoryOverrides = is_array($group['accessoryOverrides'] ?? null) ? $group['accessoryOverrides'] : [];
                 $sources = is_array($group['sources'] ?? null) ? $group['sources'] : [];
 
                 if (empty($sources)) {
@@ -356,21 +399,13 @@ class ImporterRunController extends Controller
                 }
 
                 $catalogUniverseId = $db->fetch("SELECT universe_id FROM catalog_toys WHERE id = ?", [$catalogToyId])['universe_id'] ?? null;
-                $itemIdsByName = $this->addAccessories($db, $catalogToyId, $accessories, $catalogUniverseId ? (int) $catalogUniverseId : null);
+                $itemIdsByName = $this->addAccessories($db, $catalogToyId, $accessories, $catalogUniverseId ? (int) $catalogUniverseId : null, $accessoryOverrides);
                 $this->addImages($db, $images, 'catalog_toys', $catalogToyId);
 
                 foreach ($itemImages as $accessoryName => $imageUrl) {
                     $itemId = $itemIdsByName[mb_strtolower(trim((string) $accessoryName))] ?? null;
                     if ($itemId && $imageUrl) {
                         $this->addImages($db, [$imageUrl], 'catalog_toy_items', $itemId);
-                    }
-                }
-
-                foreach ($accessoryMatches as $match) {
-                    $existingItemId = (int) ($match['existingItemId'] ?? 0);
-                    $imageUrl = (string) ($match['imageUrl'] ?? '');
-                    if ($existingItemId && $imageUrl) {
-                        $this->addImages($db, [$imageUrl], 'catalog_toy_items', $existingItemId);
                     }
                 }
 
@@ -418,68 +453,103 @@ class ImporterRunController extends Controller
     }
 
     /**
-     * Find-or-create a meta_subjects row per accessory name and attach it to
-     * the toy — skipping any name the toy already has, so this is safe to
-     * call for both brand-new toys and top-ups of existing ones. Returns
-     * every accessory name (lowercased) mapped to its catalog_toy_items id,
-     * whether newly created here or already present, so a caller can attach
-     * a per-accessory photo to the right item either way.
+     * Attach each scraped accessory name to the toy as a catalog_toy_items
+     * row, resolving a meta_subjects row for it either from an explicit
+     * per-accessory override (the user picked an existing subject in the
+     * review UI) or, failing that, an exact-name match — creating a new
+     * 'Accessory' subject only as a last resort. Safe to call for both
+     * brand-new toys and top-ups of existing ones: a subject already
+     * attached to this toy (whether matched by override or by name) is
+     * reused rather than duplicated. Returns every SCRAPED accessory name
+     * (lowercased) mapped to its catalog_toy_items id, so a caller can
+     * attach a per-accessory photo to the right item regardless of which
+     * path resolved it.
      *
-     * A newly-created subject is stamped with the toy's own universe_id —
-     * the catalog wizard's subject dropdown filters by universe, so a
-     * subject left without one would be invisible to it (and get silently
-     * un-selected) even though its catalog_toy_items row is correct. A
-     * matched existing subject that's missing its universe_id is backfilled
-     * the same way, so legacy rows self-heal the next time they're touched.
+     * $overrides maps a lowercased scraped accessory name to the
+     * meta_subjects id the user explicitly chose for it in the review UI,
+     * overriding the default name-match/create behavior.
+     *
+     * A newly-created (or newly-matched) subject is stamped with the toy's
+     * own universe_id — the catalog wizard's subject dropdown filters by
+     * universe, so a subject left without one would be invisible to it
+     * (and get silently un-selected) even though its catalog_toy_items row
+     * is correct. A matched existing subject that's missing its
+     * universe_id is backfilled the same way, so legacy rows self-heal the
+     * next time they're touched.
      */
-    private function addAccessories(Database $db, int $catalogToyId, array $accessoryNames, ?int $universeId = null): array
+    private function addAccessories(Database $db, int $catalogToyId, array $accessoryNames, ?int $universeId = null, array $overrides = []): array
     {
-        $existingRows = $db->query("
-            SELECT cti.id AS item_id, s.name FROM catalog_toy_items cti
-            JOIN meta_subjects s ON cti.subject_id = s.id
-            WHERE cti.catalog_toy_id = ?
-        ", [$catalogToyId])->fetchAll(\PDO::FETCH_ASSOC);
+        $existingRows = $db->query(
+            "SELECT id AS item_id, subject_id FROM catalog_toy_items WHERE catalog_toy_id = ?",
+            [$catalogToyId]
+        )->fetchAll(\PDO::FETCH_ASSOC);
 
-        $itemIdsByName = [];
+        $itemIdBySubjectId = [];
         foreach ($existingRows as $row) {
-            $itemIdsByName[mb_strtolower($row['name'])] = (int) $row['item_id'];
+            $itemIdBySubjectId[(int) $row['subject_id']] = (int) $row['item_id'];
         }
 
-        if (empty($accessoryNames)) return $itemIdsByName;
+        $itemIdsByScrapedName = [];
+
+        if (empty($accessoryNames)) return $itemIdsByScrapedName;
 
         foreach (array_unique($accessoryNames) as $accessoryName) {
             $accessoryName = trim($accessoryName);
             $key = mb_strtolower($accessoryName);
-            if ($accessoryName === '' || isset($itemIdsByName[$key])) {
-                continue;
+            if ($accessoryName === '') continue;
+
+            $subjectId = null;
+            $overrideId = isset($overrides[$key]) ? (int) $overrides[$key] : 0;
+            if ($overrideId) {
+                $subject = $db->fetch("SELECT id, universe_id FROM meta_subjects WHERE id = ?", [$overrideId]);
+                if ($subject) {
+                    $subjectId = (int) $subject['id'];
+                    if ($universeId && !$subject['universe_id']) {
+                        $db->execute("UPDATE meta_subjects SET universe_id = ? WHERE id = ?", [$universeId, $subjectId]);
+                    }
+                }
+                // A stale override (subject deleted since the page loaded)
+                // just falls through to the normal name-match/create path.
             }
 
-            $subject = $db->fetch("SELECT id, universe_id FROM meta_subjects WHERE name = ? LIMIT 1", [$accessoryName]);
+            if (!$subjectId) {
+                $subject = $db->fetch("SELECT id, universe_id FROM meta_subjects WHERE name = ? LIMIT 1", [$accessoryName]);
 
-            if ($subject) {
-                $subjectId = (int) $subject['id'];
-                if ($universeId && !$subject['universe_id']) {
-                    $db->execute("UPDATE meta_subjects SET universe_id = ? WHERE id = ?", [$universeId, $subjectId]);
+                if ($subject) {
+                    $subjectId = (int) $subject['id'];
+                    if ($universeId && !$subject['universe_id']) {
+                        $db->execute("UPDATE meta_subjects SET universe_id = ? WHERE id = ?", [$universeId, $subjectId]);
+                    }
+                } else {
+                    $subjectSlug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $accessoryName), '-'))
+                        . '-' . time() . '-' . mt_rand(100, 999);
+
+                    $db->execute(
+                        "INSERT INTO meta_subjects (name, slug, type, universe_id) VALUES (?, ?, 'Accessory', ?)",
+                        [$accessoryName, $subjectSlug, $universeId]
+                    );
+                    $subjectId = $db->lastInsertId();
                 }
-            } else {
-                $subjectSlug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $accessoryName), '-'))
-                    . '-' . time() . '-' . mt_rand(100, 999);
+            }
 
-                $db->execute(
-                    "INSERT INTO meta_subjects (name, slug, type, universe_id) VALUES (?, ?, 'Accessory', ?)",
-                    [$accessoryName, $subjectSlug, $universeId]
-                );
-                $subjectId = $db->lastInsertId();
+            if (isset($itemIdBySubjectId[$subjectId])) {
+                // Already attached to this toy (whether from before, or an
+                // earlier accessory in this same loop resolved to the same
+                // subject) — reuse it instead of a duplicate row.
+                $itemIdsByScrapedName[$key] = $itemIdBySubjectId[$subjectId];
+                continue;
             }
 
             $db->execute(
                 "INSERT INTO catalog_toy_items (catalog_toy_id, subject_id, description) VALUES (?, ?, NULL)",
                 [$catalogToyId, $subjectId]
             );
-            $itemIdsByName[$key] = (int) $db->lastInsertId();
+            $newItemId = (int) $db->lastInsertId();
+            $itemIdBySubjectId[$subjectId] = $newItemId;
+            $itemIdsByScrapedName[$key] = $newItemId;
         }
 
-        return $itemIdsByName;
+        return $itemIdsByScrapedName;
     }
 
     /**

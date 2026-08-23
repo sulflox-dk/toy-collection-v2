@@ -20,7 +20,7 @@ class EmptyDatabaseController extends Controller
         3 => [
             'meta_subjects', 'meta_entertainment_sources', 'meta_toy_lines', 'meta_product_types',
             'meta_manufacturers', 'meta_universes', 'meta_acquisition_statuses', 'meta_condition_grades',
-            'meta_grading_companies', 'meta_grader_tiers', 'meta_packaging_types',
+            'meta_grading_companies', 'meta_grader_tiers', 'meta_packaging_types', 'media_tags',
         ],
     ];
 
@@ -50,6 +50,7 @@ class EmptyDatabaseController extends Controller
         'meta_grading_companies' => 'Grading companies',
         'meta_grader_tiers' => 'Grader tiers',
         'meta_packaging_types' => 'Packaging types',
+        'media_tags' => 'Media tags',
     ];
 
     private const LEVEL_LABELS = [
