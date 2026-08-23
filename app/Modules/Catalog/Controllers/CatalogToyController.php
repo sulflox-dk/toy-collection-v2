@@ -11,6 +11,13 @@ use App\Modules\Media\Models\MediaTag;
 
 class CatalogToyController extends Controller
 {
+    /**
+     * meta_subjects.type values that make sense as a catalog toy's own
+     * "main" subject — never 'Accessory'/'Packaging'/'Paperwork', which
+     * describe what comes WITH a toy, not what the toy itself depicts.
+     */
+    private const MAIN_SUBJECT_TYPES = ['Character', 'Vehicle', 'Environment', 'Creature'];
+
     public function index(Request $request): void
     {
         $db = Database::getInstance();
@@ -114,7 +121,12 @@ class CatalogToyController extends Controller
         $isEdit = false;
 
         if ($id > 0) {
-            $toy = $db->query("SELECT * FROM catalog_toys WHERE id = ?", [$id])->fetch(\PDO::FETCH_ASSOC);
+            $toy = $db->query("
+                SELECT ct.*, s.name AS subject_name, s.type AS subject_type
+                FROM catalog_toys ct
+                LEFT JOIN meta_subjects s ON ct.subject_id = s.id
+                WHERE ct.id = ?
+            ", [$id])->fetch(\PDO::FETCH_ASSOC);
             if ($toy) {
                 $isEdit = true;
                 $universeId = $toy['universe_id']; // Override with the saved universe
@@ -149,6 +161,7 @@ class CatalogToyController extends Controller
             'productTypes' => $productTypes,
             'entertainmentSources' => $entertainmentSources,
             'subjects' => $subjects,
+            'mainSubjectTypes' => self::MAIN_SUBJECT_TYPES,
             'toy' => $toy,
             'items' => $items,
             'isEdit' => $isEdit
@@ -168,7 +181,8 @@ class CatalogToyController extends Controller
         $toyLineId = (int) $request->input('toy_line_id', 0) ?: null;
         $productTypeId = (int) $request->input('product_type_id', 0) ?: null;
         $entertainmentSourceId = (int) $request->input('entertainment_source_id', 0) ?: null;
-        
+        $subjectId = (int) $request->input('subject_id', 0) ?: null;
+
         $name = trim($request->input('name', ''));
         $yearReleased = (int) $request->input('year_released', 0) ?: null;
         $wave = trim($request->input('wave', ''));
@@ -184,16 +198,16 @@ class CatalogToyController extends Controller
             if ($id > 0) {
                 $sql = "UPDATE catalog_toys SET
                         universe_id = ?, manufacturer_id = ?, toy_line_id = ?, product_type_id = ?,
-                        entertainment_source_id = ?, name = ?, year_released = ?, wave = ?,
+                        entertainment_source_id = ?, subject_id = ?, name = ?, year_released = ?, wave = ?,
                         assortment_sku = ?, upc = ?, description = ?
                         WHERE id = ?";
-                $db->query($sql, [$universeId, $manufacturerId, $toyLineId, $productTypeId, $entertainmentSourceId, $name, $yearReleased, $wave, $assortmentSku, $upc, $description, $id]);
+                $db->query($sql, [$universeId, $manufacturerId, $toyLineId, $productTypeId, $entertainmentSourceId, $subjectId, $name, $yearReleased, $wave, $assortmentSku, $upc, $description, $id]);
             } else {
                 $slug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $name), '-')) . '-' . time();
                 $sql = "INSERT INTO catalog_toys
-                        (universe_id, manufacturer_id, toy_line_id, product_type_id, entertainment_source_id, name, slug, year_released, wave, assortment_sku, upc, description)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-                $db->query($sql, [$universeId, $manufacturerId, $toyLineId, $productTypeId, $entertainmentSourceId, $name, $slug, $yearReleased, $wave, $assortmentSku, $upc, $description]);
+                        (universe_id, manufacturer_id, toy_line_id, product_type_id, entertainment_source_id, subject_id, name, slug, year_released, wave, assortment_sku, upc, description)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                $db->query($sql, [$universeId, $manufacturerId, $toyLineId, $productTypeId, $entertainmentSourceId, $subjectId, $name, $slug, $yearReleased, $wave, $assortmentSku, $upc, $description]);
                 $id = $db->lastInsertId();
             }
 

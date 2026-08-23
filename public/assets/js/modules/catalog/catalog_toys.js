@@ -72,6 +72,7 @@ const CatalogWizard = {
 			toyLines: JSON.parse(form.dataset.toyLines || '[]'),
 			sources: JSON.parse(form.dataset.sources || '[]'),
 			subjects: JSON.parse(form.dataset.subjects || '[]'),
+			mainSubjectTypes: JSON.parse(form.dataset.mainSubjectTypes || '[]'),
 		};
 
 		// Register the subject selector with SearchableDropdown
@@ -93,6 +94,31 @@ const CatalogWizard = {
 			rowSelector: '.item-row',
 			placeholder: 'Select Subject...',
 			emptyText: 'No subjects found.',
+		});
+
+		// The toy's own "main" subject (who/what it depicts) — separate from
+		// the item subjects above (what it comes WITH). Never Accessory/
+		// Packaging/Paperwork types, and optional, so no 'required'.
+		SearchableDropdown.register('mainSubject', {
+			getItems: () => {
+				const univId =
+					parseInt(
+						document.getElementById('catalog_universe_id').value,
+					) || 0;
+				return this.meta.subjects.filter(
+					(s) =>
+						s.universe_id == univId &&
+						this.meta.mainSubjectTypes.includes(s.type),
+				);
+			},
+			searchFields: ['name', 'type'],
+			displayName: 'name',
+			displayMeta: 'type',
+			valueField: 'id',
+			inputSelector: '#catalog_subject_id',
+			rowSelector: null,
+			placeholder: 'None',
+			emptyText: 'No subjects found for this universe.',
 		});
 
 		const uniSelect = document.getElementById('catalog_universe_id');
@@ -152,6 +178,10 @@ const CatalogWizard = {
 		// 3. Sync Item Subject dropdowns if any exist
 		this.updateItemSubjects(isInit);
 
+		// 3b. Same re-validation for the toy's own main subject — on init,
+		// trust whatever the server rendered.
+		if (!isInit) SearchableDropdown.validateSelections('mainSubject');
+
 		// 4. Cascade to Manufacturer change
 		this.handleManufacturerChange(isInit);
 	},
@@ -196,6 +226,16 @@ const CatalogWizard = {
 			if (item.id == currentVal) opt.selected = true;
 			selectElement.appendChild(opt);
 		});
+	},
+
+	// Resets the toy's main subject back to "None" — the picker itself has
+	// no built-in way to select nothing, since every result IS a subject.
+	clearMainSubject(iconEl) {
+		const wrapper = iconEl.closest('.sd-wrapper');
+		wrapper.querySelector('#catalog_subject_id').value = '';
+		wrapper.querySelector('.sd-display-name').textContent = 'None';
+		const meta = wrapper.querySelector('.sd-display-meta');
+		if (meta) meta.style.display = 'none';
 	},
 
 	// --- ITEM & SUBJECT LOGIC ---
