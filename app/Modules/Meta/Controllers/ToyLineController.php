@@ -130,7 +130,10 @@ class ToyLineController extends Controller
         ]);
 
         $db = Database::getInstance();
-        $sql = "SELECT t.*, m.name as manufacturer_name, u.name as universe_name
+        $sql = "SELECT t.*, m.name as manufacturer_name, u.name as universe_name,
+                (SELECT f.filepath FROM media_links ml JOIN media_files f ON ml.media_file_id = f.id
+                 WHERE ml.entity_type = 'toy_lines' AND ml.entity_id = t.id
+                 ORDER BY ml.is_featured DESC, ml.sort_order ASC LIMIT 1) AS image_path
                 FROM meta_toy_lines t
                 LEFT JOIN meta_manufacturers m ON t.manufacturer_id = m.id
                 LEFT JOIN meta_universes u ON t.universe_id = u.id

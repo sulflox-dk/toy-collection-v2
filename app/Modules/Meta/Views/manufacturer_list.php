@@ -1,9 +1,10 @@
 <?= $this->renderPartial('common/table_list', [
     'headers' => [
+        'Photo' => ['width' => '60px', 'class' => 'text-center'],
         'Name' => [
-            'width' => '30%', 
+            'width' => '30%',
             'class' => 'ps-3' // Left align + padding
-        ], 
+        ],
         'Dashboard' => [
             'width' => '20%', 
             'class' => 'text-center' // Center align

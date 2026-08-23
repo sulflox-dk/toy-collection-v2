@@ -124,9 +124,15 @@ class ManufacturerController extends Controller
         
         $db = Database::getInstance();
         $updatedItem['lines_count'] = $db->query(
-            "SELECT COUNT(*) FROM meta_toy_lines WHERE manufacturer_id = ?", 
+            "SELECT COUNT(*) FROM meta_toy_lines WHERE manufacturer_id = ?",
             [$id]
         )->fetchColumn();
+        $updatedItem['image_path'] = $db->query(
+            "SELECT f.filepath FROM media_links ml JOIN media_files f ON ml.media_file_id = f.id
+             WHERE ml.entity_type = 'manufacturers' AND ml.entity_id = ?
+             ORDER BY ml.is_featured DESC, ml.sort_order ASC LIMIT 1",
+            [$id]
+        )->fetchColumn() ?: null;
 
         ob_start();
         $this->renderPartial('manufacturer_row', ['m' => $updatedItem]);

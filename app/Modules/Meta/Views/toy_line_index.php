@@ -107,9 +107,11 @@ echo $this->renderPartial('common/index_header', [
     </div>
 </div>
 
+<?= $this->renderPartial('common/entity_photo_modal') ?>
+
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    new EntityManager('toy-line', {
+    window.currentEntityManager = new EntityManager('toy-line', {
         mode: 'html',
         endpoint: '/toy-line',
         listUrl: '/toy-line/list',

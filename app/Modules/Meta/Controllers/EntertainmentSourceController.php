@@ -146,7 +146,11 @@ class EntertainmentSourceController extends Controller
         ]);
 
         $db = Database::getInstance();
-        $sql = "SELECT e.*, u.name as universe_name FROM meta_entertainment_sources e LEFT JOIN meta_universes u ON e.universe_id = u.id WHERE e.id = ?";
+        $sql = "SELECT e.*, u.name as universe_name,
+                (SELECT f.filepath FROM media_links ml JOIN media_files f ON ml.media_file_id = f.id
+                 WHERE ml.entity_type = 'entertainment_sources' AND ml.entity_id = e.id
+                 ORDER BY ml.is_featured DESC, ml.sort_order ASC LIMIT 1) AS image_path
+                FROM meta_entertainment_sources e LEFT JOIN meta_universes u ON e.universe_id = u.id WHERE e.id = ?";
         $updated = $db->query($sql, [$id])->fetch(\PDO::FETCH_ASSOC);
 
         ob_start();

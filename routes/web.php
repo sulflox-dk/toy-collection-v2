@@ -26,6 +26,8 @@ use App\Modules\Importer\Controllers\ImporterRunController;
 use App\Modules\Importer\Controllers\ImporterLogController;
 use App\Modules\Importer\Controllers\ImporterGuideController;
 use App\Modules\Showcase\Controllers\ShowcaseController;
+use App\Modules\Backup\Controllers\BackupController;
+use App\Modules\DataTools\Controllers\EmptyDatabaseController;
 
 
 /** @var Router $router */
@@ -212,3 +214,18 @@ $router->get('/importer-log',           [ImporterLogController::class, 'index'])
 $router->get('/importer-log/list',      [ImporterLogController::class, 'list']);
 
 $router->get('/importer-guide',         [ImporterGuideController::class, 'index']);
+
+// ==========================================================
+// BACKUP & RESTORE
+// ==========================================================
+$router->admin('/backup');
+$router->get('/backup',                 [BackupController::class, 'index']);
+$router->get('/backup/download',        [BackupController::class, 'download']);
+$router->post('/backup/restore',        [BackupController::class, 'restore']);
+
+// ==========================================================
+// EMPTY DATABASE
+// ==========================================================
+$router->admin('/empty-database');
+$router->get('/empty-database',                 [EmptyDatabaseController::class, 'index']);
+$router->post('/empty-database/level/{level}',  [EmptyDatabaseController::class, 'empty']);

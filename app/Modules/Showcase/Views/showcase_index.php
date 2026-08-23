@@ -122,6 +122,8 @@ main{max-width:1240px; margin:0 auto; padding:0 1.6rem 5rem;}
 }
 .exhibit:hover, .exhibit:focus-visible{transform:translateY(-4px); box-shadow:0 18px 34px var(--shadow);}
 .exhibit canvas{position:absolute; inset:0; width:100%; height:100%; display:block;}
+.exhibit img.exhibit-photo{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block;}
+.exhibit .exhibit-scrim{position:absolute; inset:0; z-index:1; background:linear-gradient(180deg, rgba(0,0,0,0) 42%, rgba(0,0,0,0.78) 100%); pointer-events:none;}
 .exhibit .exhibit-body{position:relative; z-index:2; padding:1.4rem 1.5rem 1.5rem; color:#F3EFE4;}
 .exhibit .exhibit-eyebrow{font-family:var(--font-mono); font-size:0.7rem; letter-spacing:0.16em; text-transform:uppercase; opacity:0.82;}
 .exhibit h2{font-size:2.1rem; color:#fff; margin-top:0.25rem; line-height:0.95;}
@@ -634,8 +636,11 @@ function renderHub(){
     <div class="exhibits">
       ${UNIVERSES.map((u,i)=>{
         const list = COLLECTION.filter(t=>t.universeSlug===u.slug);
+        const art = u.image
+          ? `<img class="exhibit-photo" src="${escapeHtml(u.image)}" alt=""><div class="exhibit-scrim"></div>`
+          : `<canvas></canvas>`;
         return `<button class="exhibit" data-slug="${escapeHtml(u.slug)}" aria-label="Browse ${escapeHtml(u.name)}">
-          <canvas></canvas>
+          ${art}
           <span class="exhibit-count">${list.length} toy${list.length===1?'':'s'}</span>
           <div class="exhibit-body">
             <div class="exhibit-eyebrow">Case ${i+1}</div>
@@ -649,8 +654,11 @@ function renderHub(){
   `;
   el.querySelectorAll('.exhibit').forEach(btn=>{
     const slug = btn.getAttribute('data-slug');
-    const sample = COLLECTION.find(t=>t.universeSlug===slug);
-    if (sample) paintSpecimen(btn.querySelector('canvas'), sample, 'front', {bare:true});
+    const canvas = btn.querySelector('canvas');
+    if (canvas) {
+      const sample = COLLECTION.find(t=>t.universeSlug===slug);
+      if (sample) paintSpecimen(canvas, sample, 'front', {bare:true});
+    }
     btn.addEventListener('click', ()=>{ location.hash = '#/universe/'+slug; });
   });
 }
