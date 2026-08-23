@@ -6,6 +6,7 @@ $jsonManufacturers = json_encode($manufacturers ?? [], JSON_HEX_APOS | JSON_HEX_
 $jsonToyLines = json_encode($toyLines ?? [], JSON_HEX_APOS | JSON_HEX_QUOT);
 $jsonSources = json_encode($entertainmentSources ?? [], JSON_HEX_APOS | JSON_HEX_QUOT);
 $jsonSubjects = json_encode($subjects ?? [], JSON_HEX_APOS | JSON_HEX_QUOT);
+$jsonMainSubjectTypes = json_encode($mainSubjectTypes ?? [], JSON_HEX_APOS | JSON_HEX_QUOT);
 ?>
 
 <div class="modal-header bg-dark text-white border-0">
@@ -20,6 +21,7 @@ $jsonSubjects = json_encode($subjects ?? [], JSON_HEX_APOS | JSON_HEX_QUOT);
       data-toy-lines='<?= $jsonToyLines ?>'
       data-sources='<?= $jsonSources ?>'
       data-subjects='<?= $jsonSubjects ?>'
+      data-main-subject-types='<?= $jsonMainSubjectTypes ?>'
       onsubmit="event.preventDefault(); CatalogWizard.submitStep2();">
 
     <?= $csrfField() ?>
@@ -64,6 +66,38 @@ $jsonSubjects = json_encode($subjects ?? [], JSON_HEX_APOS | JSON_HEX_QUOT);
                         <div class="col-md-4">
                             <label class="form-label small text-muted mb-1">Release Year *</label>
                             <input type="number" class="form-control" name="year_released" value="<?= $toy['year_released'] ?? '' ?>" placeholder="e.g. 1978" required>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small text-muted mb-1">Subject <span class="text-muted fw-normal">(who/what this toy depicts, e.g. "Luke Skywalker")</span></label>
+                            <div class="sd-wrapper position-relative" data-sd="mainSubject">
+                                <input type="hidden" id="catalog_subject_id" name="subject_id" value="<?= $toy['subject_id'] ?? '' ?>">
+                                <div class="d-flex align-items-center border rounded px-2 py-1 bg-white shadow-sm"
+                                     onclick="SearchableDropdown.toggle(this)"
+                                     style="cursor: pointer; min-height: 38px;">
+                                    <div class="me-2 text-muted d-flex align-items-center justify-content-center">
+                                        <i class="fa-solid fa-user-astronaut fs-5"></i>
+                                    </div>
+                                    <div class="flex-grow-1 lh-1">
+                                        <div class="sd-display-name fw-medium small text-truncate"><?= htmlspecialchars($toy['subject_name'] ?? 'None') ?></div>
+                                        <div class="sd-display-meta text-muted" style="font-size: 0.7rem; display: <?= !empty($toy['subject_type']) ? 'block' : 'none' ?>;"><?= htmlspecialchars($toy['subject_type'] ?? '') ?></div>
+                                    </div>
+                                    <i class="fa-solid fa-xmark text-muted small ms-2 me-1" title="Clear" onclick="event.stopPropagation(); CatalogWizard.clearMainSubject(this);"></i>
+                                    <i class="fa-solid fa-chevron-down text-muted small ms-2"></i>
+                                </div>
+
+                                <div class="sd-dropdown position-absolute w-100 bg-white border rounded shadow-lg mt-1 d-none" style="z-index: 1050; top: 100%;">
+                                    <div class="p-2 border-bottom bg-light">
+                                        <input type="text" class="form-control form-control-sm sd-search"
+                                               placeholder="Type to search..."
+                                               onkeyup="SearchableDropdown.filter(this)"
+                                               autocomplete="off">
+                                    </div>
+                                    <div class="sd-results overflow-auto" style="max-height: 250px;"></div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
