@@ -127,6 +127,10 @@ document.addEventListener('DOMContentLoaded', () => {
 			// this lets the user drop the ones that turned out to be
 			// duplicates instead of importing all of them as separate items.
 			excludedAccessories: new Set(),
+			// Same idea again for attributed descriptions — keyed by source
+			// URL, since each description is tied 1:1 to the page it came
+			// from.
+			excludedDescriptions: new Set(),
 		};
 		recomputeMerge(g);
 		autoDetectTarget(g);
@@ -191,10 +195,25 @@ document.addEventListener('DOMContentLoaded', () => {
 		merged.subject_id = subjectResult?.subject_id || '';
 		merged.subjectMatchReason = subjectResult?.subjectMatchReason || '';
 
-		// Free-text prose isn't worth a conflict picker if two sources
-		// disagree (they virtually always will) — just take the first
-		// source's description and let it be edited directly.
+		// The Description field (catalog_toys.description) is the
+		// collector's own free-text notes, not an attributed import — no
+		// conflict picker, just take the first source's text as a
+		// convenience starting point the user can edit into their own
+		// words. The attributed per-source descriptions below are separate
+		// and always keep all of them.
 		merged.description = g.urlResults.find((r) => r.description)?.description || '';
+
+		// One attributed description per contributing source, kept
+		// separate rather than merged — each is credited to where it came
+		// from, and (per product decision) every one of them is wanted,
+		// not just whichever source's text happens to win a pick.
+		const descriptions = [];
+		g.urlResults.forEach((r) => {
+			const text = (r.description || '').trim();
+			if (text) {
+				descriptions.push({ text, sourceUrl: r.externalUrl, sourceName: r.source_name });
+			}
+		});
 
 		// Pooled list fields
 		const accessories = [];
@@ -209,25 +228,33 @@ document.addEventListener('DOMContentLoaded', () => {
 			});
 		});
 
+		// Images, plus which page each one was found on (first source to
+		// contribute a given URL "owns" the credit for it), so it can be
+		// recorded on the resulting media_files row.
 		const images = [];
+		const imageSources = {};
 		const seenImg = new Set();
 		g.urlResults.forEach((r) => {
 			(r.images || []).forEach((url) => {
 				if (!seenImg.has(url)) {
 					seenImg.add(url);
 					images.push(url);
+					imageSources[url] = { sourceUrl: r.externalUrl, sourceName: r.source_name };
 				}
 			});
 		});
 
 		// Per-accessory photos (only some sites have these) — keyed by the
-		// same lowercased name used above, first source to supply one wins.
+		// same lowercased name used above, first source to supply one wins
+		// (and that source is also who gets credited for the photo).
 		const itemImages = {};
+		const itemImageSources = {};
 		g.urlResults.forEach((r) => {
 			Object.entries(r.itemImages || {}).forEach(([name, url]) => {
 				const key = name.trim().toLowerCase();
 				if (key && url && !itemImages[key]) {
 					itemImages[key] = url;
+					itemImageSources[key] = { sourceUrl: r.externalUrl, sourceName: r.source_name };
 				}
 			});
 		});
@@ -236,7 +263,10 @@ document.addEventListener('DOMContentLoaded', () => {
 		g.conflicts = conflicts;
 		g.accessories = accessories;
 		g.images = images;
+		g.imageSources = imageSources;
 		g.itemImages = itemImages;
+		g.itemImageSources = itemImageSources;
+		g.descriptions = descriptions;
 	}
 
 	// If any contributing URL matched an existing toy, suggest that as the
@@ -549,6 +579,41 @@ document.addEventListener('DOMContentLoaded', () => {
 			.join('');
 	}
 
+	// Every source's description is kept and shown separately — never
+	// merged into one — each with its own credit line and include/exclude
+	// checkbox, same pattern as photos and accessories above.
+	function renderDescriptionsSection(g) {
+		if (g.descriptions.length === 0) {
+			return '<span class="text-muted fst-italic small">None detected</span>';
+		}
+
+		const alreadySaved = new Set(g.currentToyData?.existingDescriptionSources || []);
+
+		return g.descriptions
+			.map((d) => {
+				const included = !g.excludedDescriptions.has(d.sourceUrl);
+				const savedBadge = alreadySaved.has(d.sourceUrl)
+					? '<span class="badge bg-secondary-subtle text-secondary-emphasis ms-1">Already saved — re-importing updates it</span>'
+					: '';
+				return `
+					<div class="border rounded p-2 mb-2 desc-row" data-source-url="${esc(d.sourceUrl)}" style="opacity:${included ? '1' : '0.45'};">
+						<div class="d-flex align-items-center justify-content-between mb-1">
+							<div class="small">
+								<i class="fa-solid fa-quote-left me-1 text-muted"></i>
+								<a href="${esc(d.sourceUrl)}" target="_blank" rel="noopener">${esc(d.sourceName)}</a>
+								${savedBadge}
+							</div>
+							<div class="form-check form-switch mb-0" title="${included ? 'Uncheck to skip this description' : 'Excluded — check to include'}">
+								<input class="form-check-input desc-include-toggle" type="checkbox" data-source-url="${esc(d.sourceUrl)}" ${included ? 'checked' : ''}>
+							</div>
+						</div>
+						<div class="small text-muted" style="max-height:120px; overflow-y:auto; white-space:pre-wrap;">${esc(d.text)}</div>
+					</div>
+				`;
+			})
+			.join('');
+	}
+
 	function renderGroupCard(g) {
 		const isUpdate = g.target.mode === 'update';
 		const badge = isUpdate
@@ -566,6 +631,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			.join('');
 
 		const accessoriesHtml = renderAccessoriesSection(g);
+		const descriptionsHtml = renderDescriptionsSection(g);
 
 		const atCap = g.urlResults.length >= MAX_SOURCES_PER_GROUP;
 
@@ -610,6 +676,11 @@ document.addEventListener('DOMContentLoaded', () => {
 							<div class="mt-2 pt-2 border-top">
 								<small class="text-uppercase text-muted fw-bold">Photos found (${includedImages.length}/${g.images.length} selected)</small>
 								<div class="d-flex flex-wrap gap-2 mt-1">${renderPhotosSection(g)}</div>
+							</div>
+
+							<div class="mt-2 pt-2 border-top">
+								<small class="text-uppercase text-muted fw-bold">Descriptions found</small>
+								<div class="mt-1">${descriptionsHtml}</div>
 							</div>
 						</div>
 					</div>
@@ -723,6 +794,16 @@ document.addEventListener('DOMContentLoaded', () => {
 			}
 			renderAll();
 		}
+
+		if (e.target.classList.contains('desc-include-toggle')) {
+			const sourceUrl = e.target.dataset.sourceUrl;
+			if (e.target.checked) {
+				g.excludedDescriptions.delete(sourceUrl);
+			} else {
+				g.excludedDescriptions.add(sourceUrl);
+			}
+			renderAll();
+		}
 	});
 
 	queueEl.addEventListener(
@@ -796,6 +877,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		const includedImages = g.images.filter((url) => !g.excludedImages.has(url));
 		const includedAccessories = g.accessories.filter((a) => !g.excludedAccessories.has(a));
 		const accessoryOverrides = collectAccessoryOverrides(card, g);
+		const descriptions = g.descriptions.filter((d) => !g.excludedDescriptions.has(d.sourceUrl));
 
 		if (g.target.mode === 'update') {
 			// compare-row field keys are DB column names; g.merged keys are
@@ -817,7 +899,10 @@ document.addEventListener('DOMContentLoaded', () => {
 				accessories: includedAccessories,
 				accessoryOverrides,
 				images: includedImages,
+				imageSources: g.imageSources,
 				itemImages: g.itemImages,
+				itemImageSources: g.itemImageSources,
+				descriptions,
 				sources,
 			};
 		}
@@ -848,7 +933,10 @@ document.addEventListener('DOMContentLoaded', () => {
 			accessories: includedAccessories,
 			accessoryOverrides,
 			images: includedImages,
+			imageSources: g.imageSources,
 			itemImages: g.itemImages,
+			itemImageSources: g.itemImageSources,
+			descriptions,
 			sources,
 		};
 	}
