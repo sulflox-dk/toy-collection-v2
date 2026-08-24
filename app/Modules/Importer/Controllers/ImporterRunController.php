@@ -9,6 +9,7 @@ use App\Modules\Importer\Models\ImporterSource;
 use App\Modules\Importer\Models\ImporterItem;
 use App\Modules\Importer\Models\ImporterLog;
 use App\Modules\Importer\Drivers\SiteDriverInterface;
+use App\Modules\Importer\Support\DescriptionSanitizer;
 use App\Modules\Meta\Models\Universe;
 use App\Modules\Meta\Models\Manufacturer;
 use App\Modules\Meta\Models\ProductType;
@@ -586,7 +587,13 @@ class ImporterRunController extends Controller
     private function addDescriptions(Database $db, int $catalogToyId, array $descriptions): void
     {
         foreach ($descriptions as $entry) {
-            $text = trim((string) ($entry['text'] ?? ''));
+            // Sanitized here regardless of which driver produced it — the
+            // authoritative boundary, so a driver forgetting to sanitize
+            // (or a future one copy-pasted without it) can never result
+            // in unsafe HTML reaching the database. Safe to run on
+            // already-sanitized text too: an allowed-tags-only input
+            // passes through unchanged.
+            $text = trim(DescriptionSanitizer::sanitize((string) ($entry['text'] ?? '')));
             if ($text === '') continue;
 
             $sourceUrl = trim((string) ($entry['sourceUrl'] ?? '')) ?: null;
