@@ -7,9 +7,21 @@
  *   MediaPicker.refreshThumbnails('collection_toy_items', 7);
  *   MediaPicker.initDragAndDrop();
  */
+function escapeHtml(str) {
+	const div = document.createElement('div');
+	div.textContent = str == null ? '' : String(str);
+	return div.innerHTML;
+}
+
 const MediaPicker = {
 	currentEntityType: null,
 	currentEntityId: null,
+
+	// Cache of the last-fetched image list per "entityType-entityId" key,
+	// so the lightbox can navigate between images without re-fetching.
+	_imageCache: {},
+	_lightboxImages: null,
+	_lightboxIndex: 0,
 
 	// =====================================================================
 	// DRAG AND DROP
@@ -315,14 +327,55 @@ const MediaPicker = {
 
 			const template = document.getElementById('mediaEditRowTemplate');
 
-			images.forEach((img) => {
+			images.forEach((img, index) => {
 				const clone = template.content.cloneNode(true);
 				const row = clone.querySelector('.media-edit-row');
 
 				row.dataset.mediaId = img.media_file_id;
+				row.dataset.index = index;
+
+				const isFeatured = Number(img.is_featured) === 1;
+				row.classList.toggle('is-featured', isFeatured);
+				if (isFeatured) {
+					row.style.outline = '2px solid #ffc107';
+					row.style.outlineOffset = '-2px';
+				}
+
+				const badge = clone.querySelector('.primary-badge');
+				if (badge) badge.classList.toggle('d-none', !isFeatured);
+
+				const setFeaturedBtn = clone.querySelector('.btn-set-featured');
+				if (setFeaturedBtn) {
+					setFeaturedBtn.classList.toggle('d-none', isFeatured);
+					setFeaturedBtn.onclick = () => {
+						this.setFeatured(img.link_id, entityType, entityId);
+					};
+				}
+
+				const sourceLink = clone.querySelector('.source-link');
+				if (sourceLink) {
+					if (img.source_name) {
+						sourceLink.classList.remove('d-none');
+						sourceLink.title = img.source_name;
+						sourceLink.querySelector('.source-link-label').textContent =
+							img.source_name;
+						if (img.source_url) {
+							sourceLink.href = img.source_url;
+						} else {
+							sourceLink.removeAttribute('href');
+							sourceLink.removeAttribute('target');
+							sourceLink.style.cursor = 'default';
+						}
+					} else {
+						sourceLink.classList.add('d-none');
+					}
+				}
 
 				clone.querySelector('.preview-img').src =
 					SITE_URL + img.filepath;
+				clone.querySelector('.preview-img').onclick = () => {
+					this.openLightbox(entityType, entityId, index);
+				};
 				clone.querySelector('.meta-title').value = img.title || '';
 				clone.querySelector('.meta-alt').value = img.alt_text || '';
 				clone.querySelector('.meta-desc').value = img.description || '';
@@ -340,9 +393,104 @@ const MediaPicker = {
 			});
 
 			container.appendChild(wrapper);
+			this._imageCache[`${entityType}-${entityId}`] = images;
 		} catch (error) {
 			container.innerHTML =
 				'<div class="text-danger small w-100 text-center">Error loading images</div>';
+		}
+	},
+
+	// =====================================================================
+	// SET AS PRIMARY
+	// =====================================================================
+	async setFeatured(linkId, entityType, entityId) {
+		const csrfToken =
+			document
+				.querySelector('meta[name="csrf-token"]')
+				?.getAttribute('content') || '';
+		const formData = new FormData();
+		formData.append('link_id', linkId);
+
+		try {
+			const response = await fetch(`${SITE_URL}media-file/set-featured`, {
+				method: 'POST',
+				headers: { 'X-CSRF-TOKEN': csrfToken },
+				body: formData,
+			});
+
+			if (response.ok) {
+				this.refreshThumbnails(entityType, entityId);
+			}
+		} catch (error) {
+			console.error('Failed to set featured media:', error);
+		}
+	},
+
+	// =====================================================================
+	// LIGHTBOX (large image viewer with prev/next navigation)
+	// =====================================================================
+	openLightbox(entityType, entityId, startIndex) {
+		const images = this._imageCache[`${entityType}-${entityId}`] || [];
+		if (images.length === 0) return;
+
+		this._lightboxImages = images;
+		this._lightboxIndex = startIndex;
+		this._renderLightboxSlide();
+
+		document
+			.querySelectorAll('.lightbox-nav-btn')
+			.forEach((btn) => btn.classList.toggle('d-none', images.length <= 1));
+
+		const overlay = document.getElementById('mediaLightboxOverlay');
+		if (overlay) {
+			overlay.classList.remove('d-none');
+			overlay.classList.add('d-flex');
+		}
+	},
+
+	closeLightbox() {
+		const overlay = document.getElementById('mediaLightboxOverlay');
+		if (overlay) {
+			overlay.classList.remove('d-flex');
+			overlay.classList.add('d-none');
+		}
+		this._lightboxImages = null;
+	},
+
+	lightboxPrev() {
+		if (!this._lightboxImages || this._lightboxImages.length === 0) return;
+		this._lightboxIndex =
+			(this._lightboxIndex - 1 + this._lightboxImages.length) %
+			this._lightboxImages.length;
+		this._renderLightboxSlide();
+	},
+
+	lightboxNext() {
+		if (!this._lightboxImages || this._lightboxImages.length === 0) return;
+		this._lightboxIndex =
+			(this._lightboxIndex + 1) % this._lightboxImages.length;
+		this._renderLightboxSlide();
+	},
+
+	_renderLightboxSlide() {
+		const img = this._lightboxImages[this._lightboxIndex];
+		if (!img) return;
+
+		const imgEl = document.getElementById('mediaLightboxImg');
+		if (imgEl) imgEl.src = SITE_URL + img.filepath;
+
+		const caption = document.getElementById('mediaLightboxCaption');
+		if (caption) {
+			let html = `Image ${this._lightboxIndex + 1} of ${this._lightboxImages.length}`;
+			if (img.source_name) {
+				const label = escapeHtml(img.source_name);
+				if (img.source_url) {
+					html += ` &mdash; <a href="${escapeHtml(img.source_url)}" target="_blank" rel="noopener" class="text-white text-decoration-underline">${label}</a>`;
+				} else {
+					html += ` &mdash; ${label}`;
+				}
+			}
+			caption.innerHTML = html;
 		}
 	},
 
@@ -477,3 +625,12 @@ const MediaPicker = {
 		}
 	},
 };
+
+document.addEventListener('keydown', (e) => {
+	const overlay = document.getElementById('mediaLightboxOverlay');
+	if (!overlay || overlay.classList.contains('d-none')) return;
+
+	if (e.key === 'Escape') MediaPicker.closeLightbox();
+	else if (e.key === 'ArrowLeft') MediaPicker.lightboxPrev();
+	else if (e.key === 'ArrowRight') MediaPicker.lightboxNext();
+});

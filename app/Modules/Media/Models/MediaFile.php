@@ -138,7 +138,7 @@ class MediaFile extends BaseModel
     public static function getForEntity(string $entityType, int $entityId): array
     {
         // Select all fields from f.* instead of just filepath/filename
-        $sql = "SELECT ml.id as link_id, f.*, f.id as media_file_id 
+        $sql = "SELECT ml.id as link_id, ml.is_featured, f.*, f.id as media_file_id
                 FROM media_links ml
                 JOIN media_files f ON ml.media_file_id = f.id
                 WHERE ml.entity_type = ? AND ml.entity_id = ?

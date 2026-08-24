@@ -52,14 +52,35 @@
     </div>
 </div>
 
+<div id="mediaLightboxOverlay" class="position-fixed top-0 start-0 w-100 h-100 d-none flex-column align-items-center justify-content-center" style="z-index: 1070; background: rgba(0,0,0,0.9);">
+    <button type="button" class="btn-close btn-close-white position-absolute" style="top: 20px; right: 20px;" onclick="MediaPicker.closeLightbox()"></button>
+    <button type="button" class="btn btn-light rounded-circle position-absolute lightbox-nav-btn" style="left: 20px; width: 48px; height: 48px;" onclick="MediaPicker.lightboxPrev()">
+        <i class="fa-solid fa-chevron-left"></i>
+    </button>
+    <img id="mediaLightboxImg" src="" style="max-width: 85%; max-height: 80%; object-fit: contain;">
+    <button type="button" class="btn btn-light rounded-circle position-absolute lightbox-nav-btn" style="right: 20px; width: 48px; height: 48px;" onclick="MediaPicker.lightboxNext()">
+        <i class="fa-solid fa-chevron-right"></i>
+    </button>
+    <div class="text-white mt-3 small" id="mediaLightboxCaption"></div>
+</div>
+
 <template id="mediaEditRowTemplate">
     <div class="card shadow-sm border-0 bg-white media-edit-row" data-media-id="">
         <div class="card-body p-3 d-flex flex-column flex-md-row gap-4">
 
             <div class="d-flex flex-column gap-2" style="width: 150px; flex-shrink: 0;">
-                <div class="border rounded bg-light d-flex align-items-center justify-content-center p-1" style="height: 150px;">
-                    <img class="preview-img" src="" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                <div class="position-relative border rounded bg-light d-flex align-items-center justify-content-center p-1 preview-wrap" style="height: 150px;">
+                    <span class="badge bg-warning text-dark position-absolute top-0 start-0 m-1 primary-badge d-none" style="z-index: 2; font-size: 0.75rem;">
+                        <i class="fa-solid fa-star me-1"></i>Primary
+                    </span>
+                    <img class="preview-img" src="" style="max-width: 100%; max-height: 100%; object-fit: contain; cursor: zoom-in;" title="Click to view larger">
                 </div>
+                <button type="button" class="btn btn-sm btn-outline-warning w-100 btn-set-featured">
+                    <i class="fa-solid fa-star me-1"></i> Set as Primary
+                </button>
+                <a class="small text-muted text-truncate source-link d-none" href="#" target="_blank" rel="noopener">
+                    <i class="fa-solid fa-arrow-up-right-from-square me-1"></i><span class="source-link-label"></span>
+                </a>
                 <button type="button" class="btn btn-sm btn-outline-danger w-100 btn-unlink">
                     <i class="fa-solid fa-unlink me-1"></i> Remove
                 </button>
