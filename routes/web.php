@@ -146,6 +146,7 @@ $router->get('/media-file/migrate-on-delete-options', [MediaFileController::clas
 $router->get('/media-file/search-json', [MediaFileController::class, 'searchJson']);
 $router->post('/media-file/link',       [MediaFileController::class, 'link']);
 $router->post('/media-file/unlink', [MediaFileController::class, 'unlink']);
+$router->post('/media-file/set-featured', [MediaFileController::class, 'setFeatured']);
 $router->get('/media-file/thumbnails',  [MediaFileController::class, 'getThumbnails']);
 
 // These {id} wildcards must stay below every literal /media-file/... route

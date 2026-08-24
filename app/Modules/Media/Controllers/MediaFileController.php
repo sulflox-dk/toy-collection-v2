@@ -341,4 +341,36 @@ class MediaFileController extends Controller
         }
         $this->json(['success' => true]);
     }
+
+    /**
+     * Mark one media_links row as the featured (primary) image for its
+     * entity, unsetting the flag on every other link for that same
+     * entity — is_featured is meaningful per (entity_type, entity_id),
+     * not per media file, since the same file could in principle be
+     * linked to more than one entity.
+     * POST /media-file/set-featured
+     */
+    public function setFeatured(Request $request): void
+    {
+        $linkId = (int) $request->input('link_id');
+        if (!$linkId) {
+            $this->json(['error' => 'Missing link_id'], 400);
+            return;
+        }
+
+        $db = Database::getInstance();
+        $link = $db->fetch("SELECT entity_type, entity_id FROM media_links WHERE id = ?", [$linkId]);
+        if (!$link) {
+            $this->json(['error' => 'Link not found'], 404);
+            return;
+        }
+
+        $db->execute(
+            "UPDATE media_links SET is_featured = 0 WHERE entity_type = ? AND entity_id = ?",
+            [$link['entity_type'], $link['entity_id']]
+        );
+        $db->execute("UPDATE media_links SET is_featured = 1 WHERE id = ?", [$linkId]);
+
+        $this->json(['success' => true]);
+    }
 }
