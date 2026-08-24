@@ -34,6 +34,12 @@ $jsonMainSubjectTypes = json_encode($mainSubjectTypes ?? [], JSON_HEX_APOS | JSO
             <h6 class="text-uppercase fw-bold text-muted small mb-2">General Information</h6>
             <div class="card shadow-sm border-0">
                 <div class="card-body">
+                    <?php if ($isEdit && !empty($toy['image_path'])): ?>
+                        <div class="d-flex justify-content-end mb-2">
+                            <img src="<?= $e($baseUrl . $toy['image_path']) ?>" alt="" title="Primary photo (view/change in Add Photos)"
+                                 class="rounded border" style="width: 72px; height: 72px; object-fit: contain; background: #f8f9fa;">
+                        </div>
+                    <?php endif; ?>
                     <div class="row g-3 mb-3">
                         <div class="col-md-4">
                             <label class="form-label small text-muted mb-1">Universe *</label>
@@ -144,6 +150,33 @@ $jsonMainSubjectTypes = json_encode($mainSubjectTypes ?? [], JSON_HEX_APOS | JSO
             </div>
         </div>
 
+        <?php if ($isEdit && !empty($descriptions)): ?>
+        <div>
+            <h6 class="text-uppercase fw-bold text-muted small mb-2">
+                Imported Descriptions <span class="text-muted fw-normal text-lowercase">(read-only, from import sources — write your own above)</span>
+            </h6>
+            <div class="vstack gap-2">
+                <?php foreach ($descriptions as $d): ?>
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body py-2 px-3">
+                            <div class="mb-1">
+                                <?php if (!empty($d['source_url'])): ?>
+                                    <a href="<?= $e($d['source_url']) ?>" target="_blank" rel="noopener" class="small fw-bold text-decoration-none">
+                                        <?= $e($d['source_name'] ?: $d['source_url']) ?>
+                                        <i class="fa-solid fa-arrow-up-right-from-square ms-1" style="font-size: 0.7em;"></i>
+                                    </a>
+                                <?php else: ?>
+                                    <span class="small fw-bold text-muted"><?= $e($d['source_name'] ?: 'Unknown source') ?></span>
+                                <?php endif; ?>
+                            </div>
+                            <div class="small text-muted" style="max-height: 150px; overflow-y: auto;"><?= $d['description'] ?></div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <div>
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <h6 class="text-uppercase fw-bold text-muted small mb-0">Included Items</h6>
@@ -157,7 +190,15 @@ $jsonMainSubjectTypes = json_encode($mainSubjectTypes ?? [], JSON_HEX_APOS | JSO
                             <div class="card-body p-3 position-relative">
                                 <button type="button" class="btn-close position-absolute top-0 end-0 m-2 small" onclick="CatalogWizard.removeItemRow(this)"></button>
                                 <div class="row g-2 align-items-end pe-4">
-                                    
+
+                                    <?php if (!empty($item['image_path'])): ?>
+                                        <div class="col-auto">
+                                            <label class="form-label small text-muted mb-1 d-block">&nbsp;</label>
+                                            <img src="<?= $e($baseUrl . $item['image_path']) ?>" alt="" title="Primary photo (view/change in Add Photos)"
+                                                 class="rounded border" style="width: 38px; height: 38px; object-fit: contain; background: #f8f9fa;">
+                                        </div>
+                                    <?php endif; ?>
+
                                     <div class="col-md-5">
                                         <label class="form-label small text-muted mb-1">Subject *</label>
                                         <input type="hidden" name="items[<?= $index ?>][id]" class="item-id-input" value="<?= $item['id'] ?>">

@@ -118,11 +118,16 @@ class CatalogToyController extends Controller
         // --- NEW: Fetch existing data if editing ---
         $toy = null;
         $items = [];
+        $descriptions = [];
         $isEdit = false;
 
         if ($id > 0) {
             $toy = $db->query("
-                SELECT ct.*, s.name AS subject_name, s.type AS subject_type
+                SELECT ct.*, s.name AS subject_name, s.type AS subject_type,
+                    (SELECT f.filepath FROM media_links ml
+                     JOIN media_files f ON ml.media_file_id = f.id
+                     WHERE ml.entity_type = 'catalog_toys' AND ml.entity_id = ct.id
+                     ORDER BY ml.is_featured DESC, ml.sort_order ASC LIMIT 1) AS image_path
                 FROM catalog_toys ct
                 LEFT JOIN meta_subjects s ON ct.subject_id = s.id
                 WHERE ct.id = ?
@@ -131,13 +136,27 @@ class CatalogToyController extends Controller
                 $isEdit = true;
                 $universeId = $toy['universe_id']; // Override with the saved universe
 
-                // Fetch existing items
+                // Fetch existing items, each with its own primary photo (if any)
                 $items = $db->query("
-                    SELECT i.*, s.name as subject_name, s.type as subject_type 
+                    SELECT i.*, s.name as subject_name, s.type as subject_type,
+                        (SELECT f.filepath FROM media_links ml
+                         JOIN media_files f ON ml.media_file_id = f.id
+                         WHERE ml.entity_type = 'catalog_toy_items' AND ml.entity_id = i.id
+                         ORDER BY ml.is_featured DESC, ml.sort_order ASC LIMIT 1) AS image_path
                     FROM catalog_toy_items i
                     LEFT JOIN meta_subjects s ON i.subject_id = s.id
-                    WHERE i.catalog_toy_id = ? 
+                    WHERE i.catalog_toy_id = ?
                     ORDER BY i.id ASC
+                ", [$id])->fetchAll(\PDO::FETCH_ASSOC);
+
+                // Read-only reference: every attributed description collected
+                // from import sources (never edited here — the toy's own
+                // `description` field above is the collector's own words).
+                $descriptions = $db->query("
+                    SELECT description, source_name, source_url
+                    FROM catalog_toy_descriptions
+                    WHERE catalog_toy_id = ?
+                    ORDER BY id ASC
                 ", [$id])->fetchAll(\PDO::FETCH_ASSOC);
             }
         }
@@ -153,6 +172,8 @@ class CatalogToyController extends Controller
         $entertainmentSources = $db->query("SELECT id, name, type, universe_id FROM meta_entertainment_sources ORDER BY name ASC")->fetchAll(\PDO::FETCH_ASSOC);
         $subjects = $db->query("SELECT id, name, type, universe_id FROM meta_subjects ORDER BY name ASC")->fetchAll(\PDO::FETCH_ASSOC);
 
+        $baseUrl = rtrim(Config::get('app.url', ''), '/') . '/';
+
         $this->renderPartial('catalog_toy_step2', [
             'universeId' => $universeId,
             'universes' => $universes,
@@ -164,7 +185,9 @@ class CatalogToyController extends Controller
             'mainSubjectTypes' => self::MAIN_SUBJECT_TYPES,
             'toy' => $toy,
             'items' => $items,
-            'isEdit' => $isEdit
+            'descriptions' => $descriptions,
+            'isEdit' => $isEdit,
+            'baseUrl' => $baseUrl
         ]);
     }
 
