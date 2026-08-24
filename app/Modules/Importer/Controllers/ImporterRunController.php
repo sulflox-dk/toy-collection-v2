@@ -9,6 +9,7 @@ use App\Modules\Importer\Models\ImporterSource;
 use App\Modules\Importer\Models\ImporterItem;
 use App\Modules\Importer\Models\ImporterLog;
 use App\Modules\Importer\Drivers\SiteDriverInterface;
+use App\Modules\Importer\Support\DescriptionSanitizer;
 use App\Modules\Meta\Models\Universe;
 use App\Modules\Meta\Models\Manufacturer;
 use App\Modules\Meta\Models\ProductType;
@@ -297,11 +298,20 @@ class ImporterRunController extends Controller
             [$id]
         )->fetchColumn();
 
+        $existingDescriptions = $db->query(
+            "SELECT source_url FROM catalog_toy_descriptions WHERE catalog_toy_id = ?",
+            [$id]
+        )->fetchAll(\PDO::FETCH_COLUMN);
+
         $this->json([
             'success' => true,
             'toy' => $toy,
             'existingAccessories' => $existingAccessories,
             'existingImageCount' => $imageCount,
+            // Just the source URLs already on file — enough for the review
+            // UI to show "already have this one" per contributing source
+            // without needing the full text round-tripped here too.
+            'existingDescriptionSources' => $existingDescriptions,
         ]);
     }
 
@@ -339,6 +349,14 @@ class ImporterRunController extends Controller
                 // overriding the default exact-name-match-or-create.
                 $accessoryOverrides = is_array($group['accessoryOverrides'] ?? null) ? $group['accessoryOverrides'] : [];
                 $sources = is_array($group['sources'] ?? null) ? $group['sources'] : [];
+                // image URL / accessory name -> {sourceUrl, sourceName}, for
+                // crediting where each photo actually came from.
+                $imageSources = is_array($group['imageSources'] ?? null) ? $group['imageSources'] : [];
+                $itemImageSources = is_array($group['itemImageSources'] ?? null) ? $group['itemImageSources'] : [];
+                // One attributed description per contributing source the
+                // user kept included — never merged into one, so credit
+                // stays intact and nothing is silently dropped.
+                $descriptions = is_array($group['descriptions'] ?? null) ? $group['descriptions'] : [];
 
                 if (empty($sources)) {
                     throw new \RuntimeException('No source URLs on this item');
@@ -400,14 +418,18 @@ class ImporterRunController extends Controller
 
                 $catalogUniverseId = $db->fetch("SELECT universe_id FROM catalog_toys WHERE id = ?", [$catalogToyId])['universe_id'] ?? null;
                 $itemIdsByName = $this->addAccessories($db, $catalogToyId, $accessories, $catalogUniverseId ? (int) $catalogUniverseId : null, $accessoryOverrides);
-                $this->addImages($db, $images, 'catalog_toys', $catalogToyId);
+                $this->addImages($db, $images, 'catalog_toys', $catalogToyId, $imageSources);
 
                 foreach ($itemImages as $accessoryName => $imageUrl) {
                     $itemId = $itemIdsByName[mb_strtolower(trim((string) $accessoryName))] ?? null;
                     if ($itemId && $imageUrl) {
-                        $this->addImages($db, [$imageUrl], 'catalog_toy_items', $itemId);
+                        $key = mb_strtolower(trim((string) $accessoryName));
+                        $itemSource = isset($itemImageSources[$key]) ? [$imageUrl => $itemImageSources[$key]] : [];
+                        $this->addImages($db, [$imageUrl], 'catalog_toy_items', $itemId, $itemSource);
                     }
                 }
+
+                $this->addDescriptions($db, $catalogToyId, $descriptions);
 
                 $importItemIds = [];
                 foreach ($sources as $src) {
@@ -553,14 +575,65 @@ class ImporterRunController extends Controller
     }
 
     /**
+     * Store one attributed description per contributing source the user
+     * kept included — $descriptions is [{text, sourceUrl, sourceName}].
+     * Upserted by (catalog_toy_id, source_url) in application code rather
+     * than a DB unique constraint, so re-importing the same page later
+     * updates that source's text instead of piling up a duplicate row.
+     * A description with no source_url (shouldn't normally happen from
+     * the importer, but defensively) always gets its own new row, since
+     * there's nothing to dedupe it against.
+     */
+    private function addDescriptions(Database $db, int $catalogToyId, array $descriptions): void
+    {
+        foreach ($descriptions as $entry) {
+            // Sanitized here regardless of which driver produced it — the
+            // authoritative boundary, so a driver forgetting to sanitize
+            // (or a future one copy-pasted without it) can never result
+            // in unsafe HTML reaching the database. Safe to run on
+            // already-sanitized text too: an allowed-tags-only input
+            // passes through unchanged.
+            $text = trim(DescriptionSanitizer::sanitize((string) ($entry['text'] ?? '')));
+            if ($text === '') continue;
+
+            $sourceUrl = trim((string) ($entry['sourceUrl'] ?? '')) ?: null;
+            $sourceName = trim((string) ($entry['sourceName'] ?? '')) ?: null;
+
+            $existingId = $sourceUrl
+                ? $db->fetch(
+                    "SELECT id FROM catalog_toy_descriptions WHERE catalog_toy_id = ? AND source_url = ?",
+                    [$catalogToyId, $sourceUrl]
+                )['id'] ?? null
+                : null;
+
+            if ($existingId) {
+                $db->execute(
+                    "UPDATE catalog_toy_descriptions SET description = ?, source_name = ? WHERE id = ?",
+                    [$text, $sourceName, $existingId]
+                );
+            } else {
+                $db->execute(
+                    "INSERT INTO catalog_toy_descriptions (catalog_toy_id, description, source_name, source_url) VALUES (?, ?, ?, ?)",
+                    [$catalogToyId, $text, $sourceName, $sourceUrl]
+                );
+            }
+        }
+    }
+
+    /**
      * Download every scraped image URL and attach it to the given entity
      * (a catalog toy, or one of its accessories/catalog_toy_items). Always
      * additive — existing photos are never touched or replaced, and (per
      * product decision) no attempt is made to detect a duplicate of an
      * already-imported image, since nothing tracks which image came from
      * which URL.
+     *
+     * $imageSources optionally maps a scraped image URL to the page it was
+     * found on (['sourceUrl' => ..., 'sourceName' => ...]), recorded on the
+     * resulting media_files row for later credit — or so a public showcase
+     * can choose to only ever display the collector's own uploads.
      */
-    private function addImages(Database $db, array $imageUrls, string $entityType, int $entityId): void
+    private function addImages(Database $db, array $imageUrls, string $entityType, int $entityId, array $imageSources = []): void
     {
         if (empty($imageUrls)) return;
 
@@ -613,10 +686,11 @@ class ImporterRunController extends Controller
                 if (file_put_contents($uploadPath . $hashName, $bytes) === false) continue;
 
                 $originalName = basename(parse_url($imageUrl, PHP_URL_PATH) ?? $hashName);
+                $source = $imageSources[$imageUrl] ?? [];
 
                 $mediaFileId = $db->execute(
-                    "INSERT INTO media_files (filename, original_name, filepath, file_type, file_size, title, alt_text)
-                     VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    "INSERT INTO media_files (filename, original_name, filepath, file_type, file_size, title, alt_text, source_url, source_name)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     [
                         $hashName,
                         $originalName,
@@ -625,6 +699,8 @@ class ImporterRunController extends Controller
                         strlen($bytes),
                         pathinfo($originalName, PATHINFO_FILENAME),
                         pathinfo($originalName, PATHINFO_FILENAME),
+                        $source['sourceUrl'] ?? null,
+                        $source['sourceName'] ?? null,
                     ]
                 ) ? $db->lastInsertId() : null;
 

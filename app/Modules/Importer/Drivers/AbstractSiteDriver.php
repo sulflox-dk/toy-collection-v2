@@ -26,7 +26,42 @@ abstract class AbstractSiteDriver implements SiteDriverInterface
             throw new \RuntimeException("Failed to fetch URL: $error");
         }
 
-        return $result;
+        return $this->toUtf8($result);
+    }
+
+    /**
+     * Every driver assumes UTF-8 from here on (XPath text matching,
+     * htmlspecialchars() calls, etc.) — but not every site actually
+     * serves it. An older site declaring a different charset (still
+     * common — e.g. iso-8859-1) would otherwise have every non-ASCII
+     * character (smart quotes, accents, em-dashes) silently corrupted
+     * throughout the scraped result. Prefers the page's own declared
+     * charset; if it doesn't declare one and isn't already valid UTF-8,
+     * falls back to Windows-1252, the overwhelmingly common case for
+     * older Western sites that don't bother declaring anything.
+     */
+    private function toUtf8(string $html): string
+    {
+        $charset = null;
+        if (preg_match('/<meta[^>]+charset=["\']?([\w-]+)/i', $html, $m)) {
+            $charset = $m[1];
+        }
+
+        if ($charset && strcasecmp($charset, 'UTF-8') !== 0) {
+            $converted = @iconv($charset, 'UTF-8//IGNORE', $html);
+            if ($converted !== false) {
+                return $converted;
+            }
+        }
+
+        if (!mb_check_encoding($html, 'UTF-8')) {
+            $converted = @iconv('Windows-1252', 'UTF-8//IGNORE', $html);
+            if ($converted !== false) {
+                return $converted;
+            }
+        }
+
+        return $html;
     }
 
     protected function createXPath(string $html): DOMXPath
