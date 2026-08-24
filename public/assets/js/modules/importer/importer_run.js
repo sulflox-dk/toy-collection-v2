@@ -196,12 +196,10 @@ document.addEventListener('DOMContentLoaded', () => {
 		merged.subjectMatchReason = subjectResult?.subjectMatchReason || '';
 
 		// The Description field (catalog_toys.description) is the
-		// collector's own free-text notes, not an attributed import — no
-		// conflict picker, just take the first source's text as a
-		// convenience starting point the user can edit into their own
-		// words. The attributed per-source descriptions below are separate
-		// and always keep all of them.
-		merged.description = g.urlResults.find((r) => r.description)?.description || '';
+		// collector's own free-text notes, never populated from an import —
+		// left blank for the user to write themselves. Scraped descriptions
+		// only ever go into the attributed per-source list below.
+		merged.description = '';
 
 		// One attributed description per contributing source, kept
 		// separate rather than merged — each is credited to where it came
@@ -500,7 +498,6 @@ document.addEventListener('DOMContentLoaded', () => {
 			compareRow('toy_line_id', 'Toy Line', lookupName(IMPORTER_LOOKUPS.toyLines, cur.toy_line_id), lookupName(IMPORTER_LOOKUPS.toyLines, g.merged.toy_line_id), !!g.conflicts.toy_line_id, g),
 			compareRow('universe_id', 'Universe', lookupName(IMPORTER_LOOKUPS.universes, cur.universe_id), lookupName(IMPORTER_LOOKUPS.universes, g.merged.universe_id), false, g),
 			compareRow('subject_id', 'Subject', lookupName(IMPORTER_LOOKUPS.subjects, cur.subject_id), lookupName(IMPORTER_LOOKUPS.subjects, g.merged.subject_id), false, g),
-			compareRow('description', 'Description', cur.description, g.merged.description, false, g),
 		].join('');
 
 		const accCount = g.accessories.length;
