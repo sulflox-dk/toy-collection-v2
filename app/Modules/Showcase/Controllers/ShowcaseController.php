@@ -83,6 +83,8 @@ class ShowcaseController extends Controller
         $collectionMedia = $this->mediaByEntity($db, 'collection_toys');
         $catalogMedia = $this->mediaByEntity($db, 'catalog_toys');
 
+        $sourcesByToy = $this->sourceCreditsByToy($db, $baseUrl);
+
         $universes = [];
         $collection = [];
 
@@ -133,6 +135,10 @@ class ShowcaseController extends Controller
                 'notes' => $t['notes'] ?: null,
                 'items' => $itemsByToy[$t['id']] ?? [],
                 'photos' => $photoUrls,
+                // Deliberately separate from 'source' above (that's where the
+                // collector bought THIS physical copy) — these are the sites
+                // the catalog data itself was imported from.
+                'sourceCredits' => $sourcesByToy[$t['catalog_toy_id']] ?? [],
             ];
         }
 
@@ -162,6 +168,67 @@ class ShowcaseController extends Controller
             'isAdmin' => $isAdmin,
             'baseUrl' => $baseUrl,
         ]);
+    }
+
+    /**
+     * Per catalog toy, one entry per distinct import source that
+     * contributed to it — its description (already-sanitized HTML, safe
+     * to output as-is) and every photo (the toy's own plus its
+     * accessories') that came from that same source. Grouped by
+     * source_url, since that's the key catalog_toy_descriptions itself
+     * upserts on — a source with only photos and no saved description
+     * (or vice versa) still gets an entry, just with the other half empty.
+     *
+     * @return array<int, array<int, array{name: ?string, url: string, description: ?string, images: string[]}>>
+     */
+    private function sourceCreditsByToy(Database $db, string $baseUrl): array
+    {
+        $bySourceUrl = []; // catalog_toy_id => [source_url => credit]
+
+        $descriptionRows = $db->query("
+            SELECT catalog_toy_id, description, source_name, source_url
+            FROM catalog_toy_descriptions
+            WHERE source_url IS NOT NULL
+            ORDER BY id ASC
+        ")->fetchAll(\PDO::FETCH_ASSOC);
+
+        foreach ($descriptionRows as $row) {
+            $toyId = (int) $row['catalog_toy_id'];
+            $url = $row['source_url'];
+            $bySourceUrl[$toyId][$url] ??= ['name' => null, 'url' => $url, 'description' => null, 'images' => []];
+            $bySourceUrl[$toyId][$url]['name'] = $row['source_name'] ?: $bySourceUrl[$toyId][$url]['name'];
+            $bySourceUrl[$toyId][$url]['description'] = $row['description'];
+        }
+
+        // Photos on the toy itself, plus every one of its accessories' —
+        // both count as "photos that came from that site" for this toy.
+        $imageRows = $db->query("
+            SELECT cat.id AS catalog_toy_id, f.filepath, f.source_name, f.source_url
+            FROM media_files f
+            JOIN media_links ml ON ml.media_file_id = f.id
+            JOIN catalog_toys cat ON (
+                (ml.entity_type = 'catalog_toys' AND ml.entity_id = cat.id)
+                OR (ml.entity_type = 'catalog_toy_items' AND ml.entity_id IN (
+                    SELECT id FROM catalog_toy_items WHERE catalog_toy_id = cat.id
+                ))
+            )
+            WHERE f.source_url IS NOT NULL
+            ORDER BY cat.id ASC, ml.is_featured DESC, ml.sort_order ASC
+        ")->fetchAll(\PDO::FETCH_ASSOC);
+
+        foreach ($imageRows as $row) {
+            $toyId = (int) $row['catalog_toy_id'];
+            $url = $row['source_url'];
+            $bySourceUrl[$toyId][$url] ??= ['name' => null, 'url' => $url, 'description' => null, 'images' => []];
+            $bySourceUrl[$toyId][$url]['name'] = $bySourceUrl[$toyId][$url]['name'] ?: $row['source_name'];
+            $bySourceUrl[$toyId][$url]['images'][] = $baseUrl . ltrim($row['filepath'], '/');
+        }
+
+        $byToy = [];
+        foreach ($bySourceUrl as $toyId => $credits) {
+            $byToy[$toyId] = array_values($credits);
+        }
+        return $byToy;
     }
 
     /** @return array<int, array{filepath: string}[]> media rows grouped by entity_id */
