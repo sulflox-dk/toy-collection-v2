@@ -385,67 +385,72 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	function conflictBadge(g, fieldKey) {
 		if (!g.conflicts[fieldKey]) return '';
+		const saved = g.editedConflictPicks ? g.editedConflictPicks[fieldKey] : undefined;
+		const validValues = new Set(g.conflicts[fieldKey].map((c) => c.value));
+		const selectedValue = saved !== undefined && validValues.has(saved) ? saved : null;
 		const opts = g.conflicts[fieldKey]
-			.map((c) => `<option value="${esc(c.value)}">${esc(c.value)} (${esc(c.sources.join(', '))})</option>`)
+			.map((c) => `<option value="${esc(c.value)}" ${c.value === selectedValue ? 'selected' : ''}>${esc(c.value)} (${esc(c.sources.join(', '))})</option>`)
 			.join('');
 		return `<select class="form-select form-select-sm mt-1 conflict-pick" data-field="${fieldKey}">${opts}</select>
 			<div class="small text-warning mt-1"><i class="fa-solid fa-code-compare me-1"></i>Sources disagree — pick one</div>`;
 	}
 
 	function renderCreateFields(g) {
+		const ef = g.editedFields || {};
+		const v = (key) => (key in ef ? ef[key] : g.merged[key]);
 		return `
-			<input type="text" class="form-control form-control-sm fw-bold text-primary mb-2 field-name" value="${esc(g.merged.name)}">
+			<input type="text" class="form-control form-control-sm fw-bold text-primary mb-2 field-name" value="${esc(v('name'))}">
 			<div class="row g-2">
 				<div class="col-md-3">
 					<label class="form-label small text-muted mb-0">Year</label>
-					<input type="text" class="form-control form-control-sm field-year" value="${esc(g.merged.year)}">
+					<input type="text" class="form-control form-control-sm field-year" value="${esc(v('year'))}">
 					${conflictBadge(g, 'year')}
 				</div>
 				<div class="col-md-3">
 					<label class="form-label small text-muted mb-0">Wave</label>
-					<input type="text" class="form-control form-control-sm field-wave" value="${esc(g.merged.wave)}">
+					<input type="text" class="form-control form-control-sm field-wave" value="${esc(v('wave'))}">
 					${conflictBadge(g, 'wave')}
 				</div>
 				<div class="col-md-3">
 					<label class="form-label small text-muted mb-0">SKU</label>
-					<input type="text" class="form-control form-control-sm field-sku" value="${esc(g.merged.assortmentSku)}">
+					<input type="text" class="form-control form-control-sm field-sku" value="${esc(v('assortmentSku'))}">
 					${conflictBadge(g, 'assortmentSku')}
 				</div>
 				<div class="col-md-3">
 					<label class="form-label small text-muted mb-0">UPC</label>
-					<input type="text" class="form-control form-control-sm field-upc" value="${esc(g.merged.upc)}">
+					<input type="text" class="form-control form-control-sm field-upc" value="${esc(v('upc'))}">
 					${conflictBadge(g, 'upc')}
 				</div>
 				<div class="col-md-4">
 					<label class="form-label small text-muted mb-0">Universe</label>
-					<select class="form-select form-select-sm field-universe">${selectOptionsHtml(IMPORTER_LOOKUPS.universes, g.merged.universe_id, '-- Select --')}</select>
+					<select class="form-select form-select-sm field-universe">${selectOptionsHtml(IMPORTER_LOOKUPS.universes, v('universe_id'), '-- Select --')}</select>
 				</div>
 				<div class="col-md-4">
 					<label class="form-label small text-muted mb-0">Manufacturer</label>
-					<select class="form-select form-select-sm field-manufacturer">${selectOptionsHtml(IMPORTER_LOOKUPS.manufacturers, g.merged.manufacturer_id, '-- Select --')}</select>
+					<select class="form-select form-select-sm field-manufacturer">${selectOptionsHtml(IMPORTER_LOOKUPS.manufacturers, v('manufacturer_id'), '-- Select --')}</select>
 					${conflictBadge(g, 'manufacturer_id')}
 				</div>
 				<div class="col-md-4">
 					<label class="form-label small text-muted mb-0">Toy Line <span class="text-danger">*</span></label>
-					<select class="form-select form-select-sm field-toy-line">${selectOptionsHtml(IMPORTER_LOOKUPS.toyLines, g.merged.toy_line_id, '-- Select --')}</select>
+					<select class="form-select form-select-sm field-toy-line">${selectOptionsHtml(IMPORTER_LOOKUPS.toyLines, v('toy_line_id'), '-- Select --')}</select>
 					${conflictBadge(g, 'toy_line_id')}
 				</div>
 				<div class="col-md-6">
 					<label class="form-label small text-muted mb-0">Subject</label>
-					<select class="form-select form-select-sm field-subject">${selectOptionsHtml(mainSubjectOptions(), g.merged.subject_id, '-- None --')}</select>
+					<select class="form-select form-select-sm field-subject">${selectOptionsHtml(mainSubjectOptions(), v('subject_id'), '-- None --')}</select>
 					${subjectMatchHint(g.merged.subjectMatchReason)}
 				</div>
 				<div class="col-md-6">
 					<label class="form-label small text-muted mb-0">Product Type</label>
-					<select class="form-select form-select-sm field-product-type">${selectOptionsHtml(IMPORTER_LOOKUPS.productTypes, g.merged.product_type_id, '-- Select --')}</select>
+					<select class="form-select form-select-sm field-product-type">${selectOptionsHtml(IMPORTER_LOOKUPS.productTypes, v('product_type_id'), '-- Select --')}</select>
 				</div>
 				<div class="col-md-6">
 					<label class="form-label small text-muted mb-0">Entertainment Source</label>
-					<select class="form-select form-select-sm field-entertainment-source">${selectOptionsHtml(IMPORTER_LOOKUPS.entertainmentSources, g.merged.entertainment_source_id, '-- Select --')}</select>
+					<select class="form-select form-select-sm field-entertainment-source">${selectOptionsHtml(IMPORTER_LOOKUPS.entertainmentSources, v('entertainment_source_id'), '-- Select --')}</select>
 				</div>
 				<div class="col-md-12">
 					<label class="form-label small text-muted mb-0">Description</label>
-					<textarea class="form-control form-control-sm field-description" rows="2">${esc(g.merged.description)}</textarea>
+					<textarea class="form-control form-control-sm field-description" rows="2">${esc(v('description'))}</textarea>
 				</div>
 			</div>
 		`;
@@ -458,8 +463,12 @@ document.addEventListener('DOMContentLoaded', () => {
 			: (foundVal ? esc(foundVal) : '<span class="text-muted fst-italic">— nothing found —</span>');
 
 		// Smart default: empty current value -> default to overwrite;
-		// filled current value -> default to keep.
-		const defaultOn = !currentVal && !!foundVal;
+		// filled current value -> default to keep. A saved manual toggle
+		// (captured before an unrelated re-render tore the row down)
+		// overrides this default.
+		const computedDefault = !currentVal && !!foundVal;
+		const saved = g.editedOverwrites ? g.editedOverwrites[fieldKey] : undefined;
+		const isOn = saved !== undefined ? saved : computedDefault;
 
 		return `
 			<div class="row g-2 align-items-center py-1 border-bottom compare-row" data-field="${fieldKey}">
@@ -467,7 +476,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				<div class="col-4 small">${currentDisplay}</div>
 				<div class="col-4 small">${foundDisplay}</div>
 				<div class="col-2 form-check form-switch mb-0">
-					<input class="form-check-input overwrite-toggle" type="checkbox" ${defaultOn ? 'checked' : ''} ${foundVal ? '' : 'disabled'}>
+					<input class="form-check-input overwrite-toggle" type="checkbox" ${isOn ? 'checked' : ''} ${foundVal ? '' : 'disabled'}>
 					<label class="form-check-label small">Use new</label>
 				</div>
 			</div>
@@ -689,7 +698,64 @@ document.addEventListener('DOMContentLoaded', () => {
 		`;
 	}
 
+	// Snapshots each group's manually-edited field values from the live DOM
+	// before renderAll() tears the card down and rebuilds it — otherwise an
+	// unrelated toggle anywhere on the card (a photo/accessory/description
+	// checkbox) would silently wipe out anything the user already typed or
+	// picked, since the rebuilt HTML starts fresh from g.merged every time.
+	// Only a field that actually differs from its current computed default
+	// gets frozen, so an untouched field keeps tracking live data (e.g. a
+	// batch default set after the fact, or a value that only arrived once
+	// a later source got added) instead of getting stuck on whatever it
+	// first rendered as.
+	function captureEditedFields(g) {
+		const card = queueEl.querySelector(`.import-group[data-group-id="${g.id}"]`);
+		if (!card) return;
+
+		if (g.target.mode === 'update') {
+			g.editedOverwrites = g.editedOverwrites || {};
+			card.querySelectorAll('.compare-row').forEach((row) => {
+				const toggle = row.querySelector('.overwrite-toggle');
+				if (toggle && !toggle.disabled) g.editedOverwrites[row.dataset.field] = toggle.checked;
+			});
+		} else {
+			g.editedFields = g.editedFields || {};
+			const track = (key, sel) => {
+				const el = card.querySelector(sel);
+				if (!el) return;
+				if (el.value === String(g.merged[key] ?? '')) {
+					delete g.editedFields[key];
+				} else {
+					g.editedFields[key] = el.value;
+				}
+			};
+			track('name', '.field-name');
+			track('year', '.field-year');
+			track('wave', '.field-wave');
+			track('assortmentSku', '.field-sku');
+			track('upc', '.field-upc');
+			track('universe_id', '.field-universe');
+			track('manufacturer_id', '.field-manufacturer');
+			track('toy_line_id', '.field-toy-line');
+			track('subject_id', '.field-subject');
+			track('product_type_id', '.field-product-type');
+			track('entertainment_source_id', '.field-entertainment-source');
+			track('description', '.field-description');
+		}
+
+		// Conflict-pick selects (used by both modes) have no established
+		// "default" to diff against — just freeze whatever's currently
+		// showing, which correctly preserves both a manual pick and the
+		// browser's own natural first-option default either way.
+		g.editedConflictPicks = g.editedConflictPicks || {};
+		card.querySelectorAll('.conflict-pick').forEach((pick) => {
+			g.editedConflictPicks[pick.dataset.field] = pick.value;
+		});
+	}
+
 	function renderAll() {
+		groups.forEach(captureEditedFields);
+
 		const itemCountEl = document.getElementById('itemCount');
 		if (itemCountEl) itemCountEl.textContent = String(groups.length);
 
