@@ -286,6 +286,23 @@ main{max-width:1240px; margin:0 auto; padding:0 1.6rem 5rem;}
 .version-card .vc-meta{font-family:var(--font-mono); font-size:0.62rem; color:var(--ink-faint); margin-top:0.2rem;}
 .version-empty{color:var(--ink-faint); font-size:0.85rem; font-style:italic; margin-top:0.9rem;}
 
+.source-credits{margin-top:2.6rem; border-top:1px solid var(--line); padding-top:1.6rem;}
+.source-credits h2{font-family:var(--font-mono); font-weight:600; font-size:0.72rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--brass-ink);}
+.source-credits .versions-sub{color:var(--ink-faint); font-size:0.82rem; margin-top:0.3rem; max-width:36rem;}
+.source-credit-card{margin-top:1.1rem; border:1px solid var(--line); border-radius:10px; background:var(--paper-raised); padding:1rem 1.1rem;}
+.source-credit-card + .source-credit-card{margin-top:0.9rem;}
+.source-credit-name{font-family:var(--font-mono); font-weight:600; font-size:0.85rem; letter-spacing:0.02em; color:var(--ink); text-decoration:none;}
+.source-credit-name:hover{text-decoration:underline;}
+.source-credit-name .ext-icon{font-size:0.75em; opacity:0.6; margin-left:0.15em;}
+.source-credit-desc{
+  font-family:var(--font-body); font-size:0.92rem; color:var(--ink); line-height:1.6;
+  margin-top:0.7rem; padding-left:0.9rem; border-left:3px solid var(--brass);
+}
+.source-credit-desc p{margin:0 0 0.7rem;} .source-credit-desc p:last-child{margin-bottom:0;}
+.source-credit-thumbs{display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.9rem;}
+.source-thumb{flex:none; width:4.2rem; height:4.2rem; border:1px solid var(--line); border-radius:6px; overflow:hidden; background:#0b0a0d; padding:0; cursor:pointer;}
+.source-thumb img{width:100%; height:100%; object-fit:cover; display:block;}
+
 ::-webkit-scrollbar{height:8px; width:8px;}
 ::-webkit-scrollbar-thumb{background:var(--line-strong); border-radius:4px;}
 
@@ -844,6 +861,8 @@ function renderDetail(id){
       <p class="versions-sub">Matched by name across different releases — a preview feature, see the note on the hub page about how it works.</p>
       ${lines.length ? `<div class="version-rail">${lines.map(versionCard).join('')}</div>` : '<p class="version-empty">No other release of “' + escapeHtml(characterLabel(toy.name)) + '” in the collection yet.</p>'}
     </div>
+
+    ${sourceCreditsHtml(toy)}
   `;
 
   paintDetailStage(toy);
@@ -856,6 +875,12 @@ function renderDetail(id){
   el.querySelectorAll('.version-card').forEach(card=>{
     card.addEventListener('click', ()=>{ location.hash = '#/toy/'+card.getAttribute('data-id'); });
   });
+  el.querySelectorAll('.source-thumb').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const credit = toy.sourceCredits[Number(btn.getAttribute('data-credit'))];
+      openSourceLightbox(credit.images, Number(btn.getAttribute('data-i')), credit.name || credit.url);
+    });
+  });
   const editBtn = document.getElementById('btnEditAdmin');
   if (editBtn) editBtn.addEventListener('click', ()=>{
     if (typeof CollectionWizard !== 'undefined') CollectionWizard.editToy(toy.id);
@@ -866,6 +891,31 @@ function renderDetail(id){
     if (e.key === 'ArrowLeft') cycleFacet(toy,-1);
     if (e.key === 'ArrowRight') cycleFacet(toy,1);
   };
+}
+
+// One block per site this toy's catalog data was imported from — its
+// description (already sanitized to a small safe HTML allowlist at
+// import time, so it's output directly, not escaped) and every photo
+// that came from that same site, clickable to view large via the shared
+// lightbox. A toy with nothing imported (everything entered by hand)
+// renders nothing here at all.
+function sourceCreditsHtml(toy){
+  const credits = toy.sourceCredits || [];
+  if (!credits.length) return '';
+
+  return `
+    <div class="source-credits">
+      <h2>Documented Elsewhere</h2>
+      <p class="versions-sub">Descriptions and photos pulled in from other collector sites when this toy was imported.</p>
+      ${credits.map((c, ci) => `
+        <div class="source-credit-card">
+          <a class="source-credit-name" href="${escapeHtml(c.url)}" target="_blank" rel="noopener">${escapeHtml(c.name || c.url)}<span class="ext-icon">&#8599;</span></a>
+          ${c.description ? `<div class="source-credit-desc">${c.description}</div>` : ''}
+          ${c.images.length ? `<div class="source-credit-thumbs">${c.images.map((url, ii) => `<button class="source-thumb" data-credit="${ci}" data-i="${ii}" aria-label="View larger photo from ${escapeHtml(c.name || c.url)}"><img src="${escapeHtml(url)}" alt="" loading="lazy"></button>`).join('')}</div>` : ''}
+        </div>
+      `).join('')}
+    </div>
+  `;
 }
 
 function versionCard(t){
@@ -912,15 +962,20 @@ function cycleFacet(toy,dir){
 }
 
 /* ================= lightbox — maximized, scrollable image view ================= */
-let lightboxToy = null;
-function openLightbox(toy, startIndex){
-  lightboxToy = toy;
-  const facets = getFacets(toy);
+// Shared by two callers: the toy's own facet gallery (canvas-painted
+// specimens or its real photos) and a plain list of source-credited photos
+// (openSourceLightbox below) — the latter has no facets/canvases at all,
+// just <img> slides, so slide count is tracked directly rather than
+// re-derived from getFacets() each time (which openSourceLightbox has no
+// toy to call that with).
+let lightboxSlideCount = 0;
+function openLightboxSlides(slideHtmls, startIndex, paintFns){
+  lightboxSlideCount = slideHtmls.length;
   const track = document.getElementById('lightboxTrack');
-  track.innerHTML = facets.map(f => `<div class="lightbox-slide">${facetMediaHtml(toy,f)}<div class="lightbox-caption">${escapeHtml(f.label)}</div></div>`).join('');
-  track.querySelectorAll('canvas').forEach((cv,i)=> paintSpecimen(cv, toy, facets[i].key));
+  track.innerHTML = slideHtmls.join('');
+  track.querySelectorAll('canvas').forEach((cv,i)=> { if (paintFns && paintFns[i]) paintFns[i](cv); });
   const dots = document.getElementById('lightboxDots');
-  dots.innerHTML = facets.map((f,i)=> `<button data-i="${i}" aria-label="Go to ${escapeHtml(f.label)}"></button>`).join('');
+  dots.innerHTML = slideHtmls.map((_,i)=> `<button data-i="${i}" aria-label="Go to photo ${i+1}"></button>`).join('');
   dots.querySelectorAll('button').forEach(b=>{
     b.addEventListener('click', ()=> scrollLightboxTo(Number(b.getAttribute('data-i'))));
   });
@@ -928,6 +983,19 @@ function openLightbox(toy, startIndex){
   document.body.style.overflow = 'hidden';
   requestAnimationFrame(()=> scrollLightboxTo(startIndex, 'instant'));
   track.onscroll = debounce(()=> updateLightboxDots(), 100);
+}
+function openLightbox(toy, startIndex){
+  const facets = getFacets(toy);
+  const slides = facets.map(f => `<div class="lightbox-slide">${facetMediaHtml(toy,f)}<div class="lightbox-caption">${escapeHtml(f.label)}</div></div>`);
+  const paintFns = facets.map(f => (cv)=> paintSpecimen(cv, toy, f.key));
+  openLightboxSlides(slides, startIndex, paintFns);
+}
+// A source credit's photos are plain downloaded images (no facets, no
+// generative artwork) — same slide/dot/nav mechanics as the toy's own
+// gallery above, just built directly from a URL list instead of getFacets().
+function openSourceLightbox(images, startIndex, sourceName){
+  const slides = images.map((url,i) => `<div class="lightbox-slide"><img class="photo" src="${escapeHtml(url)}" alt="" loading="lazy"><div class="lightbox-caption">${escapeHtml(sourceName)} — photo ${i+1} of ${images.length}</div></div>`);
+  openLightboxSlides(slides, startIndex, null);
 }
 function scrollLightboxTo(i, behavior){
   const track = document.getElementById('lightboxTrack');
@@ -941,7 +1009,6 @@ function updateLightboxDots(){
 function closeLightbox(){
   document.getElementById('lightbox').hidden = true;
   document.body.style.overflow = '';
-  lightboxToy = null;
 }
 function debounce(fn, ms){ let t; return function(...a){ clearTimeout(t); t = setTimeout(()=>fn.apply(this,a), ms); }; }
 
@@ -954,7 +1021,7 @@ document.getElementById('lightboxPrev').addEventListener('click', ()=>{
 });
 document.getElementById('lightboxNext').addEventListener('click', ()=>{
   const track = document.getElementById('lightboxTrack');
-  const max = (lightboxToy ? getFacets(lightboxToy).length : 1) - 1;
+  const max = Math.max(0, lightboxSlideCount - 1);
   const i = Math.min(max, Math.round(track.scrollLeft/track.clientWidth) + 1);
   scrollLightboxTo(i);
 });
