@@ -146,6 +146,7 @@ const MediaPicker = {
 				?.getAttribute('content') || '';
 
 		try {
+			const failures = [];
 			for (let i = 0; i < files.length; i++) {
 				const formData = new FormData();
 				formData.append('file', files[i]);
@@ -159,13 +160,24 @@ const MediaPicker = {
 				});
 
 				if (!response.ok) {
-					const err = await response.json();
+					const err = await response.json().catch(() => ({}));
 					console.error('Upload error:', err);
+					failures.push(files[i].name);
 				}
 			}
 
-			this.close();
 			this.refreshThumbnails(this.currentEntityType, this.currentEntityId);
+
+			// Only auto-close on a clean run — if something failed, leave the
+			// picker open (with the error surfaced) instead of silently
+			// closing over a failed upload, which reads as "it worked".
+			if (failures.length === 0) {
+				this.close();
+			} else {
+				alert(
+					`${failures.length} of ${files.length} file(s) failed to upload: ${failures.join(', ')}`,
+				);
+			}
 		} catch (error) {
 			console.error(error);
 			alert('Upload failed due to a network error.');

@@ -34,11 +34,16 @@ foreach ($collectionItems as $ci) {
             <div class="card-body p-3 d-flex align-items-center gap-3">
                 <div class="flex-shrink-0 bg-light border rounded d-flex align-items-center justify-content-center" style="width: 70px; height: 70px;">
                     <?php if(!empty($catalogToy['image_path'])): ?>
-                        <img src="<?= $e($catalogToy['image_path']) ?>" style="max-width:100%; max-height:100%; object-fit:contain;">
+                        <img src="<?= $e($catalogToy['image_path']) ?>" title="Catalog default photo" style="max-width:100%; max-height:100%; object-fit:contain;">
                     <?php else: ?>
                         <i class="fa-solid fa-cube fa-2x text-muted opacity-25"></i>
                     <?php endif; ?>
                 </div>
+                <?php if($isEdit && !empty($ct['image_path'])): ?>
+                    <div class="flex-shrink-0 bg-light border rounded d-flex align-items-center justify-content-center" style="width: 70px; height: 70px;">
+                        <img src="<?= $e($ct['image_path']) ?>" title="Your photo (view/change in Add Photos)" style="max-width:100%; max-height:100%; object-fit:contain;">
+                    </div>
+                <?php endif; ?>
                 <div class="flex-grow-1">
                     <h5 class="mb-1 fw-bold"><?= $e($catalogToy['name']) ?></h5>
                     <div class="small text-muted">
@@ -96,13 +101,11 @@ foreach ($collectionItems as $ci) {
                             <input type="date" class="form-control" name="date_acquired" value="<?= $e($ct['date_acquired'] ?? date('Y-m-d')) ?>">
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label small text-muted mb-1">Purchase Price</label>
+                            <label class="form-label small text-muted mb-1">
+                                Purchase Price <span class="text-muted fw-normal">(<a href="<?= $baseUrl ?>settings" target="_blank" class="text-muted">change currency</a>)</span>
+                            </label>
                             <div class="input-group">
-                                <select class="form-select" name="purchase_currency" style="max-width: 80px;">
-                                    <?php foreach(['USD', 'EUR', 'GBP', 'DKK'] as $cur): ?>
-                                        <option value="<?= $cur ?>" <?= ($ct['purchase_currency'] ?? 'USD') === $cur ? 'selected' : '' ?>><?= $cur ?></option>
-                                    <?php endforeach; ?>
-                                </select>
+                                <span class="input-group-text bg-white text-muted"><?= $e($currency) ?></span>
                                 <input type="number" step="0.01" class="form-control" name="purchase_price" placeholder="0.00" value="<?= $e($ct['purchase_price'] ?? '') ?>">
                             </div>
                         </div>
@@ -263,6 +266,10 @@ foreach ($collectionItems as $ci) {
                                     <input class="form-check-input" type="checkbox" name="items[<?= $idx ?>][is_present]" value="1"
                                            id="item_present_<?= $idx ?>" <?= $isPresent ? 'checked' : '' ?>>
                                 </div>
+                                <?php if(!empty($catItem['image_path'])): ?>
+                                    <img src="<?= $e($catItem['image_path']) ?>" title="Catalog default photo" class="rounded border flex-shrink-0"
+                                         style="width: 38px; height: 38px; object-fit: contain; background: #f8f9fa;">
+                                <?php endif; ?>
                                 <div class="flex-grow-1">
                                     <div class="d-flex align-items-center gap-2">
                                         <span class="fw-bold small"><?= $e($catItem['subject_name']) ?></span>

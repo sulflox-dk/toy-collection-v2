@@ -8,6 +8,7 @@ use App\Kernel\Core\Config;
 use App\Modules\Collection\Models\CollectionToy;
 use App\Modules\Media\Models\MediaFile;
 use App\Modules\Media\Models\MediaTag;
+use App\Modules\Settings\Models\AppSettings;
 
 class CollectionToyController extends Controller
 {
@@ -140,10 +141,17 @@ class CollectionToyController extends Controller
         $collectionToy = null;
         $collectionItems = [];
 
+        $baseUrl = rtrim(Config::get('app.url', ''), '/') . '/';
+
         if ($id > 0) {
-            $collectionToy = $db->query(
-                "SELECT * FROM collection_toys WHERE id = ? AND deleted_at IS NULL", [$id]
-            )->fetch(\PDO::FETCH_ASSOC);
+            $collectionToy = $db->query("
+                SELECT ct.*,
+                    (SELECT CONCAT(?, f.filepath) FROM media_links ml JOIN media_files f ON ml.media_file_id = f.id
+                     WHERE ml.entity_type = 'collection_toys' AND ml.entity_id = ct.id
+                     ORDER BY ml.is_featured DESC, ml.sort_order ASC LIMIT 1) AS image_path
+                FROM collection_toys ct
+                WHERE ct.id = ? AND ct.deleted_at IS NULL
+            ", [$baseUrl, $id])->fetch(\PDO::FETCH_ASSOC);
 
             if ($collectionToy) {
                 $catalogToyId = $collectionToy['catalog_toy_id'];
@@ -157,9 +165,6 @@ class CollectionToyController extends Controller
             echo '<div class="p-4 text-danger">Error: No catalog toy specified.</div>';
             return;
         }
-
-        // Fetch the catalog toy details
-        $baseUrl = rtrim(Config::get('app.url', ''), '/') . '/';
         $catalogToy = $db->query("
             SELECT cat.*,
                    u.name as universe_name,
@@ -182,14 +187,20 @@ class CollectionToyController extends Controller
             return;
         }
 
-        // Fetch catalog toy items (the "blueprint" of included parts)
+        // Fetch catalog toy items (the "blueprint" of included parts), each
+        // with its catalog-level default photo (if any) for reference —
+        // the collector's own photo of their actual copy lives separately,
+        // attached to the collection_toy_items row in step 3.
         $catalogItems = $db->query("
-            SELECT i.id, i.description, s.name as subject_name, s.type as subject_type
+            SELECT i.id, i.description, s.name as subject_name, s.type as subject_type,
+                (SELECT CONCAT(?, f.filepath) FROM media_links ml JOIN media_files f ON ml.media_file_id = f.id
+                 WHERE ml.entity_type = 'catalog_toy_items' AND ml.entity_id = i.id
+                 ORDER BY ml.is_featured DESC, ml.sort_order ASC LIMIT 1) AS image_path
             FROM catalog_toy_items i
             JOIN meta_subjects s ON i.subject_id = s.id
             WHERE i.catalog_toy_id = ?
             ORDER BY i.id ASC
-        ", [$catalogToyId])->fetchAll(\PDO::FETCH_ASSOC);
+        ", [$baseUrl, $catalogToyId])->fetchAll(\PDO::FETCH_ASSOC);
 
         // Fetch all lookups
         $acquisitionStatuses = $db->query("SELECT id, name FROM meta_acquisition_statuses ORDER BY sort_order ASC")->fetchAll(\PDO::FETCH_ASSOC);
@@ -212,6 +223,8 @@ class CollectionToyController extends Controller
             'gradingCompanies' => $gradingCompanies,
             'graderTiers' => $graderTiers,
             'sources' => $sources,
+            'currency' => AppSettings::currency(),
+            'baseUrl' => $baseUrl,
         ]);
     }
 
@@ -232,7 +245,7 @@ class CollectionToyController extends Controller
             'acquisition_status_id' => (int) $request->input('acquisition_status_id', 0) ?: null,
             'date_acquired' => $request->input('date_acquired', '') ?: null,
             'purchase_price' => $request->input('purchase_price', '') !== '' ? (float) $request->input('purchase_price') : null,
-            'purchase_currency' => trim($request->input('purchase_currency', 'USD')) ?: 'USD',
+            'purchase_currency' => AppSettings::currency(),
             'current_value' => $request->input('current_value', '') !== '' ? (float) $request->input('current_value') : null,
             'cherish_rating' => (int) $request->input('cherish_rating', 0) ?: null,
             'packaging_type_id' => (int) $request->input('packaging_type_id', 0) ?: null,
