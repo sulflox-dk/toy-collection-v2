@@ -23,7 +23,6 @@ $tagsJson = json_encode($availableTags ?? [], JSON_HEX_APOS | JSON_HEX_QUOT);
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <div>
                         <h5 class="mb-1 fw-bold"><?= $e($toy['name']) ?></h5>
-                        <span class="text-muted small">Primary Entry</span>
                     </div>
                     <div>
                         <button class="btn btn-outline-dark btn-sm" onclick="MediaPicker.open('catalog_toys', <?= $toy['id'] ?>)">

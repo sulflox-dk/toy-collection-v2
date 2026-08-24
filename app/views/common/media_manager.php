@@ -69,10 +69,7 @@
         <div class="card-body p-3 d-flex flex-column flex-md-row gap-4">
 
             <div class="d-flex flex-column gap-2" style="width: 150px; flex-shrink: 0;">
-                <div class="position-relative border rounded bg-light d-flex align-items-center justify-content-center p-1 preview-wrap" style="height: 150px;">
-                    <span class="badge bg-warning text-dark position-absolute top-0 start-0 m-1 primary-badge d-none" style="z-index: 2; font-size: 0.75rem;">
-                        <i class="fa-solid fa-star me-1"></i>Primary
-                    </span>
+                <div class="border rounded bg-light d-flex align-items-center justify-content-center p-1 preview-wrap" style="height: 150px;">
                     <img class="preview-img" src="" style="max-width: 100%; max-height: 100%; object-fit: contain; cursor: zoom-in;" title="Click to view larger">
                 </div>
                 <button type="button" class="btn btn-sm btn-outline-warning w-100 btn-set-featured">
@@ -89,7 +86,12 @@
             <div class="flex-grow-1 d-flex flex-column">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h6 class="mb-0 text-muted small text-uppercase fw-bold">Image Details</h6>
-                    <span class="badge bg-success opacity-0 save-indicator" style="transition: opacity 0.3s;"><i class="fa-solid fa-check me-1"></i>Saved</span>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-warning text-dark primary-badge d-none" style="font-size: 0.75rem;">
+                            <i class="fa-solid fa-star me-1"></i>Primary
+                        </span>
+                        <span class="badge bg-success opacity-0 save-indicator" style="transition: opacity 0.3s;"><i class="fa-solid fa-check me-1"></i>Saved</span>
+                    </div>
                 </div>
 
                 <div class="row g-2">
