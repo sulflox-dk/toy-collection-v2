@@ -28,6 +28,6 @@ class SettingsController extends Controller
 
         AppSettings::update(['currency' => $currency]);
 
-        $this->redirect('/settings?saved=1');
+        $this->redirect(Request::url('/settings?saved=1'));
     }
 }
