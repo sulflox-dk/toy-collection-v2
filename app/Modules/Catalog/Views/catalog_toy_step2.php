@@ -38,12 +38,12 @@ $jsonMainSubjectTypes = json_encode($mainSubjectTypes ?? [], JSON_HEX_APOS | JSO
                     <div class="row g-3">
                         <div class="col-md-3">
                             <div class="d-flex justify-content-end">
-                                <img src="
-                                <?php if ($isEdit && !empty($toy['image_path'])) {
-                                    echo $e($baseUrl . $toy['image_path']);
-                                } else {
-                                    echo "PLACEHOLDERIMAGE";
-                                }
+                                <img src="<?php
+                                    if ($isEdit && !empty($toy['image_path'])) {
+                                        echo $e($baseUrl . $toy['image_path']);
+                                    } else {
+                                        echo $e($baseUrl . 'assets/img/no-photo.svg');
+                                    }
                                 ?>" alt="" title="Primary photo (view/change in Add Photos)"
                                  class="rounded border" style="width: 100%; height: 100%; object-fit: contain; background: #f8f9fa;">
                             </div>

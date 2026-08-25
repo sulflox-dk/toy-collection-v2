@@ -33,19 +33,19 @@ foreach ($collectionItems as $ci) {
         <?php
             // Your own photo of this actual copy takes priority over the
             // catalog's generic default photo, when you have one.
-            $headerImage = ($isEdit && !empty($ct['image_path'])) ? $ct['image_path'] : ($catalogToy['image_path'] ?? '');
-            $headerImageTitle = ($isEdit && !empty($ct['image_path'])) ? 'Your photo (view/change in Add Photos)' : 'Catalog default photo';
+            $hasOwnPhoto = $isEdit && !empty($ct['image_path']);
+            $headerImage = $hasOwnPhoto ? $ct['image_path'] : ($catalogToy['image_path'] ?? '');
+            $headerImageTitle = $hasOwnPhoto ? 'Your photo (view/change in Add Photos)' : ($headerImage ? 'Catalog default photo' : 'No photo yet');
+            if (empty($headerImage)) {
+                $headerImage = $baseUrl . 'assets/img/no-photo.svg';
+            }
         ?>
         <div class="card shadow-sm border-0 bg-white">
             <div class="card-body p-3">
                 <div class="row g-3 align-items-center">
                     <div class="col-md-3">
                         <div class="bg-light border rounded d-flex align-items-center justify-content-center" style="width: 100%; aspect-ratio: 1 / 1;">
-                            <?php if(!empty($headerImage)): ?>
-                                <img src="<?= $e($headerImage) ?>" title="<?= $e($headerImageTitle) ?>" style="width:100%; height:100%; object-fit:contain;">
-                            <?php else: ?>
-                                <i class="fa-solid fa-cube fa-3x text-muted opacity-25"></i>
-                            <?php endif; ?>
+                            <img src="<?= $e($headerImage) ?>" title="<?= $e($headerImageTitle) ?>" style="width:100%; height:100%; object-fit:contain;">
                         </div>
                     </div>
                     <div class="col-md-9 d-flex align-items-center gap-3">
