@@ -14,6 +14,7 @@ class MediaFileController extends Controller
         'catalog_toys',
         'catalog_toy_items',
         'collection_toys',
+        'collection_toy_items',
         'universes',
         'manufacturers',
         'toy_lines',

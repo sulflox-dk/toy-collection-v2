@@ -28,6 +28,7 @@ use App\Modules\Importer\Controllers\ImporterGuideController;
 use App\Modules\Showcase\Controllers\ShowcaseController;
 use App\Modules\Backup\Controllers\BackupController;
 use App\Modules\DataTools\Controllers\EmptyDatabaseController;
+use App\Modules\Settings\Controllers\SettingsController;
 
 
 /** @var Router $router */
@@ -235,3 +236,10 @@ $router->post('/backup/restore',        [BackupController::class, 'restore']);
 $router->admin('/empty-database');
 $router->get('/empty-database',                 [EmptyDatabaseController::class, 'index']);
 $router->post('/empty-database/level/{level}',  [EmptyDatabaseController::class, 'empty']);
+
+// ==========================================================
+// SETTINGS
+// ==========================================================
+$router->admin('/settings');
+$router->get('/settings',  [SettingsController::class, 'index']);
+$router->put('/settings',  [SettingsController::class, 'update']);

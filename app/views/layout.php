@@ -128,6 +128,7 @@ $baseUrl = rtrim(Config::get('app.url', ''), '/') . '/';
                 <div class="collapse" id="menu-admin">
                     <ul class="sidebar-submenu btn-toggle-nav-list align-items-center rounded">
                         <li><a href="<?= $baseUrl ?>user" class="nav-link">Users</a></li>
+                        <li><a href="<?= $baseUrl ?>settings" class="nav-link">Settings</a></li>
                         <li><a href="<?= $baseUrl ?>backup" class="nav-link">Backup &amp; Restore</a></li>
                         <li><a href="<?= $baseUrl ?>empty-database" class="nav-link">Empty Database</a></li>
                     </ul>
