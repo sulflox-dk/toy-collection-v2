@@ -3,6 +3,7 @@ namespace App\Modules\Settings\Controllers;
 
 use App\Kernel\Http\Controller;
 use App\Kernel\Http\Request;
+use App\Kernel\Core\Config;
 use App\Modules\Settings\Models\AppSettings;
 
 class SettingsController extends Controller
@@ -14,6 +15,7 @@ class SettingsController extends Controller
             'settings' => AppSettings::get(),
             'currencies' => AppSettings::CURRENCIES,
             'saved' => $request->input('saved', '') === '1',
+            'baseUrl' => rtrim(Config::get('app.url', ''), '/') . '/',
         ]);
     }
 
