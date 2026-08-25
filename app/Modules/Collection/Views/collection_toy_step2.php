@@ -30,36 +30,43 @@ foreach ($collectionItems as $ci) {
     <div class="modal-body p-4 bg-light d-flex flex-column gap-4 overflow-auto">
 
         <!-- Catalog Toy Header (read-only) -->
+        <?php
+            // Your own photo of this actual copy takes priority over the
+            // catalog's generic default photo, when you have one.
+            $hasOwnPhoto = $isEdit && !empty($ct['image_path']);
+            $headerImage = $hasOwnPhoto ? $ct['image_path'] : ($catalogToy['image_path'] ?? '');
+            $headerImageTitle = $hasOwnPhoto ? 'Your photo (view/change in Add Photos)' : ($headerImage ? 'Catalog default photo' : 'No photo yet');
+            if (empty($headerImage)) {
+                $headerImage = $baseUrl . 'assets/img/no-photo.svg';
+            }
+        ?>
         <div class="card shadow-sm border-0 bg-white">
-            <div class="card-body p-3 d-flex align-items-center gap-3">
-                <div class="flex-shrink-0 bg-light border rounded d-flex align-items-center justify-content-center" style="width: 70px; height: 70px;">
-                    <?php if(!empty($catalogToy['image_path'])): ?>
-                        <img src="<?= $e($catalogToy['image_path']) ?>" title="Catalog default photo" style="max-width:100%; max-height:100%; object-fit:contain;">
-                    <?php else: ?>
-                        <i class="fa-solid fa-cube fa-2x text-muted opacity-25"></i>
-                    <?php endif; ?>
-                </div>
-                <?php if($isEdit && !empty($ct['image_path'])): ?>
-                    <div class="flex-shrink-0 bg-light border rounded d-flex align-items-center justify-content-center" style="width: 70px; height: 70px;">
-                        <img src="<?= $e($ct['image_path']) ?>" title="Your photo (view/change in Add Photos)" style="max-width:100%; max-height:100%; object-fit:contain;">
+            <div class="card-body p-3">
+                <div class="row g-3 align-items-center">
+                    <div class="col-md-3">
+                        <div class="bg-light border rounded d-flex align-items-center justify-content-center" style="width: 100%; aspect-ratio: 1 / 1;">
+                            <img src="<?= $e($headerImage) ?>" title="<?= $e($headerImageTitle) ?>" style="width:100%; height:100%; object-fit:contain;">
+                        </div>
                     </div>
-                <?php endif; ?>
-                <div class="flex-grow-1">
-                    <h5 class="mb-1 fw-bold"><?= $e($catalogToy['name']) ?></h5>
-                    <div class="small text-muted">
-                        <?= $e(implode(' · ', array_filter([
-                            $catalogToy['universe_name'] ?? '',
-                            $catalogToy['toy_line_name'] ?? '',
-                            $catalogToy['manufacturer_name'] ?? '',
-                            $catalogToy['year_released'] ?? ''
-                        ]))) ?>
+                    <div class="col-md-9 d-flex align-items-center gap-3">
+                        <div class="flex-grow-1">
+                            <h5 class="mb-1 fw-bold"><?= $e($catalogToy['name']) ?></h5>
+                            <div class="small text-muted">
+                                <?= $e(implode(' · ', array_filter([
+                                    $catalogToy['universe_name'] ?? '',
+                                    $catalogToy['toy_line_name'] ?? '',
+                                    $catalogToy['manufacturer_name'] ?? '',
+                                    $catalogToy['year_released'] ?? ''
+                                ]))) ?>
+                            </div>
+                        </div>
+                        <?php if(!$isEdit): ?>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="CollectionWizard.loadStep1()" title="Pick different toy">
+                                <i class="fa-solid fa-arrow-left"></i>
+                            </button>
+                        <?php endif; ?>
                     </div>
                 </div>
-                <?php if(!$isEdit): ?>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="CollectionWizard.loadStep1()" title="Pick different toy">
-                        <i class="fa-solid fa-arrow-left"></i>
-                    </button>
-                <?php endif; ?>
             </div>
         </div>
 
@@ -268,7 +275,7 @@ foreach ($collectionItems as $ci) {
                                 </div>
                                 <?php if(!empty($catItem['image_path'])): ?>
                                     <img src="<?= $e($catItem['image_path']) ?>" title="Catalog default photo" class="rounded border flex-shrink-0"
-                                         style="width: 38px; height: 38px; object-fit: contain; background: #f8f9fa;">
+                                         style="width: 52px; height: 52px; object-fit: contain; background: #f8f9fa;">
                                 <?php endif; ?>
                                 <div class="flex-grow-1">
                                     <div class="d-flex align-items-center gap-2">
