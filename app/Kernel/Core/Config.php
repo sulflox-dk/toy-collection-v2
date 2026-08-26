@@ -40,4 +40,18 @@ class Config
 
         return $data;
     }
+
+    /**
+     * Cache-busting query value for a static asset, keyed to the file's own
+     * last-modified time so a browser is forced to re-fetch it the moment
+     * its content actually changes — unlike 'app.version', which is a
+     * fixed fallback ('1.0.0') that nothing in this app ever bumps, so it
+     * can never actually invalidate a stale cached copy.
+     */
+    public static function assetVersion(string $relativePath): string
+    {
+        $fullPath = ROOT_PATH . '/public/' . ltrim($relativePath, '/');
+        $mtime = @filemtime($fullPath);
+        return $mtime !== false ? (string) $mtime : self::get('app.version', '1.0.0');
+    }
 }
