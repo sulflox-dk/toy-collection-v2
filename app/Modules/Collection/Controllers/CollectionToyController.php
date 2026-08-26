@@ -326,7 +326,7 @@ class CollectionToyController extends Controller
 
             $this->json(['success' => true, 'id' => $id]);
 
-        } catch (\PDOException $e) {
+        } catch (\RuntimeException $e) {
             $db->rollBack();
             $this->json(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
         }
@@ -410,12 +410,18 @@ class CollectionToyController extends Controller
                 );
             }
 
+            // collection_toy_items has no deleted_at of its own and holds a
+            // hard (ON DELETE RESTRICT) reference to catalog_toy_items — left
+            // behind, it would silently block deleting the catalog toy later,
+            // since the parent's soft-delete makes it invisible to that check.
+            $db->query("DELETE FROM collection_toy_items WHERE collection_toy_id = ?", [$id]);
+
             // Soft delete
             $db->query("UPDATE collection_toys SET deleted_at = NOW() WHERE id = ?", [$id]);
 
             $db->commit();
             $this->json(['success' => true]);
-        } catch (\PDOException $e) {
+        } catch (\RuntimeException $e) {
             $db->rollBack();
             $this->json(['error' => 'Failed to delete. ' . $e->getMessage()], 500);
         }

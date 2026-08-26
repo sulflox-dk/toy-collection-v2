@@ -102,7 +102,12 @@ class Database
             return $stmt;
 
         } catch (PDOException $e) {
-            throw new RuntimeException("Database Query Error: " . $e->getMessage());
+            // Carry the original SQLSTATE code (e.g. 23000 for a foreign
+            // key violation) and the PDOException itself through, so a
+            // caller catching this RuntimeException can still branch on
+            // $e->getCode() or inspect $e->getPrevious() the way it could
+            // if it had caught the PDOException directly.
+            throw new RuntimeException("Database Query Error: " . $e->getMessage(), (int) $e->getCode(), $e);
         }
     }
 

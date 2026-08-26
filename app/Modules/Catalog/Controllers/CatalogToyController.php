@@ -270,7 +270,7 @@ class CatalogToyController extends Controller
             echo json_encode(['success' => true, 'id' => $id]);
             exit;
 
-        } catch (\PDOException $e) {
+        } catch (\RuntimeException $e) {
             $db->rollBack();
             
             if ($e->getCode() == 23000 || strpos($e->getMessage(), 'foreign key constraint') !== false) {
@@ -371,13 +371,26 @@ class CatalogToyController extends Controller
                 );
             }
 
+            // collection_toys.catalog_toy_id is a hard (ON DELETE RESTRICT)
+            // reference. The guard above only blocks on ACTIVE collection
+            // entries, so a soft-deleted one (invisible to that check, but
+            // never actually removed from the table) would otherwise fail
+            // this delete with a raw FK violation — safe to clear here
+            // since it's already gone from the user's perspective, and
+            // ON DELETE CASCADE on collection_toy_items takes its item
+            // rows with it.
+            $db->query(
+                "DELETE FROM collection_toys WHERE catalog_toy_id = ? AND deleted_at IS NOT NULL",
+                [$id]
+            );
+
             // Delete items then toy (items have ON DELETE CASCADE, but explicit is clearer)
             $db->query("DELETE FROM catalog_toy_items WHERE catalog_toy_id = ?", [$id]);
             $db->query("DELETE FROM catalog_toys WHERE id = ?", [$id]);
 
             $db->commit();
             $this->json(['success' => true]);
-        } catch (\PDOException $e) {
+        } catch (\RuntimeException $e) {
             $db->rollBack();
             $this->json(['error' => 'Failed to delete catalog toy. ' . $e->getMessage()], 500);
         }
