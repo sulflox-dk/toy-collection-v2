@@ -247,13 +247,7 @@ class MediaFileController extends Controller
             }
 
             // 5. Delete physical file (with path traversal guard)
-            $fullPath = ROOT_PATH . '/public/' . $file['filepath'];
-            $realPath = realpath($fullPath);
-            $uploadsDir = realpath(ROOT_PATH . '/public/uploads');
-
-            if ($realPath && $uploadsDir && str_starts_with($realPath, $uploadsDir)) {
-                unlink($realPath);
-            }
+            $this->deletePhysicalFile($file['filepath']);
 
             // 6. Delete DB record (ON DELETE CASCADE will handle media_file_tags)
             MediaFile::delete($id);
@@ -265,6 +259,61 @@ class MediaFileController extends Controller
             $db->rollBack();
             error_log('Delete failed: ' . $e->getMessage());
             $this->json(['error' => 'Failed to delete record. Please try again.'], 500);
+        }
+    }
+
+    /**
+     * Permanently delete every media file with zero attachments — the
+     * "No Attachments (Orphans)" set. Nothing here is still in use
+     * anywhere, so there's no migration step to worry about, unlike the
+     * single-file destroy() above.
+     * DELETE /media-file/orphans
+     */
+    public function destroyOrphans(Request $request): void
+    {
+        $orphans = MediaFile::getOrphaned();
+
+        if (empty($orphans)) {
+            $this->json(['success' => true, 'count' => 0]);
+            return;
+        }
+
+        $db = Database::getInstance();
+
+        try {
+            $db->beginTransaction();
+
+            foreach ($orphans as $file) {
+                $this->deletePhysicalFile($file['filepath']);
+            }
+
+            $ids = array_column($orphans, 'id');
+            $placeholders = implode(',', array_fill(0, count($ids), '?'));
+            $db->execute("DELETE FROM media_files WHERE id IN ($placeholders)", $ids);
+
+            $db->commit();
+            $this->json(['success' => true, 'count' => count($orphans)]);
+
+        } catch (\Exception $e) {
+            $db->rollBack();
+            error_log('Delete orphans failed: ' . $e->getMessage());
+            $this->json(['error' => 'Failed to delete orphaned files. Please try again.'], 500);
+        }
+    }
+
+    /**
+     * Delete an uploaded file's physical copy from disk, refusing to touch
+     * anything outside the uploads directory (defends against a filepath
+     * value containing '../' somehow reaching here).
+     */
+    private function deletePhysicalFile(string $filepath): void
+    {
+        $fullPath = ROOT_PATH . '/public/' . $filepath;
+        $realPath = realpath($fullPath);
+        $uploadsDir = realpath(ROOT_PATH . '/public/uploads');
+
+        if ($realPath && $uploadsDir && str_starts_with($realPath, $uploadsDir)) {
+            unlink($realPath);
         }
     }
 

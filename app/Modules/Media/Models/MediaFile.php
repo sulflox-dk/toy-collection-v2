@@ -91,6 +91,17 @@ class MediaFile extends BaseModel
     }
 
     /**
+     * Every media file with zero links to any entity — the same
+     * "No Attachments (Orphans)" set the library's own filter shows.
+     */
+    public static function getOrphaned(): array
+    {
+        $sql = "SELECT id, filepath FROM " . static::$table . "
+                WHERE NOT EXISTS (SELECT 1 FROM media_links WHERE media_file_id = " . static::$table . ".id)";
+        return static::db()->query($sql)->fetchAll(\PDO::FETCH_ASSOC);
+    }
+
+    /**
      * Migrates polymorphic links from one media file to another.
      * Uses INSERT IGNORE to prevent duplicate key constraint violations 
      * if the new file is already attached to the target entity.

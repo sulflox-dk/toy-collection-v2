@@ -149,6 +149,7 @@ $router->post('/media-file/link',       [MediaFileController::class, 'link']);
 $router->post('/media-file/unlink', [MediaFileController::class, 'unlink']);
 $router->post('/media-file/set-featured', [MediaFileController::class, 'setFeatured']);
 $router->get('/media-file/thumbnails',  [MediaFileController::class, 'getThumbnails']);
+$router->delete('/media-file/orphans', [MediaFileController::class, 'destroyOrphans']);
 
 // These {id} wildcards must stay below every literal /media-file/... route
 // above — the router matches in registration order and {id} greedily

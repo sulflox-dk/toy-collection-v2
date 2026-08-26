@@ -7,6 +7,9 @@
         <p class="text-muted mb-0">Manage images and documents.</p>
     </div>
     <div>
+        <button type="button" class="btn btn-outline-danger me-2" id="btn-delete-orphans">
+            <i class="fa-solid fa-broom me-1"></i> Delete All Orphans
+        </button>
         <button type="button" class="btn btn-outline-primary me-2" id="btn-toggle-dropzone">
             <i class="fa-solid fa-images me-1"></i> Upload Multiple Files
         </button>
