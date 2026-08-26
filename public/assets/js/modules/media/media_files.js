@@ -125,6 +125,55 @@ document.addEventListener('DOMContentLoaded', () => {
 	});
 
 	// =====================================================================
+	// 3B. DELETE ALL ORPHANS
+	// =====================================================================
+	const btnDeleteOrphans = document.getElementById('btn-delete-orphans');
+	if (btnDeleteOrphans) {
+		btnDeleteOrphans.addEventListener('click', async () => {
+			if (
+				!confirm(
+					'Permanently delete every media file with no attachments (orphans)?\n\nThis removes the files from disk and cannot be undone.',
+				)
+			)
+				return;
+
+			const baseUrl = typeof SITE_URL !== 'undefined' ? SITE_URL : '/';
+			const csrfToken = document.querySelector(
+				'meta[name="csrf-token"]',
+			)?.content;
+
+			btnDeleteOrphans.disabled = true;
+			const originalText = btnDeleteOrphans.innerHTML;
+			btnDeleteOrphans.innerHTML =
+				'<i class="fa-solid fa-spinner fa-spin"></i> Deleting...';
+
+			try {
+				const response = await fetch(baseUrl + 'media-file/orphans', {
+					method: 'DELETE',
+					headers: { 'X-CSRF-Token': csrfToken || '' },
+				});
+				const result = await response.json();
+				if (!response.ok || !result.success) {
+					throw new Error(result.error || 'Failed to delete orphaned files.');
+				}
+
+				alert(
+					result.count > 0
+						? `Deleted ${result.count} orphaned file(s).`
+						: 'No orphaned files to delete.',
+				);
+				manager.loadList();
+			} catch (error) {
+				console.error(error);
+				alert(error.message);
+			} finally {
+				btnDeleteOrphans.disabled = false;
+				btnDeleteOrphans.innerHTML = originalText;
+			}
+		});
+	}
+
+	// =====================================================================
 	// 4. MULTIPLE UPLOAD LOGIC
 	// =====================================================================
 	const btnToggleDropzone = document.getElementById('btn-toggle-dropzone');
