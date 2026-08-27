@@ -68,7 +68,15 @@ ob_start();
         <option value="missing_image">Missing My Photo(s)</option>
     </select>
 </div>
-<?php 
+<div class="col-md-3 mb-2 mb-md-0">
+    <select class="form-select data-filter" name="subject_id">
+        <option value="">All Subjects</option>
+        <?php foreach ($subjects as $s): ?>
+            <option value="<?= $s['id'] ?>"><?= htmlspecialchars($s['name']) ?></option>
+        <?php endforeach; ?>
+    </select>
+</div>
+<?php
 $customFiltersHTML = ob_get_clean();
 
 echo $this->renderPartial('common/index_header', [

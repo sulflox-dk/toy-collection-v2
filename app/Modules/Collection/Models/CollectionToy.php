@@ -28,7 +28,8 @@ class CollectionToy extends BaseModel
         int $manufacturerId = 0, // <-- NEW
         int $productTypeId = 0,  // <-- NEW
         string $missingParts = '',// <-- NEW
-        string $imageStatus = ''  // <-- NEW
+        string $imageStatus = '',  // <-- NEW
+        int $subjectId = 0
     ): array {
         $offset = ($page - 1) * $perPage;
         
@@ -118,6 +119,13 @@ class CollectionToy extends BaseModel
         if ($productTypeId > 0) {
             $whereConditions[] = "cat.product_type_id = ?";
             $params[] = $productTypeId;
+        }
+        if ($subjectId > 0) {
+            // Either the toy's own main subject, or a subject one of its
+            // accessories/items depicts.
+            $whereConditions[] = "(cat.subject_id = ? OR EXISTS (SELECT 1 FROM catalog_toy_items WHERE catalog_toy_id = cat.id AND subject_id = ?))";
+            $params[] = $subjectId;
+            $params[] = $subjectId;
         }
 
         if ($missingParts === 'complete') {

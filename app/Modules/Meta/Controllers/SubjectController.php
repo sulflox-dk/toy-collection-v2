@@ -4,6 +4,7 @@ namespace App\Modules\Meta\Controllers;
 use App\Kernel\Http\Controller;
 use App\Kernel\Http\Request;
 use App\Kernel\Database\Database;
+use App\Kernel\Core\Config;
 use App\Modules\Meta\Models\Subject;
 use App\Modules\Catalog\Models\CatalogToyItem;
 
@@ -13,13 +14,14 @@ class SubjectController extends Controller
     {
         $db = Database::getInstance();
         $universes = $db->query("SELECT id, name FROM meta_universes ORDER BY name ASC")->fetchAll(\PDO::FETCH_ASSOC);
-        
+
         $types = ['Character','Vehicle','Environment','Creature','Accessory','Packaging','Paperwork'];
 
         $this->render('subject_index', [
             'title' => 'Meta / Subjects',
             'universes' => $universes,
-            'types' => $types
+            'types' => $types,
+            'baseUrl' => rtrim(Config::get('app.url', ''), '/') . '/',
         ]);
     }
 
@@ -87,7 +89,8 @@ class SubjectController extends Controller
             'slug' => $slug,
             'type' => $type,
             'universe_id' => $universeId,
-            'description' => trim($request->input('description', ''))
+            'description' => trim($request->input('description', '')),
+            'external_url' => trim($request->input('external_url', '')) ?: null
         ]);
 
         $this->json(['success' => true]);
@@ -136,7 +139,8 @@ class SubjectController extends Controller
             'slug' => $slug,
             'type' => $type,
             'universe_id' => $universeId,
-            'description' => trim($request->input('description', ''))
+            'description' => trim($request->input('description', '')),
+            'external_url' => trim($request->input('external_url', '')) ?: null
         ]);
 
         $db = Database::getInstance();
@@ -190,6 +194,13 @@ class SubjectController extends Controller
             if ($itemCount > 0 && $migrateTo > 0) {
                 CatalogToyItem::migrateSubject($id, $migrateTo);
             }
+
+            // media_links has no FK back to this row (it's polymorphic), so
+            // a leftover link here wouldn't block the delete — it would
+            // just silently orphan the photo, invisible to both this
+            // subject (now gone) and the Media Library's orphan filter
+            // (which only catches files with zero links, not dead ones).
+            $db->query("DELETE FROM media_links WHERE entity_type = 'subjects' AND entity_id = ?", [$id]);
 
             Subject::delete($id);
             $db->commit();
