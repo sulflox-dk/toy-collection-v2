@@ -34,13 +34,19 @@
 <?= $this->renderPartial('common/media_manager') ?>
 
 <script>
-function openEntityPhotoModal(entityType, entityId, entityName) {
+async function openEntityPhotoModal(entityType, entityId, entityName) {
     window.currentPhotoEntityType = entityType;
     window.currentPhotoEntityId = entityId;
     document.getElementById('entity-photo-modal-name').textContent = entityName;
     document.querySelector('.entity-photo-preview-container').id = `preview-${entityType}-${entityId}`;
-    MediaPicker.refreshThumbnails(entityType, entityId);
+    const images = await MediaPicker.refreshThumbnails(entityType, entityId);
     new bootstrap.Modal(document.getElementById('entity-photo-modal')).show();
+
+    // Nothing attached yet — skip the empty gallery view and go straight
+    // to the upload step, since that's the only thing to do here anyway.
+    if (!images || images.length === 0) {
+        MediaPicker.open(entityType, entityId);
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {

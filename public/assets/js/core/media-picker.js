@@ -309,7 +309,7 @@ const MediaPicker = {
 		const container = document.getElementById(
 			`preview-${entityType}-${entityId}`,
 		);
-		if (!container) return;
+		if (!container) return [];
 
 		container.innerHTML =
 			'<div class="w-100 text-center py-3"><i class="fa-solid fa-spinner fa-spin text-muted"></i></div>';
@@ -323,7 +323,7 @@ const MediaPicker = {
 			if (images.length === 0) {
 				container.innerHTML =
 					'<div class="text-muted small w-100 text-center py-3 bg-light border rounded border-dashed">No images attached yet.</div>';
-				return;
+				return images;
 			}
 
 			const successAlert = document.getElementById('step3-success-alert');
@@ -406,9 +406,11 @@ const MediaPicker = {
 
 			container.appendChild(wrapper);
 			this._imageCache[`${entityType}-${entityId}`] = images;
+			return images;
 		} catch (error) {
 			container.innerHTML =
 				'<div class="text-danger small w-100 text-center">Error loading images</div>';
+			return [];
 		}
 	},
 
