@@ -134,13 +134,22 @@ class MediaFile extends BaseModel
     }
 
     /**
-     * Link an existing media file to any polymorphic entity
+     * Link an existing media file to any polymorphic entity. The first
+     * image ever linked to a given entity is automatically made its
+     * primary — with nothing else attached yet, there's no meaningful
+     * choice to make, so there's no reason to make the user click
+     * "Set as Primary" separately right after uploading it.
      */
     public static function linkToEntity(int $mediaFileId, string $entityType, int $entityId): void
     {
+        $isFirst = (int) static::db()->query(
+            "SELECT COUNT(*) FROM media_links WHERE entity_type = ? AND entity_id = ?",
+            [$entityType, $entityId]
+        )->fetchColumn() === 0;
+
         // INSERT IGNORE prevents duplicate links if the user clicks it twice
-        $sql = "INSERT IGNORE INTO media_links (media_file_id, entity_type, entity_id) VALUES (?, ?, ?)";
-        static::db()->query($sql, [$mediaFileId, $entityType, $entityId]);
+        $sql = "INSERT IGNORE INTO media_links (media_file_id, entity_type, entity_id, is_featured) VALUES (?, ?, ?, ?)";
+        static::db()->query($sql, [$mediaFileId, $entityType, $entityId, $isFirst ? 1 : 0]);
     }
 
     /**
