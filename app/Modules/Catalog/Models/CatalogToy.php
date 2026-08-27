@@ -25,7 +25,8 @@ class CatalogToy extends BaseModel
         int $manufacturerId = 0,
         int $productTypeId = 0,
         string $ownership = '',
-        string $imageStatus = ''
+        string $imageStatus = '',
+        int $subjectId = 0
     ): array {
         $offset = ($page - 1) * $perPage;
         $whereConditions = [];
@@ -81,6 +82,14 @@ class CatalogToy extends BaseModel
         if ($productTypeId > 0) {
             $whereConditions[] = "t.product_type_id = ?";
             $params[] = $productTypeId;
+        }
+        if ($subjectId > 0) {
+            // Either the toy's own main subject, or a subject one of its
+            // accessories/items depicts (e.g. a lightsaber sold with a
+            // figure is its own subject too).
+            $whereConditions[] = "(t.subject_id = ? OR EXISTS (SELECT 1 FROM catalog_toy_items WHERE catalog_toy_id = t.id AND subject_id = ?))";
+            $params[] = $subjectId;
+            $params[] = $subjectId;
         }
 
         // 4. Apply Ownership Filter

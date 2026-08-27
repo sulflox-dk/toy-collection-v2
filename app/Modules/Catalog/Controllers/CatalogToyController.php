@@ -27,6 +27,7 @@ class CatalogToyController extends Controller
         $toyLines = $db->query("SELECT id, name FROM meta_toy_lines ORDER BY name ASC")->fetchAll(\PDO::FETCH_ASSOC);
         $manufacturers = $db->query("SELECT id, name FROM meta_manufacturers ORDER BY name ASC")->fetchAll(\PDO::FETCH_ASSOC);
         $productTypes = $db->query("SELECT id, name FROM meta_product_types ORDER BY name ASC")->fetchAll(\PDO::FETCH_ASSOC);
+        $subjects = $db->query("SELECT id, name FROM meta_subjects ORDER BY name ASC")->fetchAll(\PDO::FETCH_ASSOC);
 
         $this->render('catalog_toy_index', [
             'title' => 'Catalog Toys',
@@ -34,6 +35,7 @@ class CatalogToyController extends Controller
             'toyLines' => $toyLines,
             'manufacturers' => $manufacturers,
             'productTypes' => $productTypes,
+            'subjects' => $subjects,
             'scripts' => [
                 'assets/js/modules/catalog/catalog_toys.js'
             ]
@@ -52,6 +54,7 @@ class CatalogToyController extends Controller
         $productTypeId = (int) $request->input('product_type_id', 0);
         $ownership = trim($request->input('ownership', ''));
         $imageStatus = trim($request->input('image_status', ''));
+        $subjectId = (int) $request->input('subject_id', 0);
         
         // --- FIXED VIEW MODE LOGIC ---
         $viewMode = trim($request->input('view', '')); 
@@ -67,9 +70,9 @@ class CatalogToyController extends Controller
         $perPage = ($viewMode === 'cards') ? 24 : 20;
 
         $data = CatalogToy::getPaginatedWithDetails(
-            $page, $perPage, $search, 
-            $universeId, $toyLineId, $manufacturerId, $productTypeId, 
-            $ownership, $imageStatus
+            $page, $perPage, $search,
+            $universeId, $toyLineId, $manufacturerId, $productTypeId,
+            $ownership, $imageStatus, $subjectId
         );
 
         $this->renderPartial('catalog_toy_list', [

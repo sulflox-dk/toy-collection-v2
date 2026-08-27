@@ -75,6 +75,11 @@ echo $this->renderPartial('common/index_header', [
                     </div>
 
                     <div class="mb-3">
+                        <label class="form-label">External URL <span class="text-muted fw-normal">(optional)</span></label>
+                        <input type="url" class="form-control" name="external_url" placeholder="e.g. a Wookieepedia page">
+                    </div>
+
+                    <div class="mb-3">
                         <label class="form-label">Slug</label>
                         <input type="text" class="form-control" name="slug" placeholder="Auto-generated if empty">
                         <div class="invalid-feedback">Error message will appear here</div>
@@ -94,9 +99,11 @@ echo $this->renderPartial('common/index_header', [
     </div>
 </div>
 
+<?= $this->renderPartial('common/entity_photo_modal') ?>
+
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    new EntityManager('subject', {
+    window.currentEntityManager = new EntityManager('subject', {
         mode: 'html',
         endpoint: '/subject',
         listUrl: '/subject/list',

@@ -4,6 +4,7 @@ namespace App\Modules\Meta\Models;
 use App\Kernel\Database\BaseModel;
 use App\Modules\Meta\Traits\HasUniverse;
 use App\Kernel\Database\HasSlug;
+use App\Kernel\Core\Config;
 
 class Subject extends BaseModel
 {
@@ -15,21 +16,25 @@ class Subject extends BaseModel
      * Get paginated list with Universe names joined
      */
     public static function getPaginatedWithDetails(
-        int $page = 1, 
-        int $perPage = 20, 
-        string $search = '', 
+        int $page = 1,
+        int $perPage = 20,
+        string $search = '',
         string $type = '',
         int $universeId = 0
     ): array
     {
         $offset = ($page - 1) * $perPage;
-        $params = [];
+        $baseUrl = rtrim(Config::get('app.url', ''), '/') . '/';
+        $params = [$baseUrl];
         $whereConditions = [];
 
         $sql = "
-            SELECT 
+            SELECT
                 s.*,
-                u.name as universe_name
+                u.name as universe_name,
+                (SELECT CONCAT(?, f.filepath) FROM media_links ml JOIN media_files f ON ml.media_file_id = f.id
+                 WHERE ml.entity_type = 'subjects' AND ml.entity_id = s.id
+                 ORDER BY ml.is_featured DESC, ml.sort_order ASC LIMIT 1) AS image_path
             FROM " . static::$table . " s
             LEFT JOIN meta_universes u ON s.universe_id = u.id
         ";

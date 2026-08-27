@@ -22,6 +22,7 @@ class CollectionToyController extends Controller
         $storageUnits = $db->query("SELECT id, name, box_code FROM collection_storage_units ORDER BY name ASC")->fetchAll(\PDO::FETCH_ASSOC);
         $manufacturers = $db->query("SELECT id, name FROM meta_manufacturers ORDER BY name ASC")->fetchAll(\PDO::FETCH_ASSOC);
         $productTypes = $db->query("SELECT id, name FROM meta_product_types ORDER BY name ASC")->fetchAll(\PDO::FETCH_ASSOC);
+        $subjects = $db->query("SELECT id, name FROM meta_subjects ORDER BY name ASC")->fetchAll(\PDO::FETCH_ASSOC);
 
         $this->render('collection_toy_index', [
             'title' => 'My Collection',
@@ -31,6 +32,7 @@ class CollectionToyController extends Controller
             'storageUnits' => $storageUnits,
             'manufacturers' => $manufacturers,
             'productTypes' => $productTypes,
+            'subjects' => $subjects,
             'scripts' => [
                 'assets/js/modules/collection/collection_toys.js'
             ]
@@ -50,6 +52,7 @@ class CollectionToyController extends Controller
         $productTypeId = (int) $request->input('product_type_id', 0);
         $missingParts = trim($request->input('missing_parts', ''));
         $imageStatus = trim($request->input('image_status', ''));
+        $subjectId = (int) $request->input('subject_id', 0);
 
         $viewMode = trim($request->input('view', ''));
         if ($viewMode === '') {
@@ -64,7 +67,7 @@ class CollectionToyController extends Controller
         $data = CollectionToy::getPaginatedWithDetails(
             $page, $perPage, $search,
             $universeId, $toyLineId, $acquisitionStatusId, $storageUnitId,
-            $manufacturerId, $productTypeId, $missingParts, $imageStatus
+            $manufacturerId, $productTypeId, $missingParts, $imageStatus, $subjectId
         );
 
         $this->renderPartial('collection_toy_list', [
