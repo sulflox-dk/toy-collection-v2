@@ -277,7 +277,7 @@ class EntityManager {
 				}
 			}
 
-			this.loadList();
+			this.loadList(this.currentParams);
 		} catch (error) {
 			console.error('Save Error:', error);
 
@@ -320,7 +320,7 @@ class EntityManager {
 				if (bsModal) bsModal.hide();
 			}
 
-			this.loadList();
+			this.loadList(this.currentParams);
 		} catch (error) {
 			if (error.status === 409 && error.data?.requires_migration) {
 				this.showMigrationModal(id, error.data);

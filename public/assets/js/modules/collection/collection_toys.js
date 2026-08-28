@@ -205,7 +205,9 @@ const CollectionWizard = {
 				if (isEdit) {
 					this.modal.hide();
 					if (window.collectionToyManager) {
-						window.collectionToyManager.loadList();
+						window.collectionToyManager.loadList(
+							window.collectionToyManager.currentParams,
+						);
 					}
 				} else {
 					this.goToStep3(result.id);

@@ -77,10 +77,10 @@ $tagsJson = json_encode($availableTags ?? [], JSON_HEX_APOS | JSON_HEX_QUOT);
 </div>
 
 <div class="modal-footer bg-light justify-content-between border-top flex-shrink-0">
-    <button type="button" class="btn btn-link text-muted text-decoration-none" data-bs-dismiss="modal" onclick="window.collectionToyManager.loadList()">
+    <button type="button" class="btn btn-link text-muted text-decoration-none" data-bs-dismiss="modal" onclick="window.collectionToyManager.loadList(window.collectionToyManager.currentParams)">
         Finish without adding photos
     </button>
-    <button type="button" class="btn btn-dark px-4" data-bs-dismiss="modal" onclick="window.collectionToyManager.loadList()">
+    <button type="button" class="btn btn-dark px-4" data-bs-dismiss="modal" onclick="window.collectionToyManager.loadList(window.collectionToyManager.currentParams)">
         Done <i class="fa-solid fa-check ms-1"></i>
     </button>
 </div>

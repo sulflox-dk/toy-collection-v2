@@ -61,7 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			}
 
 			formEl.reset();
-			manager.loadList();
+			manager.loadList(manager.currentParams);
 		} catch (error) {
 			console.error(error);
 			alert(error.message);
@@ -162,7 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
 						? `Deleted ${result.count} orphaned file(s).`
 						: 'No orphaned files to delete.',
 				);
-				manager.loadList();
+				manager.loadList(manager.currentParams);
 			} catch (error) {
 				console.error(error);
 				alert(error.message);
@@ -259,7 +259,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			if (uploadZone) uploadZone.classList.add('d-none');
 			if (fileInput) fileInput.value = '';
 
-			manager.loadList();
+			manager.loadList(manager.currentParams);
 		}, 800);
 	}
 

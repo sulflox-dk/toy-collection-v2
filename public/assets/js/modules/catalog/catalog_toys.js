@@ -320,7 +320,9 @@ const CatalogWizard = {
 					// We are editing: close modal and refresh grid
 					this.modal.hide();
 					if (window.catalogToyManager) {
-						window.catalogToyManager.loadList();
+						window.catalogToyManager.loadList(
+							window.catalogToyManager.currentParams,
+						);
 					}
 				} else {
 					// We are creating: proceed to Step 3
