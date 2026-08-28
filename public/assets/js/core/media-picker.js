@@ -443,17 +443,47 @@ const MediaPicker = {
 	// =====================================================================
 	// LIGHTBOX (large image viewer with prev/next navigation)
 	// =====================================================================
-	openLightbox(entityType, entityId, startIndex) {
-		const images = this._imageCache[`${entityType}-${entityId}`] || [];
-		if (images.length === 0) return;
 
-		this._lightboxImages = images;
-		this._lightboxIndex = startIndex;
+	// Every image currently shown in this modal — the main entity's own
+	// photos plus every accessory/item section beside it — in the same
+	// top-to-bottom order they're rendered in, so the lightbox can page
+	// through all of them as one sequence instead of stopping at
+	// whichever section you happened to click into. A modal with only
+	// one entity on screen (e.g. the simple entity-photo-modal) still
+	// works the same as before, since there's only one container to find.
+	_collectAllVisibleImages() {
+		const combined = [];
+		document.querySelectorAll('[id^="preview-"]').forEach((container) => {
+			const match = container.id.match(/^preview-([a-z_]+)-(\d+)$/);
+			if (!match) return;
+			const key = `${match[1]}-${match[2]}`;
+			const images = this._imageCache[key] || [];
+			images.forEach((img, index) => {
+				combined.push({ key, index, img });
+			});
+		});
+		return combined;
+	},
+
+	openLightbox(entityType, entityId, startIndex) {
+		const combined = this._collectAllVisibleImages();
+		if (combined.length === 0) return;
+
+		const clickedKey = `${entityType}-${entityId}`;
+		let globalIndex = combined.findIndex(
+			(item) => item.key === clickedKey && item.index === startIndex,
+		);
+		if (globalIndex === -1) globalIndex = 0;
+
+		this._lightboxImages = combined.map((item) => item.img);
+		this._lightboxIndex = globalIndex;
 		this._renderLightboxSlide();
 
 		document
 			.querySelectorAll('.lightbox-nav-btn')
-			.forEach((btn) => btn.classList.toggle('d-none', images.length <= 1));
+			.forEach((btn) =>
+				btn.classList.toggle('d-none', this._lightboxImages.length <= 1),
+			);
 
 		const overlay = document.getElementById('mediaLightboxOverlay');
 		if (overlay) {
@@ -640,11 +670,27 @@ const MediaPicker = {
 	},
 };
 
-document.addEventListener('keydown', (e) => {
-	const overlay = document.getElementById('mediaLightboxOverlay');
-	if (!overlay || overlay.classList.contains('d-none')) return;
+// Capture phase, not bubble: Bootstrap's own Escape-to-close listener is
+// attached directly on the modal element, which sits BETWEEN the focused
+// element and document in the bubble path — by the time a bubble-phase
+// document listener saw the keypress, Bootstrap's handler would already
+// have run and closed the photo-management modal underneath. Capturing at
+// document first lets us stop it before it ever reaches that listener, so
+// Escape only backs out of the lightbox one layer at a time.
+document.addEventListener(
+	'keydown',
+	(e) => {
+		const overlay = document.getElementById('mediaLightboxOverlay');
+		if (!overlay || overlay.classList.contains('d-none')) return;
 
-	if (e.key === 'Escape') MediaPicker.closeLightbox();
-	else if (e.key === 'ArrowLeft') MediaPicker.lightboxPrev();
-	else if (e.key === 'ArrowRight') MediaPicker.lightboxNext();
-});
+		if (e.key === 'Escape') {
+			e.stopPropagation();
+			MediaPicker.closeLightbox();
+		} else if (e.key === 'ArrowLeft') {
+			MediaPicker.lightboxPrev();
+		} else if (e.key === 'ArrowRight') {
+			MediaPicker.lightboxNext();
+		}
+	},
+	true,
+);
