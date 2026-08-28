@@ -231,8 +231,33 @@ class UiHelper {
 			okBtn.parentNode.replaceChild(newOkBtn, okBtn);
 			okBtn = newOkBtn; // reassign reference
 
+			const closeBtn = modalElement.querySelector('.btn-close');
+
 			// 5. Initialize Modal
 			const modal = new bootstrap.Modal(modalElement);
+
+			// Bootstrap's hide() silently no-ops while the modal's own SHOW
+			// transition is still running (an internal `_isTransitioning`
+			// guard) — so a click fast enough to land in that ~150-300ms
+			// window leaves the modal, its backdrop, and body.modal-open
+			// permanently stuck (nothing short of a page refresh clears
+			// it, since hide() never actually runs). Disable every button
+			// that can close the modal (Confirm, Cancel, the 'X') until
+			// 'shown.bs.modal' confirms the transition is done, so a fast
+			// click simply can't register during that window.
+			[okBtn, cancelBtn, closeBtn].forEach((btn) => {
+				if (btn) btn.disabled = true;
+			});
+			modalElement.addEventListener(
+				'shown.bs.modal',
+				() => {
+					[okBtn, cancelBtn, closeBtn].forEach((btn) => {
+						if (btn) btn.disabled = false;
+					});
+				},
+				{ once: true },
+			);
+
 			modal.show();
 
 			// 6. Handle Events
