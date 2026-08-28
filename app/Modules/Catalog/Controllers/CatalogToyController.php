@@ -264,7 +264,7 @@ class CatalogToyController extends Controller
             $itemsToDelete = array_diff($existingItemIds, $keptItemIds);
             if (!empty($itemsToDelete)) {
                 $placeholders = implode(',', array_fill(0, count($itemsToDelete), '?'));
-                $db->query("DELETE FROM catalog_toy_items WHERE id IN ($placeholders)", $itemsToDelete);
+                $db->query("DELETE FROM catalog_toy_items WHERE id IN ($placeholders)", array_values($itemsToDelete));
             }
 
             $db->commit();

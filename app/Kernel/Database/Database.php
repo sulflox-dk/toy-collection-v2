@@ -80,7 +80,30 @@ class Database
     {
         try {
             $stmt = $this->pdo->prepare($sql);
-            
+
+            // Positional (?) placeholders bind by 1-based POSITION, not by
+            // whatever keys the caller's array happens to carry. A caller
+            // that built $params via array_diff()/array_filter()/etc.
+            // (which preserve original keys, leaving gaps like [3,4,5]
+            // instead of [0,1,2]) would otherwise bind to the wrong
+            // placeholder entirely — either a silently wrong value, or a
+            // hard "Invalid parameter number" once a gap pushes a key past
+            // the query's actual placeholder count. Re-index a purely
+            // integer-keyed params array before binding so position always
+            // means "this value's place in the list", regardless of any
+            // gaps left in the keys; a params array using string (named)
+            // keys is left untouched.
+            $isPositional = true;
+            foreach ($params as $key => $value) {
+                if (!is_int($key)) {
+                    $isPositional = false;
+                    break;
+                }
+            }
+            if ($isPositional) {
+                $params = array_values($params);
+            }
+
             foreach ($params as $key => $value) {
                 // PDO parameters are 1-indexed if using ? placeholders
                 $paramKey = is_int($key) ? $key + 1 : $key;
